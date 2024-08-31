@@ -1,71 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cn">
 <head>
     <meta charset="UTF-8">
     <title>Comments Page</title>
-    <style>
-       /* 重置样式 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* 设置字体大小和颜色 */
-body {
-  font-size: 16px;
-  color: #333;
-}
-
-/* 设置链接样式 */
-a {
-  color: #007bff;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-/* 设置按钮样式 */
-button {
-  background-color: #007bff;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-/* 设置容器样式 */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 15px;
-}
-
-/* 设置标题样式 */
-h1, h2, h3, h4, h5, h6 {
-  margin-bottom: 1rem;
-}
-
-/* 设置段落样式 */
-p {
-  margin-bottom: 1rem;
-}
-
-/* 设置列表样式 */
-ul, ol {
-  margin-bottom: 1rem;
-}
-
-li {
-  margin-bottom: 0.5rem;
-}
-
+<style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            color: #333;
+            text-decoration: none;
+        }
+        a:hover {
+            color: #f60;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #e5e5e5;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #player {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #audioPlayer {
+            width: 300px;
+            height: 32px;
+        }
     </style>
 </head>
 <body>
@@ -75,7 +71,7 @@ li {
         <a href="contact.html">&nbsp;联系</a>
     </nav>
     <hr/>
-    <h1>Comments</h1>
+    <h1>Comments(评论加载需要时间...)</h1>
     <script src="https://utteranc.es/client.js"
         repo="185www/comments"
         issue-term="pathname"
