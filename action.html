@@ -69,56 +69,19 @@ li {
     </style>
 </head>
 <body>
+    <nav>
+       <a href="index.html">&nbsp;首页</a>
+        <a href="action.html">&nbsp;互动</a>
+        <a href="contact.html">&nbsp;联系</a>
+    </nav>
+    <hr/>
     <h1>Comments</h1>
-    <form id="comment-form">
-        <label for="user-id">User ID:</label>
-        <input type="text" id="user-id" name="user-id" required>
-        <br>
-        <label for="content">Content:</label>
-        <textarea id="content" name="content" required></textarea>
-        <br>
-        <button type="submit">Submit</button>
-    </form>
-    <ul id="comments-list"></ul>
-    <script>
-        // 获取表单元素和评论列表元素
-const commentForm = document.getElementById('comment-form');
-const commentsList = document.getElementById('comments-list');
-
-// 监听表单提交事件
-commentForm.addEventListener('submit', function(event) {
-    event.preventDefault(); // 阻止表单默认提交行为
-    
-    // 获取用户输入的评论内容和用户ID
-    const userID = document.getElementById('user-id').value;
-    const content = document.getElementById('content').value;
-    
-    // 创建一个新的评论对象
-    const newComment = {
-        user_id: userID,
-        content: content,
-        timestamp: new Date().toISOString()
-    };
-    
-    // 将新的评论添加到评论列表中（这里假设有一个名为addCommentToList的函数）
-    addCommentToList(newComment);
-    
-    // 清空表单字段
-    commentForm.reset();
-});
-
-// 添加评论到评论列表的函数
-function addCommentToList(comment) {
-    // 创建一个新的列表项元素
-    const listItem = document.createElement('li');
-    
-    // 设置列表项的内容为评论的用户ID和内容
-    listItem.textContent = `User ${comment.user_id}: ${comment.content}`;
-    
-    // 将列表项添加到评论列表中
-    commentsList.appendChild(listItem);
-}
-
-    </script>
+    <script src="https://utteranc.es/client.js"
+        repo="185www/comments"
+        issue-term="pathname"
+        theme="github-light"
+        crossorigin="anonymous"
+        async>
+</script>
 </body>
 </html>
