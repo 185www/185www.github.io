@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评论互动</title>
+    <style>
+        /* 样式可以根据需要进行调整 */
+        .comment {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .comment-author {
+            font-weight: bold;
+        }
+        .comment-date {
+            font-size: 0.8em;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <h1>评论区</h1>
+    <div id="comments">
+        <!-- 这里将显示评论 -->
+    </div>
+    <h2>添加评论</h2>
+    <form id="comment-form">
+        <label for="name">姓名：</label>
+        <input type="text" id="name" required><br>
+        <label for="comment">评论：</label>
+        <textarea id="comment" rows="4" cols="50" required></textarea><br>
+        <button type="submit">提交评论</button>
+    </form>
+
+    <script>
+        document.getElementById('comment-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // 阻止表单默认提交行为
+            var name = document.getElementById('name').value;
+            var comment = document.getElementById('comment').value;
+            var date = new Date().toLocaleString(); // 获取当前日期时间
+
+            // 创建评论元素并添加到页面中
+            var commentElement = document.createElement('div');
+            commentElement.classList.add('comment');
+            commentElement.innerHTML = `
+                <p class="comment-author">${name}</p>
+                <p class="comment-date">${date}</p>
+                <p>${comment}</p>
+            `;
+            document.getElementById('comments').appendChild(commentElement);
+
+            // 清空表单字段
+            document.getElementById('name').value = '';
+            document.getElementById('comment').value = '';
+        });
+    </script>
+</body>
+</html>
