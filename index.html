@@ -3,31 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>童</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="scripts.js"></script>
+    <title>网易云音乐音乐人推广</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            color: #333;
+            text-decoration: none;
+        }
+        a:hover {
+            color: #f60;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #e5e5e5;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #player {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #audioPlayer {
+            width: 300px;
+            height: 32px;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>欢迎来到我的网站</h1>
-    </header>
-    <main>
-        <section id="songs">
-            <h2>我的歌曲</h2>
-            <ul>
-                <li><a href="https://music.163.com/song?id=2619435011">歌曲1</a></li>
-                <li><a href="https://music.163.com/song?id=2619076696">歌曲2</a></li>
-                <li><a href="https://music.163.com/song?id=2619453926">歌曲3</a></li>
-                <li><a href="https://music.163.com/song?id=2157217569">歌曲4</a></li>
-            </ul>
-        </section>
-        <section id="artist">
-            <h2>查看我的歌手页面</h2>
-            <p><a href="https://music.163.com/#/artist?id=61889242">点击这里访问我的歌手页面</a></p>
-        </section>
-    </main>
+    <nav>
+        <a href="#">首页</a>
+        <a href="action.html">互动</a>
+        <a href="contact.html">联系</a>
+    </nav>
+    <h1>欢迎来到我的网易云音乐音乐人页面</h1>
+    <ul>
+        <li><a href="https://music.163.com/song?id=2619435011">歌曲1</a></li>
+        <li><a href="https://music.163.com/song?id=2619076696">歌曲2</a></li>
+        <li><a href="https://music.163.com/song?id=2619453926">歌曲3</a></li>
+        <li><a href="https://music.163.com/song?id=2157217569">歌曲4</a></li>
+    </ul>
+    <p>了解更多关于我的音乐作品和其他信息，请访问我的歌手页面：</p>
+    <center><a href="https://music.163.com/#/artist?id=61889242">点击这里访问我的歌手页面</a></center>
     <footer>
-        <p>版权所有 &copy; 2024 童</p>
+        <p>&copy; 2022 我的网易云音乐音乐人. All rights reserved.</p>
     </footer>
+    <div id="player">
+        <audio id="audioPlayer" src=""></audio>
+        <button onclick="playSong('https://music.163.com/song/media/outer/url?id=2619435011.mp3')">播放歌曲1</button>
+        <button onclick="playSong('https://music.163.com/song/media/outer/url?id=2619076696.mp3')">播放歌曲2</button>
+        <button onclick="playSong('https://music.163.com/song/media/outer/url?id=2619453926.mp3')">播放歌曲3</button>
+        <button onclick="playSong('https://music.163.com/song/media/outer/url?id=2157217569.mp3')">播放歌曲4</button>
+        <button onclick="pauseSong()">暂停</button>
+        <button onclick="stopSong()">停止</button>
+    </div>
+    <script>
+        var audioPlayer = document.getElementById("audioPlayer");
+        function playSong(url) {
+            audioPlayer.src = url;
+            audioPlayer.play();
+        }
+        function pauseSong() {
+            audioPlayer.pause();
+        }
+        function stopSong() {
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+        }
+    </script>
 </body>
 </html>
