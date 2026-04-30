@@ -1,0 +1,1 @@
+Nothing needs to be added to .gitignore since the changes only include HTML files (article.html, index-old.html, index.html) which are source files and not build artifacts, dependencies, or temporary files.
