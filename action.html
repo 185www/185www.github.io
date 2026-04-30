@@ -1,86 +1,47 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Comments Page</title>
-<style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-        li {
-            margin-bottom: 10px;
-        }
-        a {
-            color: #333;
-            text-decoration: none;
-        }
-        a:hover {
-            color: #f60;
-        }
-        footer {
-            text-align: center;
-            margin-top: 50px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border-top: 1px solid #e5e5e5;
-        }
-        button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #player {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 20px;
-        }
-        #audioPlayer {
-            width: 300px;
-            height: 32px;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互动评论 - 童的个人博客</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <nav>
-       <a href="index.html">&nbsp;首页</a>
-        <a href="action.html">&nbsp;互动</a>
-        <a href="contact.html">&nbsp;联系</a>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">童的博客</a>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="article.html">文章</a></li>
+                <li><a href="action.html" class="active">互动</a></li>
+                <li><a href="contact.html">联系</a></li>
+            </ul>
+        </div>
     </nav>
-    <hr/>
-    <h1>Comments(评论加载需要时间...)</h1>
-    <script src="https://utteranc.es/client.js"
-        repo="185www/comments"
-        issue-term="pathname"
-        theme="github-light"
-        crossorigin="anonymous"
-        async>
-</script>
-    <footer>
-        <p>&copy; 2024 童. All rights reserved.</p>
+
+    <!-- 主要内容区 -->
+    <main class="page-container">
+        <h1 class="page-title">互动评论</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 2rem;">欢迎在下方留言，分享您的想法和见解</p>
+        
+        <!-- Utterances 评论系统 -->
+        <script src="https://utteranc.es/client.js"
+            repo="185www/comments"
+            issue-term="pathname"
+            theme="github-light"
+            crossorigin="anonymous"
+            async>
+        </script>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 童的个人博客 · 保留所有权利</p>
+            <p class="footer-note">用文字记录生活，用思考照亮前路</p>
+        </div>
     </footer>
 </body>
 </html>
