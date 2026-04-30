@@ -1,430 +1,95 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>一流的人物，不可能是痛苦的卷王</title>
+    <title>童</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-            line-height: 1.8;
-            color: #333;
-            background-color: #fafafa;
-        }
-
-        .container {
-            max-width: 1920px;
-            margin: 0 auto;
-            padding: 40px 60px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 50px;
-            padding-bottom: 30px;
-            border-bottom: 3px solid #e0e0e0;
-        }
-
-        h1 {
-            font-size: 3.5rem;
-            margin-bottom: 20px;
-            color: #1a1a1a;
-            font-weight: 700;
-            line-height: 1.3;
-        }
-
-        .subtitle {
-            font-size: 1.6rem;
-            color: #666;
-            font-style: italic;
-        }
-
-        .hero-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-bottom: 50px;
-        }
-
-        .hero-image {
-            width: 100%;
-            height: 500px;
-            object-fit: cover;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-        }
-
-        .intro-text {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            font-size: 1.3rem;
-        }
-
-        section {
-            margin-bottom: 50px;
-            padding: 40px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-        }
-
-        .full-width {
-            grid-column: 1 / -1;
-        }
-
-        h2 {
-            font-size: 2.2rem;
-            margin-bottom: 30px;
-            color: #2c3e50;
-            padding-bottom: 20px;
-            border-bottom: 4px solid #3498db;
-            display: inline-block;
-        }
-
-        h3 {
-            font-size: 1.6rem;
-            margin: 30px 0 20px 0;
-            color: #34495e;
-        }
-
-        p {
-            margin-bottom: 20px;
-            font-size: 1.25rem;
-            text-align: justify;
-        }
-
-        .highlight {
-            background: linear-gradient(120deg, #ffeaa7 0%, #ffeaa7 100%);
-            background-repeat: no-repeat;
-            background-size: 100% 40%;
-            background-position: 0 88%;
-            padding: 0 4px;
-            font-weight: 600;
-        }
-
-        .quote {
-            font-size: 1.6rem;
-            color: #2c3e50;
-            font-style: italic;
-            text-align: center;
-            padding: 35px 50px;
-            margin: 35px 0;
-            border-left: 6px solid #3498db;
-            background: #f8f9fa;
-            border-radius: 0 12px 12px 0;
-        }
-
-        .concept-box {
-            background: #e8f4f8;
-            padding: 30px;
-            border-radius: 10px;
-            margin: 30px 0;
-            border-left: 6px solid #3498db;
-        }
-
-        .concept-title {
-            font-weight: 700;
-            color: #2c3e50;
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-        }
-
-        .concept-box p {
-            font-size: 1.2rem;
-            margin-bottom: 0;
-        }
-
-        ul {
-            margin: 20px 0 20px 40px;
-            font-size: 1.25rem;
-        }
-
-        li {
-            margin-bottom: 15px;
-        }
-
-        .image-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
-            margin: 40px 0;
-        }
-
-        .image-card {
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-        }
-
-        .image-card img {
-            width: 100%;
-            height: 350px;
-            object-fit: cover;
-        }
-
-        .image-caption {
-            padding: 15px;
-            background: white;
-            font-size: 1rem;
-            color: #666;
-            text-align: center;
-            font-style: italic;
-        }
-
-        .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            align-items: center;
-        }
-
-        .final-quote {
-            font-size: 2rem;
-            color: #2c3e50;
-            font-weight: 600;
-            text-align: center;
-            margin: 50px 0;
-            padding: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px;
-        }
-
-        .references {
-            margin-top: 60px;
-            padding: 40px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border-top: 3px solid #3498db;
-        }
-
-        .references h3 {
-            font-size: 1.8rem;
-            margin-bottom: 25px;
-            color: #2c3e50;
-        }
-
-        .references ul {
-            list-style: none;
-            margin-left: 0;
-        }
-
-        .references li {
-            margin-bottom: 15px;
-            padding-left: 20px;
-            border-left: 3px solid #3498db;
-            font-size: 1.1rem;
+            font-family: Arial, sans-serif;
             line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
-
-        .references a {
-            color: #3498db;
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            color: #333;
             text-decoration: none;
         }
-
-        .references a:hover {
-            text-decoration: underline;
+        a:hover {
+            color: #f60;
         }
-
         footer {
             text-align: center;
             margin-top: 50px;
-            padding-top: 30px;
-            border-top: 2px solid #e0e0e0;
-            color: #666;
-            font-size: 1.1rem;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #e5e5e5;
         }
-
-        @media (max-width: 1200px) {
-            .hero-section,
-            .two-column {
-                grid-template-columns: 1fr;
-            }
-            
-            .image-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            h1 {
-                font-size: 2.5rem;
-            }
-            
-            h2 {
-                font-size: 1.8rem;
-            }
-            
-            .container {
-                padding: 30px 40px;
-            }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #player {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #audioPlayer {
+            width: 300px;
+            height: 32px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>一流的人物，不可能是痛苦的卷王</h1>
-            <p class="subtitle">从张雪机车的世界冠军说起</p>
-        </header>
-
-        <div class="hero-section">
-            <div>
-                <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/133ae4510-b294-4949-984c-37a363abd0157128.png" alt="张雪在赛场" class="hero-image">
-            </div>
-            <div class="intro-text">
-                <p>2026年3月，葡萄牙赛道，中国机车品牌首次在世界超级摩托车锦标赛夺冠。创造这个奇迹的<strong>张雪</strong>，14岁辍学当修车学徒，19岁冒雨追车一百多公里只为争取一个展示机会，39岁带着中国品牌站上世界之巅。</p>
-                
-                <p>但我想请大家注意：在所有关于张雪的报道里，你几乎找不到"痛苦""咬牙""硬撑"这样的词。他说的是：<span class="highlight">"每天和车在一起，还能养活自己"</span>；他说的是：<span class="highlight">"按照你想干的去干，一直干，就对了。"</span></p>
-                
-                <div class="quote" style="margin-top: 30px;">
-                    真正一流的人物，不可能是痛苦的卷王。
-                </div>
-            </div>
-        </div>
-
-        <div class="image-grid">
-            <div class="image-card">
-                <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/833ae4510-b294-4949-984c-37a363abd0155291.png" alt="张雪夺冠时刻">
-                <div class="image-caption">张雪与世界冠军赛车</div>
-            </div>
-            <div class="image-card">
-                <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/433ae4510-b294-4949-984c-37a363abd0159529.png" alt="张雪在车间">
-                <div class="image-caption">张雪在研发车间</div>
-            </div>
-            <div class="image-card">
-                <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/733ae4510-b294-4949-984c-37a363abd0153002.png" alt="张雪机车ZX-500RR">
-                <div class="image-caption">张雪机车 ZX-500RR</div>
-            </div>
-        </div>
-
-        <section>
-            <h2>一、一流学习的起点：能动性，不是"听话"</h2>
-            
-            <div class="two-column">
-                <div>
-                    <p>备考阶段，我们常被一种"优秀"绑架：老师布置的卷子刷完，规定的进度跟上，不越线，不拖延。这叫"合规"，但不叫一流。</p>
-                    
-                    <div class="concept-box">
-                        <div class="concept-title">能动性（Agency）</div>
-                        <p>不等待指令，主动发起行动；不满足于合规，敢于重塑规则。</p>
-                    </div>
-                    
-                    <p>心理学中的"自我决定理论"指出，动机分两种：受控动机和内在动机。靠外部压力驱动的"受控动机"，只能换来机械执行；而源于自主选择的"内在动机"，才能激发真正的能动性。</p>
-                </div>
-                <div>
-                    <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/033ae4510-b294-4949-984c-37a363abd0156093.png" alt="张雪CCTV面对面" style="width: 100%; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);">
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px;">张雪19岁冒雨追车，不是谁逼的，是"我要"。放在学习上，一流的学生从不是"等安排"，而是"主动出击"。</p>
-            
-            <div class="quote">
-                人最强的不是自律，而是自愿。
-            </div>
-        </section>
-
-        <section>
-            <h2>二、自律的真相：不是忍耐，而是心流</h2>
-            
-            <div class="two-column">
-                <div>
-                    <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/533ae4510-b294-4949-984c-37a363abd0159372.png" alt="张雪机车赛场" style="width: 100%; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);">
-                </div>
-                <div>
-                    <p>我们总误以为，自律就是痛苦地对抗本能：强忍困意熬夜，压抑娱乐冲动刷题。但苏黎世大学的研究表明，高自控力的人之所以能持续投入，不是因为他们"更能忍"，而是因为他们<span class="highlight">真心享受这个过程</span>。</p>
-                    
-                    <div class="concept-box">
-                        <div class="concept-title">心流（Flow）</div>
-                        <p>当挑战与技能匹配时，人会进入全神贯注、忘记时间的状态，这是最高效的学习状态。</p>
-                    </div>
-                </div>
-            </div>
-            
-            <p style="margin-top: 20px;">痛苦，往往是方向错位的警报，而不是努力的勋章。张雪在车间里一待就是十几个小时，不觉得苦，因为他处于"心流"状态。</p>
-            
-            <p>备考同理。如果你每天学习都感到极度痛苦、耗尽心力，可能不是你不够努力，而是方法或节奏出了偏差。</p>
-            
-            <div class="quote">
-                自律的终极形态，不是"忍得住"，而是"找对节奏"。
-            </div>
-        </section>
-
-        <section>
-            <h2>三、一流竞争力：昂贵信号，不是虚假勤奋</h2>
-            
-            <p>当知识可以被无限重复练习时，拉开差距的到底是什么？不是谁刷的题更多，谁熬的夜更长。</p>
-            
-            <div class="concept-box">
-                <div class="concept-title">昂贵信号理论（Costly Signaling）</div>
-                <p>真正有分量的竞争力，来自敢于在关键处投入高成本、承担不确定性的勇气。就像非洲草原上的瞪羚被猎豹追逐时，不逃跑反而原地高跳——只有真正强壮的个体，才敢这样"浪费"能量。</p>
-            </div>
-            
-            <p>放在学习上，什么是你的"昂贵信号"？</p>
-            
-            <ul>
-                <li>不是用堆砌的题量制造勤奋假象</li>
-                <li>而是敢于直面认知盲区</li>
-                <li>死磕一道压轴题的底层逻辑</li>
-                <li>花一整天拆解错题背后的思维漏洞</li>
-                <li>主动跳出舒适区去重构知识框架</li>
-            </ul>
-            
-            <div class="image-grid" style="margin-top: 30px;">
-                <div class="image-card">
-                    <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/333ae4510-b294-4949-984c-37a363abd0151875.png" alt="夺冠时刻">
-                    <div class="image-caption">中国国旗在世界赛场升起</div>
-                </div>
-                <div class="image-card">
-                    <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/233ae4510-b294-4949-984c-37a363abd0159982.png" alt="张雪820RR量产">
-                    <div class="image-caption">张雪820RR正式量产下线</div>
-                </div>
-                <div class="image-card">
-                    <img src="https://image.qwenlm.ai/public_source/cfcd6776-cb27-487c-b307-34f33db56fed/433ae4510-b294-4949-984c-37a363abd0151077.png" alt="张雪机车展示">
-                    <div class="image-caption">张雪机车在国际展会</div>
-                </div>
-            </div>
-            
-            <p style="margin-top: 30px;">这种"认知上的冒险"和"深度投入"，才是无法被轻易复制的竞争力。</p>
-            
-            <div class="quote">
-                一流人物从不沉迷于低水平的内卷，他们只在关键处，亮出真本事。
-            </div>
-        </section>
-
-        <section>
-            <h2>写在最后</h2>
-            
-            <p>同学们，讲这些，不是给大家灌"努力就能赢"的鸡汤，而是想给当下的备考提个醒：<span class="highlight">努力必须有方向，而方向来自清醒的自主选择。</span></p>
-            
-            <p>真正的一流，不是眉头紧锁的苦行僧，而是在专注中持续、在自愿中深耕、在关键处敢于承担的人。</p>
-            
-            <div class="final-quote">
-                按照你想干的去干，一直干，就对了。
-            </div>
-            
-            <p>面对接下来的大考，愿你们能停下盲目消耗的脚步，问问自己：我的"能动性"在哪里？我的节奏是否健康？我是否在用真正的思考，代替虚假的勤奋？</p>
-            
-            <p>愿你们在各自的赛道上，不做痛苦的卷王，只做清醒的赶路人。</p>
-        </section>
-
-        <div class="references">
-            <h3>参考资料</h3>
-            <ul>
-                <li>万维钢·《一流人物不可能是痛苦的卷王》<a href="https://d.dedao.cn/GCMK0IruEErqvxBh" target="_blank">https://d.dedao.cn/GCMK0IruEErqvxBh</a></li>
-                <li>万维钢·《自律的真相：不是忍耐，而是享受》<a href="https://d.dedao.cn/GCMKgFubpNeTYhDz" target="_blank">https://d.dedao.cn/GCMKgFubpNeTYhDz</a></li>
-                <li>万维钢·《昂贵信号理论：一流人物的竞争力》<a href="https://d.dedao.cn/GCMKohLu45aU6As3" target="_blank">https://d.dedao.cn/GCMKohLu45aU6As3</a></li>
-            </ul>
-        </div>
-
-                <footer style="text-align: center; margin-top: 60px; padding: 30px; background: #f8f9fa; border-top: 2px solid #e0e0e0; border-radius: 8px;">
-            <p style="margin-bottom: 10px; font-size: 1.1rem; color: #555;">&copy; 2025 童 · 保留所有权利</p>
-            <p style="font-size: 0.95rem; color: #888;">Hosted with ❤️ on GitHub Pages</p>
-        </footer>    </div>
+    <nav>
+       <a href="#">&nbsp;首页</a>
+        <a href="action.html">&nbsp;互动</a>
+        <a href="contact.html">&nbsp;联系</a>
+    </nav>
+    <hr/>
+    <h1>欢迎来到我的网站</h1>
+    <p style="text-align: center; margin: 20px 0;">
+        <a href="article.html" style="display: inline-block; padding: 15px 30px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px; font-size: 1.1rem;">阅读最新文章：一流的人物，不可能是痛苦的卷王</a>
+    </p>
+    <ul>
+        <h3>音乐作品(点击名称即可播放):</h3>
+        <ul>
+        <li><a href="https://music.163.com/song?id=2619435011">自然风光</a></li>
+        <li><a href="https://music.163.com/song?id=2619076696">壹号作品</a></li>
+        <li><a href="https://music.163.com/song?id=2619453926">自然风光(洛天依)</a></li>
+        <li><a href="https://music.163.com/song?id=2157217569">解题</a></li>
+    </ul>
+    <br>
+    <h3>了解更多关于我的音乐作品和其他信息，请访问我的歌手页面：</h3>
+    <center><a href="https://music.163.com/#/artist?id=61889242">点击这里访问我的歌手页面</a></center>
+        
+    <footer>
+        <p>&copy; 2024 童. All rights reserved.</p>
+    </footer>
 </body>
 </html>
