@@ -1,26 +1,27 @@
 ```gitignore
 # Compiled and binary files
 *.pyc
-*.class
+__pycache__/
 *.o
+*.obj
 *.exe
 *.dll
 *.so
 *.a
-*.obj
 *.out
 
 # Dependencies
 node_modules/
 venv/
 .venv/
-__pycache__/
+.env
+.env.local
+.env.*
+
+# Build artifacts
 dist/
 build/
 target/
-.gradle/
-.mypy_cache/
-.pytest_cache/
 
 # Editors and IDEs
 .vscode/
@@ -32,9 +33,6 @@ target/
 # System files
 .DS_Store
 Thumbs.db
-.env
-.env.local
-*.env.*
 
 # Logs and coverage
 *.log
