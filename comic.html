@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT 漫画作品 - 童的个人博客</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .comic-showcase {
+            padding: 60px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .comic-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .comic-header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        
+        .comic-header p {
+            font-size: 1.1rem;
+            color: #7f8c8d;
+            font-weight: 300;
+        }
+        
+        .comic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+        
+        .comic-item {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .comic-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .comic-image-container {
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .comic-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+        
+        .comic-item:hover .comic-image {
+            transform: scale(1.02);
+        }
+        
+        .comic-info {
+            padding: 25px;
+        }
+        
+        .comic-title {
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+        
+        .comic-description {
+            font-size: 1rem;
+            color: #7f8c8d;
+            line-height: 1.7;
+            font-weight: 300;
+        }
+        
+        .comic-meta {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+        }
+        
+        .comic-tag {
+            display: inline-block;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 400;
+        }
+        
+        @media (max-width: 768px) {
+            .comic-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            
+            .comic-image-container {
+                height: 300px;
+            }
+            
+            .comic-header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">童的博客</a>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="article.html">文章</a></li>
+                <li><a href="comic.html" class="active">漫画</a></li>
+                <li><a href="action.html">互动</a></li>
+                <li><a href="contact.html">联系</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 漫画展示区 -->
+    <main class="comic-showcase">
+        <div class="comic-header">
+            <h1>GPT 漫画作品</h1>
+            <p>使用 GPT Image 技术创作的创意漫画</p>
+        </div>
+        
+        <div class="comic-grid">
+            <!-- 漫画作品 1 -->
+            <div class="comic-item">
+                <div class="comic-image-container">
+                    <img src="https://yoozi-us1.oss-us-west-1.aliyuncs.com/chatgpt/00e2c645-7cbb-4612-9568-f4884c247b75.png" alt="GPT 漫画作品 1" class="comic-image">
+                </div>
+                <div class="comic-info">
+                    <h2 class="comic-title">创意漫画作品 #1</h2>
+                    <p class="comic-description">这是使用最新 GPT Image 技术创作的漫画作品。通过人工智能的创造力，展现出独特的视觉效果和故事情节。</p>
+                    <div class="comic-meta">
+                        <span class="comic-tag">AI 创作</span>
+                        <span class="comic-tag">GPT Image</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 漫画作品 2 -->
+            <div class="comic-item">
+                <div class="comic-image-container">
+                    <img src="https://yoozi-us1.oss-us-west-1.aliyuncs.com/chatgpt/00e2c645-7cbb-4612-9568-f4884c247b75.png" alt="GPT 漫画作品 2" class="comic-image">
+                </div>
+                <div class="comic-info">
+                    <h2 class="comic-title">创意漫画作品 #2</h2>
+                    <p class="comic-description">第二部 GPT Image 漫画作品，延续了独特的艺术风格，探索人工智能在创意领域的无限可能。</p>
+                    <div class="comic-meta">
+                        <span class="comic-tag">AI 创作</span>
+                        <span class="comic-tag">GPT Image</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 童的个人博客 · 保留所有权利</p>
+            <p class="footer-note">用文字记录生活，用思考照亮前路</p>
+        </div>
+    </footer>
+</body>
+</html>
