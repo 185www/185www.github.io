@@ -20,4 +20,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./pomotodo
           destination_dir: pomotodo/
-          keep_files: true
+          keep_files: false
