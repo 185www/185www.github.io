@@ -4,11 +4,11 @@
 
 ## ✨ 功能
 
-- **番茄钟** — 25/5/15 默认时长（可自定义），支持开始/暂停/跳过/重置，自动循环
+- **番茄钟*  — 25/5/15 默认时长（可自定义），支持开始/暂停/跳过/重置，自动循环
 - **任务管理** — 增删改查/完成/置顶/关联当前番茄，优先级标记
 - **统计面板** — 今日/本周/本月数据，Chart.js 7 天趋势图，JSON 导入导出
 - **设置面板** — 亮/暗主题切换，提示音开关与音量，自定义时长，自动开始，数据清除
-- **快捷键** — Space 开始/暂停，R 重置，T 任务页，S 设置页
+- **快捷键* — Space 开始/暂停/暂停，R 重置，T 任务页，S 设置页
 - **PWA** — 可安装到桌面，离线可用
 
 ## 🚀 本地运行
@@ -35,7 +35,7 @@ GitHub Pages 部署后访问：`https://185www.github.io/pomotodo/`
 
 ## 💾 数据备份与恢复
 
-- **导出**：统计页面点击「导出数据」，下载 JSON 文件
+- **导出**：统计页面点击「导出数据」
 - **导入**：统计页面点击「导入数据」，选择之前导出的 JSON 文件
 - 所有数据存储在浏览器本地（localStorage + IndexedDB），不会上传到任何服务器
 
@@ -54,15 +54,15 @@ pomotodo/
 │   ├── manifest.json   # PWA 清单（scope: ./）
 │   └── icons/          # PWA 图标
 ├── src/
-│   ├── main.js         # 应用入口
-│   ├── style.css       # 全局样式
+│   ├── main.js         # 应用入參
+�) ├── style.css       # 全局样式
 │   ├── components/
-│   │   ├── Timer.js    # 番茄钟组件
+�) │   ├── Timer.js    # 番茄钟组件
 │   │   ├── TaskList.js # 任务列表组件
 │   │   ├── Stats.js    # 统计面板组件
 │   │   └── Settings.js # 设置面板组件
 │   ├── utils/
-│   │   ├── storage.js  # 存储层（IDB + localStorage）
+�) │   ├── storage.js  # 存储层（IDB + localStorage）
 │   │   ├── audio.js    # Web Audio API 提示音
 │   │   ├── notifier.js # 浏览器通知
 │   │   └── date.js     # 日期工具
