@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'pomotodo/**'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
