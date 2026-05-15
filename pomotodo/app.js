@@ -1,12 +1,14 @@
 /**
- * Pomotodo — app.js
- * Pure static app: timer + tasks + stats + settings
- * Data: localStorage
+ * Pomotodo V2 — app.js
+ * Timestamp-based timer (works with screen off)
+ * Priority levels P1-P4, GTD @today, #tags
+ * Onboarding, time picker, guide
  */
 
 // ==================== CONSTANTS ====================
 const LS_KEY = 'pomotodo_v2';
 const CIRC = 2 * Math.PI * 88;
+const ONBOARD_KEY = 'pomotodo_onboarded';
 
 const DEFAULTS = {
   settings: {
@@ -32,10 +34,30 @@ let timer = {
   remaining: S.settings.workDuration * 60,
   running: false,
   intervalId: null,
-  startedAt: null,
+  startedAt: null,        // ISO timestamp when timer started
+  startedRemaining: null, // remaining seconds when timer started
   cycleCount: 0,
   taskId: null
 };
+
+// Web Worker for background timing
+let timerWorker = null;
+try {
+  timerWorker = new Worker('./timer-worker.js');
+  timerWorker.onmessage = function(e) {
+    var d = e.data;
+    if (d.type === 'tick') {
+      timer.remaining = d.remaining;
+      updateTimerUI();
+    } else if (d.type === 'complete') {
+      timer.remaining = 0;
+      timer.running = false;
+      onTimerComplete();
+    } else if (d.type === 'paused') {
+      timer._pausedElapsed = d.elapsed;
+    }
+  };
+} catch(_) { timerWorker = null; }
 
 // ==================== STATE I/O ====================
 function loadState() {
@@ -55,6 +77,63 @@ function loadState() {
 
 function saveState() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (_) {}
+}
+
+// Persist timer state for recovery after screen off
+function saveTimerState() {
+  try {
+    localStorage.setItem(LS_KEY + '_timer', JSON.stringify({
+      mode: timer.mode,
+      startedAt: timer.startedAt,
+      startedRemaining: timer.startedRemaining,
+      running: timer.running,
+      cycleCount: timer.cycleCount,
+      taskId: timer.taskId
+    }));
+  } catch(_) {}
+}
+
+function loadTimerState() {
+  try {
+    var raw = localStorage.getItem(LS_KEY + '_timer');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(_) { return null; }
+}
+
+function clearTimerState() {
+  try { localStorage.removeItem(LS_KEY + '_timer'); } catch(_) {}
+}
+
+// Recover timer on page load (handles screen-off scenario)
+function recoverTimer() {
+  var saved = loadTimerState();
+  if (!saved || !saved.running || !saved.startedAt) return;
+  var elapsed = (Date.now() - new Date(saved.startedAt).getTime()) / 1000;
+  var remaining = saved.startedRemaining - Math.floor(elapsed);
+  if (remaining <= 0) {
+    // Timer completed while screen was off
+    timer.mode = saved.mode;
+    timer.startedAt = saved.startedAt;
+    timer.startedRemaining = saved.startedRemaining;
+    timer.cycleCount = saved.cycleCount || 0;
+    timer.taskId = saved.taskId;
+    timer.running = false;
+    timer.remaining = 0;
+    clearTimerState();
+    onTimerComplete();
+  } else {
+    // Still running
+    timer.mode = saved.mode;
+    timer.startedAt = saved.startedAt;
+    timer.startedRemaining = saved.startedRemaining;
+    timer.remaining = remaining;
+    timer.running = true;
+    timer.cycleCount = saved.cycleCount || 0;
+    timer.taskId = saved.taskId;
+    startInterval();
+    updateTimerUI();
+  }
 }
 
 // ==================== AUDIO ====================
@@ -100,12 +179,38 @@ function getModeDuration(mode) {
   return s.workDuration;
 }
 
+function startInterval() {
+  clearInterval(timer.intervalId);
+  timer.intervalId = setInterval(function() {
+    if (!timer.startedAt) return;
+    var elapsed = (Date.now() - new Date(timer.startedAt).getTime()) / 1000;
+    timer.remaining = Math.max(0, timer.startedRemaining - Math.floor(elapsed));
+    updateTimerUI();
+    if (timer.remaining <= 0) {
+      timer.running = false;
+      clearInterval(timer.intervalId);
+      timer.intervalId = null;
+      onTimerComplete();
+    }
+  }, 250);
+}
+
 function startTimer() {
   if (timer.running) return;
   click(S.settings.soundVolume);
   timer.running = true;
-  timer.startedAt = timer.startedAt || new Date().toISOString();
-  timer.intervalId = setInterval(tick, 1000);
+  timer.startedAt = new Date().toISOString();
+  timer.startedRemaining = timer.remaining;
+  saveTimerState();
+  startInterval();
+  // Also start Web Worker as backup
+  if (timerWorker) {
+    timerWorker.postMessage({
+      type: 'start',
+      startTime: Date.now(),
+      duration: timer.remaining
+    });
+  }
   updateTimerUI();
 }
 
@@ -115,6 +220,15 @@ function pauseTimer() {
   timer.running = false;
   clearInterval(timer.intervalId);
   timer.intervalId = null;
+  // Recalculate remaining based on actual elapsed
+  if (timer.startedAt) {
+    var elapsed = (Date.now() - new Date(timer.startedAt).getTime()) / 1000;
+    timer.remaining = Math.max(0, timer.startedRemaining - Math.floor(elapsed));
+  }
+  timer.startedAt = null;
+  timer.startedRemaining = null;
+  saveTimerState();
+  if (timerWorker) timerWorker.postMessage({ type: 'pause' });
   updateTimerUI();
 }
 
@@ -125,19 +239,9 @@ function resetTimer() {
   timer.intervalId = null;
   timer.remaining = getModeDuration(timer.mode) * 60;
   timer.startedAt = null;
-  updateTimerUI();
-}
-
-function tick() {
-  if (timer.remaining <= 1) {
-    timer.remaining = 0;
-    timer.running = false;
-    clearInterval(timer.intervalId);
-    timer.intervalId = null;
-    onTimerComplete();
-    return;
-  }
-  timer.remaining--;
+  timer.startedRemaining = null;
+  clearTimerState();
+  if (timerWorker) timerWorker.postMessage({ type: 'stop' });
   updateTimerUI();
 }
 
@@ -153,6 +257,7 @@ function onTimerComplete() {
     var names = {work: '专注完成', shortBreak: '短休息结束', longBreak: '长休息结束'};
     notify('🍅 ' + names[timer.mode], timer.mode === 'work' ? '休息一下吧' : '开始专注吧');
   }
+  clearTimerState();
   if (timer.mode === 'work') {
     timer.cycleCount++;
     S.sessions.push(session);
@@ -164,6 +269,7 @@ function onTimerComplete() {
     timer.mode = 'work';
     timer.remaining = S.settings.workDuration * 60;
     timer.startedAt = null;
+    timer.startedRemaining = null;
     if (S.settings.autoStartWork) setTimeout(startTimer, 500);
     updateTimerUI();
     updateDoneList();
@@ -179,14 +285,11 @@ function advanceAfterComplete(selectedTaskId) {
   }
   saveState();
   if (timer.cycleCount >= S.settings.longBreakInterval) {
-    timer.mode = 'longBreak';
-    timer.remaining = S.settings.longBreakDuration * 60;
-    timer.cycleCount = 0;
+    timer.mode = 'longBreak'; timer.remaining = S.settings.longBreakDuration * 60; timer.cycleCount = 0;
   } else {
-    timer.mode = 'shortBreak';
-    timer.remaining = S.settings.shortBreakDuration * 60;
+    timer.mode = 'shortBreak'; timer.remaining = S.settings.shortBreakDuration * 60;
   }
-  timer.startedAt = null;
+  timer.startedAt = null; timer.startedRemaining = null;
   if (S.settings.autoStartBreak) setTimeout(startTimer, 500);
   updateTimerUI(); updateDoneList(); renderTasks();
 }
@@ -211,18 +314,34 @@ function skipTimer() {
       timer.mode = 'longBreak'; timer.remaining = S.settings.longBreakDuration * 60; timer.cycleCount = 0;
     } else { timer.mode = 'shortBreak'; timer.remaining = S.settings.shortBreakDuration * 60; }
   } else { timer.mode = 'work'; timer.remaining = S.settings.workDuration * 60; }
-  timer.startedAt = null;
+  timer.startedAt = null; timer.startedRemaining = null;
+  clearTimerState();
+  if (timerWorker) timerWorker.postMessage({ type: 'stop' });
   updateTimerUI(); updateDoneList();
 }
 
 // ==================== TASKS ====================
 function addTask(title) {
   var tags = [];
-  title = title.replace(/#(\S+)/g, function(_, t) { tags.push(t); return ''; }).trim();
+  var priority = 4;
+  var isToday = false;
+
+  // Parse !1 !2 !3 !4 priority
+  title = title.replace(/!([1-4])/g, function(_, p) { priority = parseInt(p); return ''; });
+
+  // Parse #tag
+  title = title.replace(/#(\S+)/g, function(_, t) { tags.push(t); return ''; });
+
+  // Parse @today
+  title = title.replace(/@today/gi, function() { isToday = true; return ''; });
+
+  title = title.trim();
   if (!title) return;
+
   var task = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    title: title, tags: tags, completed: false, pinned: false,
+    title: title, tags: tags, priority: priority, today: isToday,
+    completed: false, pinned: false,
     pomodorosCompleted: 0, createdAt: new Date().toISOString()
   };
   S.tasks.unshift(task); saveState(); renderTasks();
@@ -250,6 +369,13 @@ function selectTask(id) {
   updateTimerUI(); renderTasks();
 }
 
+function cyclePriority(id) {
+  var t = S.tasks.find(function(x) { return x.id === id; });
+  if (!t) return;
+  t.priority = (t.priority % 4) + 1;
+  saveState(); renderTasks();
+}
+
 // ==================== RENDER ====================
 function updateTimerUI() {
   var total = getModeDuration(timer.mode) * 60;
@@ -258,47 +384,63 @@ function updateTimerUI() {
   ring.style.strokeDasharray = CIRC;
   ring.style.strokeDashoffset = CIRC * (1 - pct);
   ring.className = 'ring-fill' + (timer.mode === 'shortBreak' ? ' short' : '') + (timer.mode === 'longBreak' ? ' long' : '');
+
   var digits = document.querySelector('.timer-digits');
   digits.textContent = fmtTime(timer.remaining);
   digits.className = 'timer-digits' + (timer.mode === 'shortBreak' ? ' short' : '') + (timer.mode === 'longBreak' ? ' long' : '');
+
   var btn = document.getElementById('btn-start');
   btn.textContent = timer.running ? '⏸ 暂停' : (timer.remaining < total ? '▶ 继续' : '▶ 开始专注');
   btn.classList.toggle('running', timer.running);
+
   document.querySelector('.timer-cycle').textContent = '#' + (timer.cycleCount + 1);
+
   var label = document.getElementById('timer-active-task');
   if (timer.taskId) {
     var t = S.tasks.find(function(x) { return x.id === timer.taskId; });
     label.textContent = t ? '🍅 ' + t.title : '';
   } else { label.textContent = ''; }
+
   document.title = timer.running ? fmtTime(timer.remaining) + ' - Pomotodo' : 'Pomotodo';
 }
 
 function renderTasks() {
   var filter = currentFilter;
   var tasks = S.tasks.slice();
+
+  // Sort: priority first (1=highest), then pinned, then completed
   tasks.sort(function(a, b) {
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     return 0;
   });
+
   if (filter === 'active') tasks = tasks.filter(function(t) { return !t.completed; });
   if (filter === 'completed') tasks = tasks.filter(function(t) { return t.completed; });
+  if (filter === 'today') tasks = tasks.filter(function(t) { return t.today && !t.completed; });
+
   var list = document.getElementById('task-list');
   if (tasks.length === 0) {
-    list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>最佳的土豆是一周内可完成的小任务</small></div>';
+    list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>输入任务名 #标签 !1紧急 @today</small></div>';
     return;
   }
+
   list.innerHTML = tasks.map(function(t) {
     var isActive = timer.taskId === t.id;
+    var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
+    var prioClass = 'p' + (t.priority || 4);
     var tagHtml = (t.tags || []).map(function(tag) { return '<span class="task-tag">#' + esc(tag) + '</span>'; }).join(' ');
-    return '<li class="task-item' + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + '" data-id="' + t.id + '">' +
+    var todayBadge = t.today ? '<span class="task-today-badge">今日</span>' : '';
+    return '<li class="task-item prio-' + (t.priority||4) + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
-      '<span class="task-text">' + esc(t.title) + ' ' + tagHtml + '</span>' +
+      '<span class="task-prio-badge ' + prioClass + '" data-act="prio" data-id="' + t.id + '" title="切换优先级">' + prioLabels[t.priority||4] + '</span>' +
+      '<span class="task-text">' + esc(t.title) + ' ' + tagHtml + todayBadge + '</span>' +
       '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + (t.pomodorosCompleted > 5 ? '+' + t.pomodorosCompleted : '') + '</span>' +
       '<div class="task-btns">' +
-      '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' +
-      '<button class="task-btn" data-act="select" data-id="' + t.id + '">' + (isActive ? '🍅' : '○') + '</button>' +
-      '<button class="task-btn del" data-act="delete" data-id="' + t.id + '">✕</button>' +
+      '<button class="task-btn" data-act="pin" data-id="' + t.id + '" title="置顶">' + (t.pinned ? '📌' : '📍') + '</button>' +
+      '<button class="task-btn" data-act="select" data-id="' + t.id + '" title="关联番茄">' + (isActive ? '🍅' : '○') + '</button>' +
+      '<button class="task-btn del" data-act="delete" data-id="' + t.id + '" title="删除">✕</button>' +
       '</div></li>';
   }).join('');
 }
@@ -349,9 +491,35 @@ function showCompleteModal(session) {
   };
 }
 
+// ==================== TIME PICKER ====================
+function showTimePicker() {
+  if (timer.running) return; // Don't show while running
+  var overlay = document.getElementById('modal-time-picker');
+  overlay.removeAttribute('hidden');
+  var currentMin = getModeDuration(timer.mode);
+  // Highlight current preset
+  document.querySelectorAll('.time-preset').forEach(function(btn) {
+    btn.classList.toggle('active', parseInt(btn.dataset.min) === currentMin);
+  });
+  document.getElementById('time-custom-input').value = '';
+}
+
+function applyTimePick(minutes) {
+  minutes = Math.max(1, Math.min(90, parseInt(minutes) || getModeDuration(timer.mode)));
+  // Update the setting for current mode
+  if (timer.mode === 'work') S.settings.workDuration = minutes;
+  else if (timer.mode === 'shortBreak') S.settings.shortBreakDuration = minutes;
+  else S.settings.longBreakDuration = minutes;
+  saveState();
+  timer.remaining = minutes * 60;
+  timer.startedAt = null; timer.startedRemaining = null;
+  document.getElementById('modal-time-picker').setAttribute('hidden', '');
+  updateTimerUI();
+  initSettings(); // sync settings panel
+}
+
 // ==================== STATS ====================
 var weekChart = null;
-var tagChart = null;
 
 function renderStats() {
   var today = new Date().toISOString().slice(0, 10);
@@ -367,9 +535,7 @@ function renderStats() {
 
 function renderWeeklyChart() {
   var days = [];
-  for (var i = 6; i >= 0; i--) {
-    days.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
-  }
+  for (var i = 6; i >= 0; i--) days.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
   var labels = days.map(function(d) {
     var dt = new Date(d + 'T00:00:00');
     return ['日','一','二','三','四','五','六'][dt.getDay()];
@@ -389,14 +555,12 @@ function renderWeeklyChart() {
     weekChart.update();
     return;
   }
-
   var ctx = document.getElementById('chart-weekly');
   var cfg = {};
   cfg.type = 'bar';
   cfg.data = {};
   cfg.data.labels = labels;
-  cfg.data.datasets = [];
-  cfg.data.datasets[0] = {};
+  cfg.data.datasets = [{}];
   cfg.data.datasets[0].label = '番茄数';
   cfg.data.datasets[0].data = counts;
   cfg.data.datasets[0].backgroundColor = 'rgba(231,76,60,0.7)';
@@ -518,6 +682,8 @@ function importData(file) {
       if (d.settings) S.settings = Object.assign({}, DEFAULTS.settings, d.settings);
       if (Array.isArray(d.tasks)) S.tasks = d.tasks;
       if (Array.isArray(d.sessions)) S.sessions = d.sessions;
+      // Migrate: add priority field if missing
+      S.tasks.forEach(function(t) { if (!t.priority) t.priority = 4; if (t.today === undefined) t.today = false; });
       saveState(); toast('数据已导入');
       initSettings(); renderTasks(); updateTimerUI(); updateDoneList();
     } catch(err) { toast('导入失败: ' + err.message); }
@@ -525,35 +691,103 @@ function importData(file) {
   reader.readAsText(file);
 }
 
+// ==================== ONBOARDING ====================
+var onboardSteps = [
+  { emoji: '🍅', title: '欢迎使用 Pomotodo', text: '番茄钟 + GTD 时间管理工具，帮你专注工作、高效完成任务。' },
+  { emoji: '⏱️', title: '点击数字调时长', text: '点击圆圈中的时间数字，快速调整专注/休息时长。锁屏后计时器不会中断！' },
+  { emoji: '🥔', title: '智能土豆清单', text: '用 #标签 分类，用 !1~!4 设优先级，用 @today 标记今日任务。' },
+  { emoji: '☕', title: '开始专注吧', text: '按空格键开始/暂停，专注25分钟后自动提醒休息。祝你高效！' }
+];
+var onboardStep = 0;
+
+function showOnboarding() {
+  var overlay = document.getElementById('onboarding');
+  overlay.removeAttribute('hidden');
+  renderOnboardStep();
+}
+
+function renderOnboardStep() {
+  var step = onboardSteps[onboardStep];
+  var body = document.getElementById('onboarding-body');
+  body.innerHTML = '<span class="ob-emoji">' + step.emoji + '</span><h3>' + step.title + '</h3><p>' + step.text + '</p>';
+  // Dots
+  var dots = document.getElementById('onboarding-dots');
+  dots.innerHTML = onboardSteps.map(function(_, i) {
+    return '<span class="onboarding-dot' + (i === onboardStep ? ' active' : '') + '"></span>';
+  }).join('');
+  // Button text
+  document.getElementById('onboarding-next').textContent = onboardStep === onboardSteps.length - 1 ? '开始使用' : '下一步';
+}
+
+function closeOnboarding() {
+  document.getElementById('onboarding').setAttribute('hidden', '');
+  try { localStorage.setItem(ONBOARD_KEY, '1'); } catch(_) {}
+}
+
 // ==================== INIT & EVENTS ====================
 var currentFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', function() {
-  initSettings(); updateTimerUI(); renderTasks(); updateDoneList();
+  initSettings();
+  updateTimerUI();
+  renderTasks();
+  updateDoneList();
 
+  // Recover timer (screen-off resilience)
+  recoverTimer();
+
+  // visibility change: re-sync timer on page become visible
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && timer.running && timer.startedAt) {
+      var elapsed = (Date.now() - new Date(timer.startedAt).getTime()) / 1000;
+      timer.remaining = Math.max(0, timer.startedRemaining - Math.floor(elapsed));
+      updateTimerUI();
+      if (timer.remaining <= 0) {
+        timer.running = false;
+        onTimerComplete();
+      }
+    }
+  });
+
+  // Onboarding
+  var onboarded = false;
+  try { onboarded = localStorage.getItem(ONBOARD_KEY) === '1'; } catch(_) {}
+  if (!onboarded) setTimeout(showOnboarding, 600);
+
+  // Register SW
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(function() {}); }
   if (S.settings.notificationsEnabled && 'Notification' in window && Notification.permission === 'default') { Notification.requestPermission(); }
 
+  // ---- Timer buttons ----
   document.getElementById('btn-start').addEventListener('click', function() { timer.running ? pauseTimer() : startTimer(); });
   document.getElementById('btn-reset').addEventListener('click', resetTimer);
   document.getElementById('btn-skip').addEventListener('click', skipTimer);
 
+  // ---- Click on timer digits to open time picker ----
+  document.getElementById('timer-ring-wrap').addEventListener('click', function(e) {
+    if (timer.running) return;
+    showTimePicker();
+  });
+
+  // ---- Mode buttons ----
   document.querySelectorAll('.mode-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       if (timer.running) return;
       timer.mode = btn.dataset.mode;
       timer.remaining = getModeDuration(btn.dataset.mode) * 60;
-      timer.startedAt = null;
+      timer.startedAt = null; timer.startedRemaining = null;
       document.querySelectorAll('.mode-btn').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
       updateTimerUI();
     });
   });
 
+  // ---- Task input ----
   var input = document.getElementById('task-input');
   document.getElementById('task-add-btn').addEventListener('click', function() { addTask(input.value); input.value = ''; input.focus(); });
   input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { addTask(input.value); input.value = ''; } });
 
+  // ---- Task list delegation ----
   document.getElementById('task-list').addEventListener('click', function(e) {
     var btn = e.target.closest('[data-act]');
     if (!btn) return;
@@ -561,9 +795,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (act === 'toggle') toggleTask(id);
     else if (act === 'pin') pinTask(id);
     else if (act === 'select') selectTask(id);
+    else if (act === 'prio') cyclePriority(id);
     else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
   });
 
+  // ---- Filter buttons ----
   document.querySelectorAll('.filter-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       currentFilter = btn.dataset.filter;
@@ -573,6 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // ---- Nav buttons ----
   document.querySelectorAll('.nav-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -583,6 +820,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // ---- Time Picker ----
+  document.querySelectorAll('.time-preset').forEach(function(btn) {
+    btn.addEventListener('click', function() { applyTimePick(parseInt(btn.dataset.min)); });
+  });
+  document.getElementById('time-custom-confirm').addEventListener('click', function() {
+    applyTimePick(parseInt(document.getElementById('time-custom-input').value));
+  });
+  document.getElementById('time-custom-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') applyTimePick(parseInt(this.value));
+  });
+  document.getElementById('time-picker-cancel').addEventListener('click', function() {
+    document.getElementById('modal-time-picker').setAttribute('hidden', '');
+  });
+
+  // ---- Onboarding ----
+  document.getElementById('onboarding-next').addEventListener('click', function() {
+    if (onboardStep < onboardSteps.length - 1) {
+      onboardStep++;
+      renderOnboardStep();
+    } else { closeOnboarding(); }
+  });
+  document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
+
+  // ---- Settings inputs ----
   ['opt-work','opt-short','opt-long','opt-interval','opt-auto-break','opt-auto-work','opt-sound','opt-notify'].forEach(function(id) {
     document.getElementById(id).addEventListener('change', readSettings);
   });
@@ -592,10 +853,12 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   document.getElementById('btn-test-sound').addEventListener('click', function() { chime(S.settings.soundVolume); });
 
+  // Theme toggle
   document.querySelectorAll('.t-btn').forEach(function(btn) {
     btn.addEventListener('click', function() { applyTheme(btn.dataset.theme); });
   });
 
+  // Settings reset/clear
   document.getElementById('btn-reset-sett').addEventListener('click', function() {
     if (!confirm('恢复默认设置？')) return;
     S.settings = JSON.parse(JSON.stringify(DEFAULTS.settings)); saveState(); initSettings();
@@ -605,18 +868,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('btn-clear-all').addEventListener('click', function() {
     if (!confirm('⚠ 清除所有数据？不可恢复！')) return;
-    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '_timer');
     S = JSON.parse(JSON.stringify(DEFAULTS));
-    timer = {mode: 'work', remaining: S.settings.workDuration * 60, running: false, intervalId: null, startedAt: null, cycleCount: 0};
+    timer = {mode: 'work', remaining: S.settings.workDuration * 60, running: false, intervalId: null, startedAt: null, startedRemaining: null, cycleCount: 0};
     saveState(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList();
     toast('数据已清除');
   });
 
+  // Export / Import
   document.getElementById('btn-export').addEventListener('click', exportData);
   document.getElementById('btn-import').addEventListener('change', function(e) {
     if (e.target.files[0]) importData(e.target.files[0]); e.target.value = '';
   });
 
+  // Keyboard shortcuts
   document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.code === 'Space') { e.preventDefault(); timer.running ? pauseTimer() : startTimer(); }

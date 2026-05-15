@@ -1,5 +1,5 @@
-const CACHE = 'pomotodo-v2';
-const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.json'];
+const CACHE = 'pomotodo-v3';
+const ASSETS = ['./', './index.html', './style.css', './app.js', './timer-worker.js', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
