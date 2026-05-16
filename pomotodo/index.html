@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#e74c3c" />
 <meta name="description" content="Pomotodo — 番茄钟 + GTD 时间管理工具" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <link rel="icon" href="./icons/icon-192.png" />
 <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 <link rel="manifest" href="./manifest.json" />
@@ -23,7 +22,6 @@
     <button class="nav-btn" data-view="settings">设置</button>
   </nav>
 </header>
-
 <main class="view work-view active" id="view-work">
   <section class="panel panel-timer">
     <div class="timer-modes">
@@ -32,14 +30,8 @@
       <button class="mode-btn" data-mode="longBreak">🌿 长休息</button>
     </div>
     <div class="timer-ring-wrap" id="timer-ring-wrap">
-      <svg class="timer-ring" viewBox="0 0 200 200">
-        <circle class="ring-track" cx="100" cy="100" r="88" />
-        <circle class="ring-fill" cx="100" cy="100" r="88" />
-      </svg>
-      <div class="timer-center">
-        <span class="timer-digits" id="timer-digits">25:00</span>
-        <span class="timer-cycle" id="timer-cycle">#1</span>
-      </div>
+      <svg class="timer-ring" viewBox="0 0 200 200"><circle class="ring-track" cx="100" cy="100" r="88" /><circle class="ring-fill" cx="100" cy="100" r="88" /></svg>
+      <div class="timer-center"><span class="timer-digits" id="timer-digits">25:00</span><span class="timer-cycle" id="timer-cycle">#1</span></div>
     </div>
     <div class="timer-actions">
       <button class="btn-timer secondary" id="btn-reset" title="重置">↺</button>
@@ -47,12 +39,8 @@
       <button class="btn-timer secondary" id="btn-skip" title="跳过">⏭</button>
     </div>
     <div class="timer-active-task" id="timer-active-task"></div>
-    <div class="done-today">
-      <h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3>
-      <ul class="done-list" id="done-list"></ul>
-    </div>
+    <div class="done-today"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3><ul class="done-list" id="done-list"></ul></div>
   </section>
-
   <section class="panel panel-tasks">
     <div class="gtd-tabs" id="gtd-tabs">
       <button class="gtd-tab active" data-area="inbox">📥 收件箱</button>
@@ -73,21 +61,10 @@
         <button class="qi-btn prio-btn" data-prio="2">🟠</button>
         <button class="qi-btn prio-btn" data-prio="1">🔴</button>
       </div>
-      <div class="qi-row"><span class="qi-label">标签</span>
-        <div class="qi-tags" id="qi-tags"></div>
-        <input type="text" class="qi-tag-input" id="qi-tag-input" placeholder="新标签" />
-      </div>
-      <div class="qi-row"><span class="qi-label">日期</span>
-        <input type="date" class="qi-date" id="qi-date" />
-        <button class="qi-btn today-btn" id="qi-today-btn">📌 今日</button>
-      </div>
+      <div class="qi-row"><span class="qi-label">标签</span><div class="qi-tags" id="qi-tags"></div><input type="text" class="qi-tag-input" id="qi-tag-input" placeholder="新标签" /></div>
+      <div class="qi-row"><span class="qi-label">日期</span><input type="date" class="qi-date" id="qi-date" /><button class="qi-btn today-btn" id="qi-today-btn">📌 今日</button></div>
       <div class="qi-row"><span class="qi-label">区域</span>
-        <select class="qi-select" id="qi-area">
-          <option value="inbox">📥 收件箱</option>
-          <option value="next">▶ 下一步</option>
-          <option value="projects">📁 项目</option>
-          <option value="someday">💭 将来</option>
-        </select>
+        <select class="qi-select" id="qi-area"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option></select>
         <select class="qi-select" id="qi-project"><option value="">无项目</option></select>
       </div>
     </div>
@@ -101,55 +78,29 @@
     <ul class="task-list" id="task-list"></ul>
   </section>
 </main>
-
-<!-- Detail Panel -->
 <div class="detail-overlay" id="detail-overlay" hidden></div>
 <aside class="detail-panel" id="detail-panel" hidden>
   <div class="detail-header"><h3>任务详情</h3><button class="detail-close" id="detail-close">✕</button></div>
-  <div class="detail-body" id="detail-body">
+  <div class="detail-body">
     <div class="detail-field"><label>标题</label><input type="text" id="det-title" class="det-input" /></div>
-    <div class="detail-field"><label>优先级</label>
-      <div class="det-prio-group" id="det-prio-group">
-        <button class="qi-btn prio-btn" data-prio="1">🔴 P1</button>
-        <button class="qi-btn prio-btn" data-prio="2">🟠 P2</button>
-        <button class="qi-btn prio-btn" data-prio="3">🟡 P3</button>
-        <button class="qi-btn prio-btn" data-prio="4">⚪ P4</button>
-      </div>
-    </div>
+    <div class="detail-field"><label>优先级</label><div class="det-prio-group" id="det-prio-group"><button class="qi-btn prio-btn" data-prio="1">P1</button><button class="qi-btn prio-btn" data-prio="2">P2</button><button class="qi-btn prio-btn" data-prio="3">P3</button><button class="qi-btn prio-btn" data-prio="4">P4</button></div></div>
     <div class="detail-field"><label>标签</label><div class="det-tags" id="det-tags"></div><input type="text" id="det-tag-input" class="det-input" placeholder="添加标签" /></div>
     <div class="detail-field"><label>截止日期</label><input type="date" id="det-due" class="det-input" /></div>
-    <div class="detail-field"><label>区域</label>
-      <select id="det-area" class="det-select"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option><option value="archive">📦 归档</option></select>
-    </div>
+    <div class="detail-field"><label>区域</label><select id="det-area" class="det-select"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option><option value="archive">📦 归档</option></select></div>
     <div class="detail-field"><label>项目</label><select id="det-project" class="det-select"><option value="">无项目</option></select></div>
     <div class="detail-field"><label>预估番茄</label><input type="number" id="det-estpomo" class="det-input det-num" min="0" max="20" value="0" /></div>
     <div class="detail-field"><label>备注</label><textarea id="det-notes" class="det-textarea" rows="3"></textarea></div>
     <div class="detail-field"><label>完成番茄</label><span id="det-pomo-count" class="det-pomo-count">0</span></div>
     <div class="detail-field"><label>创建时间</label><span id="det-created" class="det-meta"></span></div>
   </div>
-  <div class="detail-actions">
-    <button class="btn-sm btn-danger" id="det-delete">🗑 删除</button>
-    <button class="btn-sm btn-primary" id="det-save">💾 保存</button>
-  </div>
+  <div class="detail-actions"><button class="btn-sm btn-danger" id="det-delete">🗑</button><button class="btn-sm btn-primary" id="det-save">💾 保存</button></div>
 </aside>
-
-<!-- Calendar View -->
 <main class="view calendar-view" id="view-calendar">
-  <div class="cal-header">
-    <button class="cal-nav" id="cal-prev">◀</button>
-    <h3 class="cal-month" id="cal-month"></h3>
-    <button class="cal-nav" id="cal-next">▶</button>
-    <button class="cal-nav" id="cal-today-btn">今天</button>
-  </div>
+  <div class="cal-header"><button class="cal-nav" id="cal-prev">◀</button><h3 class="cal-month" id="cal-month"></h3><button class="cal-nav" id="cal-next">▶</button><button class="cal-nav" id="cal-today-btn">今天</button></div>
   <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
   <div class="cal-grid" id="cal-grid"></div>
-  <div class="cal-day-tasks" id="cal-day-tasks" hidden>
-    <h4 class="cal-day-title" id="cal-day-title"></h4>
-    <ul class="cal-task-list" id="cal-task-list"></ul>
-  </div>
+  <div class="cal-day-tasks" id="cal-day-tasks" hidden><h4 class="cal-day-title" id="cal-day-title"></h4><ul class="cal-task-list" id="cal-task-list"></ul></div>
 </main>
-
-<!-- Stats View -->
 <main class="view stats-view" id="view-stats">
   <div class="stats-cards">
     <div class="stat-card"><div class="stat-val" id="s-today-count">0</div><div class="stat-lbl">今日番茄</div></div>
@@ -159,25 +110,13 @@
   </div>
   <div class="stats-chart-box"><h3>最近 7 天</h3><canvas id="chart-weekly"></canvas></div>
   <div class="stats-tags-box"><h3>标签分布</h3><div class="tag-bars" id="tag-bars"></div></div>
-  <div class="stats-io">
-    <button class="btn-sm" id="btn-export">📥 导出数据</button>
-    <label class="btn-sm label-btn">📤 导入数据<input type="file" id="btn-import" accept=".json" hidden /></label>
-  </div>
+  <div class="stats-io"><button class="btn-sm" id="btn-export">📥 导出数据</button><label class="btn-sm label-btn">📤 导入数据<input type="file" id="btn-import" accept=".json" hidden /></label></div>
 </main>
-
-<!-- Settings View -->
 <main class="view settings-view" id="view-settings">
-  <section class="sett-group">
-    <h3>外观</h3>
-    <div class="sett-row"><span>主题</span>
-      <div class="toggle-pair">
-        <button class="t-btn active" data-theme="light">☀ 浅色</button>
-        <button class="t-btn" data-theme="dark">🌙 深色</button>
-      </div>
-    </div>
+  <section class="sett-group"><h3>外观</h3>
+    <div class="sett-row"><span>主题</span><div class="toggle-pair"><button class="t-btn active" data-theme="light">☀ 浅色</button><button class="t-btn" data-theme="dark">🌙 深色</button></div></div>
   </section>
-  <section class="sett-group">
-    <h3>计时器</h3>
+  <section class="sett-group"><h3>计时器</h3>
     <div class="sett-row"><label for="opt-work">专注 (分钟)</label><input type="number" id="opt-work" class="sett-num" min="1" max="90" value="25" /></div>
     <div class="sett-row"><label for="opt-short">短休息 (分钟)</label><input type="number" id="opt-short" class="sett-num" min="1" max="30" value="5" /></div>
     <div class="sett-row"><label for="opt-long">长休息 (分钟)</label><input type="number" id="opt-long" class="sett-num" min="1" max="60" value="15" /></div>
@@ -185,87 +124,43 @@
     <div class="sett-row"><span>自动开始休息</span><label class="sw"><input type="checkbox" id="opt-auto-break" checked /><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>自动开始专注</span><label class="sw"><input type="checkbox" id="opt-auto-work" /><span class="sw-track"></span></label></div>
   </section>
-  <section class="sett-group">
-    <h3>声音 & 通知</h3>
+  <section class="sett-group"><h3>声音 & 通知</h3>
     <div class="sett-row"><span>提示音</span><label class="sw"><input type="checkbox" id="opt-sound" checked /><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>音量</span><input type="range" id="opt-volume" class="sett-range" min="0" max="1" step="0.1" value="0.7" /><span class="range-val" id="range-val">70%</span></div>
     <div class="sett-row"><span>浏览器通知</span><label class="sw"><input type="checkbox" id="opt-notify" /><span class="sw-track"></span></label></div>
-    <div class="sett-row"><span>屏幕常亮(专注时)</span><label class="sw"><input type="checkbox" id="opt-wakelock" /><span class="sw-track"></span></label></div>
+    <div class="sett-row"><span>屏幕常亮</span><label class="sw"><input type="checkbox" id="opt-wakelock" /><span class="sw-track"></span></label></div>
     <div class="sett-row"><span></span><button class="btn-sm" id="btn-test-sound">🔊 测试提示音</button></div>
   </section>
-  <section class="sett-group">
-    <h3>项目管理</h3>
+  <section class="sett-group"><h3>项目管理</h3>
     <div class="sett-row project-list" id="project-list"></div>
-    <div class="sett-row">
-      <input type="text" id="project-new-name" class="sett-num" placeholder="新项目名称" maxlength="30" />
-      <select id="project-new-color" class="sett-select-sm">
-        <option value="#e74c3c">🔴 红</option>
-        <option value="#3498db">🔵 蓝</option>
-        <option value="#2ecc71">🟢 绿</option>
-        <option value="#f39c12">🟡 黄</option>
-        <option value="#9b59b6">🟣 紫</option>
-      </select>
-      <button class="btn-sm btn-primary" id="btn-add-project">＋</button>
-    </div>
+    <div class="sett-row"><input type="text" id="project-new-name" class="sett-num" placeholder="新项目" /><select id="project-new-color" class="sett-select-sm"><option value="#e74c3c">⬤</option><option value="#3498db">⬤</option><option value="#2ecc71">⬤</option></select><button class="btn-sm btn-primary" id="btn-add-project">＋</button></div>
   </section>
-  <section class="sett-group danger">
-    <h3>数据</h3>
+  <section class="sett-group danger"><h3>数据</h3>
     <div class="sett-row"><span>重置设置</span><button class="btn-sm btn-warn" id="btn-reset-sett">恢复默认</button></div>
     <div class="sett-row"><span>清除全部数据</span><button class="btn-sm btn-danger" id="btn-clear-all">⚠ 清除</button></div>
   </section>
 </main>
-
-<!-- Time Picker Modal -->
 <div class="modal-overlay" id="modal-time-picker" hidden>
-  <div class="modal-box modal-time-box">
-    <h3>⏱️ 调整时长</h3>
+  <div class="modal-box modal-time-box"><h3>⏱️ 调整时长</h3>
     <div class="time-picker-body">
-      <button class="time-preset" data-min="5">5 分钟</button>
-      <button class="time-preset" data-min="10">10 分钟</button>
-      <button class="time-preset" data-min="15">15 分钟</button>
-      <button class="time-preset active" data-min="25">25 分钟</button>
-      <button class="time-preset" data-min="30">30 分钟</button>
-      <button class="time-preset" data-min="45">45 分钟</button>
-      <button class="time-preset" data-min="60">60 分钟</button>
-      <div class="time-custom-row">
-        <input type="number" id="time-custom-input" class="sett-num" min="1" max="90" placeholder="自定义" />
-        <span>分钟</span>
-        <button class="btn-sm btn-primary" id="time-custom-confirm">确定</button>
-      </div>
+      <button class="time-preset" data-min="5">5 分钟</button><button class="time-preset" data-min="10">10 分钟</button><button class="time-preset" data-min="15">15 分钟</button><button class="time-preset active" data-min="25">25 分钟</button><button class="time-preset" data-min="30">30 分钟</button><button class="time-preset" data-min="45">45 分钟</button><button class="time-preset" data-min="60">60 分钟</button>
+      <div class="time-custom-row"><input type="number" id="time-custom-input" class="sett-num" min="1" max="90" placeholder="自定义" /><span>分钟</span><button class="btn-sm btn-primary" id="time-custom-confirm">确定</button></div>
     </div>
     <div class="modal-actions"><button class="btn-sm" id="time-picker-cancel">取消</button></div>
   </div>
 </div>
-
-<!-- Complete Modal -->
 <div class="modal-overlay" id="modal-complete" hidden>
-  <div class="modal-box">
-    <h3>🍅 番茄完成！</h3>
-    <p class="modal-sub" id="modal-sub"></p>
-    <div class="modal-tasks" id="modal-tasks"></div>
-    <div class="modal-actions">
-      <button class="btn-sm" id="modal-skip">跳过</button>
-      <button class="btn-sm btn-primary" id="modal-confirm">确认</button>
-    </div>
+  <div class="modal-box"><h3>🍅 番茄完成！</h3><p class="modal-sub" id="modal-sub"></p><div class="modal-tasks" id="modal-tasks"></div>
+    <div class="modal-actions"><button class="btn-sm" id="modal-skip">跳过</button><button class="btn-sm btn-primary" id="modal-confirm">确认</button></div>
   </div>
 </div>
-
-<!-- Onboarding -->
 <div class="onboarding-overlay" id="onboarding" hidden>
-  <div class="onboarding-card">
-    <div class="onboarding-dots" id="onboarding-dots"></div>
-    <div class="onboarding-body" id="onboarding-body"></div>
-    <div class="onboarding-actions">
-      <button class="btn-sm" id="onboarding-skip">跳过</button>
-      <button class="btn-sm btn-primary" id="onboarding-next">下一步</button>
-    </div>
+  <div class="onboarding-card"><div class="onboarding-dots" id="onboarding-dots"></div><div class="onboarding-body" id="onboarding-body"></div>
+    <div class="onboarding-actions"><button class="btn-sm" id="onboarding-skip">跳过</button><button class="btn-sm btn-primary" id="onboarding-next">下一步</button></div>
   </div>
 </div>
-
 <div class="toast-wrap" id="toast-wrap"></div>
-
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="./app.js"></script>
 </body>
