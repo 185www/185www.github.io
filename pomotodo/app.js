@@ -5,9 +5,10 @@
  */
 
 // ==================== CONSTANTS ====================
-const LS_KEY = 'pomotodo_v2';
+const LS_KEY = 'pomotodo_v3';
+var LS_KEY_V2='pomotodo_v2';
 const CIRC = 2 * Math.PI * 88;
-const ONBOARD_KEY = 'pomotodo_onboarded';
+const ONBOARD_KEY = 'pomotodo_onboarded_v3';
 
 const DEFAULTS = {
   settings: {
@@ -17,11 +18,13 @@ const DEFAULTS = {
     theme: 'light'
   },
   tasks: [],
-  sessions: []
+  sessions: [], projects: []
 };
 
 // ==================== STATE ====================
 let S = loadState();
+
+var currentArea='inbox',currentCalMonth=new Date().getMonth(),currentCalYear=new Date().getFullYear(),selectedCalDate=null,detailTaskId=null,wakeLockSentinel=null;
 let timer = {
   mode: 'work', remaining: S.settings.workDuration * 60,
   running: false, intervalId: null,
@@ -41,6 +44,9 @@ try {
 } catch(_) { timerWorker = null; }
 
 // ==================== STATE I/O ====================
+function acquireWakeLock(){if(!S.settings.wakeLockEnabled||!('wakeLock' in navigator))return;navigator.wakeLock.request('screen').then(function(s){wakeLockSentinel=s;wakeLockSentinel.addEventListener('release',function(){wakeLockSentinel=null;});}).catch(function(){wakeLockSentinel=null;});}
+function releaseWakeLock(){if(wakeLockSentinel){wakeLockSentinel.release();wakeLockSentinel=null;}}
+
 function loadState() {
   try {
     var raw = localStorage.getItem(LS_KEY);
@@ -52,6 +58,8 @@ function loadState() {
   } catch (_) {}
   return JSON.parse(JSON.stringify(DEFAULTS));
 }
+
+function migrateFromV2(){try{if(localStorage.getItem(LS_KEY))return;var raw=localStorage.getItem(LS_KEY_V2);if(!raw)return;var old=JSON.parse(raw);var nt=(old.tasks||[]).map(function(t){return{id:t.id,title:t.title,tags:t.tags||[],priority:t.priority||4,today:t.today||false,completed:t.completed||false,pinned:t.pinned||false,pomodorosCompleted:t.pomodorosCompleted||0,createdAt:t.createdAt||new Date().toISOString(),area:t.completed?'archive':(t.today?'next':'inbox'),dueDate:'',projectId:'',notes:''};});S={settings:Object.assign({},DEFAULTS.settings,old.settings||{}),tasks:nt,sessions:old.sessions||[],projects:[]};if(!S.settings.wakeLockEnabled)S.settings.wakeLockEnabled=false;saveState();}catch(_){}}
 
 function saveState() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (_) {}
@@ -163,7 +171,7 @@ function startTimer() {
   saveTimerState();
   startInterval();
   if (timerWorker) { timerWorker.postMessage({ type: 'start', startTime: Date.now(), duration: timer.remaining }); }
-  updateTimerUI();
+  updateTimerUI();acquireWakeLock();
 }
 
 function pauseTimer() {
@@ -202,7 +210,7 @@ function onTimerComplete() {
     var names = {work: '专注完成', shortBreak: '短休息结束', longBreak: '长休息结束'};
     notify('🍅 ' + names[timer.mode], timer.mode === 'work' ? '休息一下吧' : '开始专注吧');
   }
-  clearTimerState();
+  clearTimerState();releaseWakeLock();
   if (timer.mode === 'work') {
     timer.cycleCount++; S.sessions.push(session); saveState(); showCompleteModal(session);
   } else {
@@ -263,7 +271,8 @@ function addTask(title) {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title: title, tags: tags, priority: priority, today: isToday,
     completed: false, pinned: false, pomodorosCompleted: 0,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+        area: isToday?'next':'inbox', dueDate:'', projectId:'', notes:''
   };
   S.tasks.unshift(task); saveState(); renderTasks(); return task;
 }
@@ -500,6 +509,7 @@ function initSettings() {
   document.getElementById('opt-volume').value = s.soundVolume;
   document.getElementById('range-val').textContent = Math.round(s.soundVolume * 100) + '%';
   document.getElementById('opt-notify').checked = s.notificationsEnabled;
+  var wl=document.getElementById('opt-wakelock');if(wl)wl.checked=s.wakeLockEnabled||false;
   applyTheme(s.theme);
 }
 
@@ -586,11 +596,21 @@ function closeOnboarding() {
   try { localStorage.setItem(ONBOARD_KEY, '1'); } catch(_) {}
 }
 
+function updateGtdCounts(){var c={inbox:0,next:0,project:0,someday:0,archive:0};S.tasks.forEach(function(t){if(t.completed||t.area==='archive')c.archive++;else if(t.area==='inbox')c.inbox++;else if(t.area==='next'||t.today)c.next++;else if(t.projectId)c.project++;else if(t.area==='someday')c.someday++;else c.inbox++;});var el=function(id){return document.getElementById(id);};if(el('cnt-inbox'))el('cnt-inbox').textContent=c.inbox;if(el('cnt-next'))el('cnt-next').textContent=c.next;if(el('cnt-project'))el('cnt-project').textContent=c.project;if(el('cnt-someday'))el('cnt-someday').textContent=c.someday;if(el('cnt-archive'))el('cnt-archive').textContent=c.archive;}
+
+function renderCalendar(){var y=currentCalYear,m=currentCalMonth;var te=document.getElementById('cal-title');if(te)te.textContent=y+'年'+(m+1)+'月';var f=new Date(y,m,1),l=new Date(y,m+1,0);var sd=f.getDay(),dl=l.getDate();var pl=new Date(y,m,0).getDate();var ts=new Date().toISOString().slice(0,10);var td={};S.tasks.forEach(function(t){if(t.dueDate){if(!td[t.dueDate])td[t.dueDate]=[];td[t.dueDate].push(t);}if(t.today&&!t.completed){if(!td[ts])td[ts]=[];if(!td[ts].find(function(x){return x.id===t.id;}))td[ts].push(t);}});var h='';for(var i=sd-1;i>=0;i--)h+='<div class="cal-cell other">'+(pl-i)+'</div>';for(var d=1;d<=dl;d++){var ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');h+='<div class="cal-cell'+(ds===ts?' today':'')+(td[ds]?' has-task':'')+(selectedCalDate===ds?' selected':'')+'" data-date="'+ds+'">'+d+'</div>';}var tc=sd+dl,rm=(7-tc%7)%7;for(var r=1;r<=rm;r++)h+='<div class="cal-cell other">'+r+'</div>';var g=document.getElementById('cal-grid');if(g)g.innerHTML=h;}
+function showCalDayDetail(ds){selectedCalDate=ds;renderCalendar();var tasks=S.tasks.filter(function(t){if(t.dueDate===ds)return true;var ts=new Date().toISOString().slice(0,10);if(ds===ts&&t.today&&!t.completed)return true;return false;});var dt=document.getElementById('cal-day-detail');if(dt)dt.removeAttribute('hidden');var de=document.getElementById('cal-detail-date');if(de)de.textContent=ds;var le=document.getElementById('cal-task-list');if(!le)return;if(!tasks.length){le.innerHTML='<li style="font-size:.82rem;color:var(--c-text2)">该日无任务</li>';}else{le.innerHTML=tasks.map(function(t){var p=t.priority||4;var em={1:'🔴',2:'🟠',3:'🟡',4:'⚪'};return '<li class="cal-task-item" data-id="'+t.id+'">'+em[p]+' '+esc(t.title)+'</li>';}).join('');}}
+
+function showDetail(tid){var t=S.tasks.find(function(x){return x.id===tid;});if(!t)return;detailTaskId=tid;var el=function(id){return document.getElementById(id);};if(el('detail-title'))el('detail-title').value=t.title;if(el('detail-tags'))el('detail-tags').value=(t.tags||[]).join(' ');if(el('detail-due'))el('detail-due').value=t.dueDate||'';if(el('detail-area'))el('detail-area').value=t.area||'inbox';if(el('detail-today'))el('detail-today').checked=t.today||false;if(el('detail-notes'))el('detail-notes').value=t.notes||'';document.querySelectorAll('#detail-prio-bar .dp-btn').forEach(function(b){b.classList.toggle('active',parseInt(b.dataset.p)===(t.priority||4));});var ps=el('detail-project');if(ps)ps.innerHTML='<option value="">-- 无 --</option>'+(S.projects||[]).map(function(p){return '<option value="'+p.id+'"'+(t.projectId===p.id?' selected':'')+'>'+esc(p.name)+'</option>';}).join('');var ov=el('detail-overlay');if(ov)ov.removeAttribute('hidden');}
+function closeDetail(){var ov=document.getElementById('detail-overlay');if(ov)ov.setAttribute('hidden','');detailTaskId=null;}
+function saveDetail(){if(!detailTaskId)return;var el=function(id){return document.getElementById(id);};var ts=el('detail-tags')?el('detail-tags').value.trim():'';var tg=ts?ts.split(/[\s,]+/).filter(Boolean):[];var ap=document.querySelector('#detail-prio-bar .dp-btn.active');updateTask(detailTaskId,{title:el('detail-title')?el('detail-title').value.trim():'',tags:tg,priority:ap?parseInt(ap.dataset.p):4,dueDate:el('detail-due')?el('detail-due').value:'',area:el('detail-area')?el('detail-area').value:'inbox',projectId:el('detail-project')?el('detail-project').value:'',today:el('detail-today')?el('detail-today').checked:false,notes:el('detail-notes')?el('detail-notes').value:''});closeDetail();toast('任务已更新');}
+function updateTask(id,up){var t=S.tasks.find(function(x){return x.id===id;});if(!t)return;Object.keys(up).forEach(function(k){t[k]=up[k];});if(t.today&&t.area==='inbox')t.area='next';saveState();renderTasks();updateGtdCounts();}
+
 // ==================== INIT & EVENTS ====================
 var currentFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', function() {
-  initSettings(); updateTimerUI(); renderTasks(); updateDoneList();
+  migrateFromV2();initSettings(); updateTimerUI(); renderTasks(); updateDoneList();updateGtdCounts();renderCalendar();
   recoverTimer();
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && timer.running && timer.startedAt) {
@@ -627,7 +647,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (act === 'toggle') toggleTask(id);
     else if (act === 'pin') pinTask(id);
     else if (act === 'select') selectTask(id);
-    else if (act === 'prio') cyclePriority(id);
+    else if (act === 'prio') cyclePriority(id);else if(act==='detail')showDetail(id);
     else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
   });
   document.querySelectorAll('.filter-btn').forEach(function(btn) {
@@ -690,7 +710,23 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btn-import').addEventListener('change', function(e) {
     if (e.target.files[0]) importData(e.target.files[0]); e.target.value = '';
   });
-  document.addEventListener('keydown', function(e) {
+  
+  var cp=document.getElementById('cal-prev');if(cp)cp.addEventListener('click',function(){currentCalMonth--;if(currentCalMonth<0){currentCalMonth=11;currentCalYear--;}selectedCalDate=null;renderCalendar();});
+  var cn=document.getElementById('cal-next');if(cn)cn.addEventListener('click',function(){currentCalMonth++;if(currentCalMonth>11){currentCalMonth=0;currentCalYear++;}selectedCalDate=null;renderCalendar();});
+  var ct=document.getElementById('cal-today');if(ct)ct.addEventListener('click',function(){var n=new Date();currentCalYear=n.getFullYear();currentCalMonth=n.getMonth();selectedCalDate=null;renderCalendar();});
+  var cg=document.getElementById('cal-grid');if(cg)cg.addEventListener('click',function(e){var c=e.target.closest('.cal-cell');if(!c||c.classList.contains('other'))return;if(c.dataset.date)showCalDayDetail(c.dataset.date);});
+  var cdc=document.getElementById('cal-detail-close');if(cdc)cdc.addEventListener('click',function(){selectedCalDate=null;renderCalendar();document.getElementById('cal-day-detail').setAttribute('hidden','');});
+  var ctl=document.getElementById('cal-task-list');if(ctl)ctl.addEventListener('click',function(e){var i=e.target.closest('.cal-task-item');if(i&&i.dataset.id)showDetail(i.dataset.id);});
+  var gt=document.getElementById('gtd-tabs');if(gt)gt.addEventListener('click',function(e){var tab=e.target.closest('.gtd-tab');if(!tab)return;currentArea=tab.dataset.area;document.querySelectorAll('.gtd-tab').forEach(function(t){t.classList.remove('active');});tab.classList.add('active');renderTasks();});
+  var dc=document.getElementById('detail-close');if(dc)dc.addEventListener('click',closeDetail);
+  var dsv=document.getElementById('detail-save');if(dsv)dsv.addEventListener('click',saveDetail);
+  var dd=document.getElementById('detail-delete');if(dd)dd.addEventListener('click',function(){if(detailTaskId&&confirm('删除此任务？')){deleteTask(detailTaskId);closeDetail();}});
+  var dov=document.getElementById('detail-overlay');if(dov)dov.addEventListener('click',function(e){if(e.target===this)closeDetail();});
+  document.querySelectorAll('#detail-prio-bar .dp-btn').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('#detail-prio-bar .dp-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');});});
+  var qb=document.getElementById('quick-bar');if(qb){var qbs={priority:0,today:false,dueDate:''};function uQB(){document.querySelectorAll('.qb-prio').forEach(function(b){b.classList.toggle('active',qbs.priority===parseInt(b.dataset.val));});var tb=document.querySelector('[data-act="qb-today"]');if(tb)tb.classList.toggle('active',qbs.today);}qb.addEventListener('click',function(e){var btn=e.target.closest('[data-act]');if(!btn)return;var act=btn.dataset.act;if(act==='qb-prio'){var val=parseInt(btn.dataset.val);qbs.priority=(qbs.priority===val)?0:val;}else if(act==='qb-today'){qbs.today=!qbs.today;}else if(act==='qb-due'){var d=prompt('截止日期(YYYY-MM-DD):',new Date().toISOString().slice(0,10));qbs.dueDate=d||'';}else if(act==='qb-tag'){var t=prompt('标签:','');if(t&&t.trim())input.value=input.value.trim()+' #'+t.trim();}uQB();});}
+  document.querySelectorAll('.nav-btn').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var target=document.getElementById('view-'+btn.dataset.view);if(target)target.classList.add('active');if(btn.dataset.view==='stats')renderStats();if(btn.dataset.view==='calendar')renderCalendar();});});
+  var wle=document.getElementById('opt-wakelock');if(wle)wle.addEventListener('change',function(){readSettings();});
+document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.code === 'Space') { e.preventDefault(); timer.running ? pauseTimer() : startTimer(); }
     if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) resetTimer();
