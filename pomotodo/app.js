@@ -300,6 +300,178 @@ function cyclePriority(id) {
   saveState(); renderTasks();
 }
 
+
+// ==================== TASK EXTENSIONS ====================
+function updateTask(id, updates) {
+  var t = S.tasks.find(function(x) { return x.id === id; });
+  if (!t) return;
+  Object.keys(updates).forEach(function(k) { t[k] = updates[k]; });
+  saveState(); renderTasks();
+}
+
+// ==================== PROJECTS ====================
+function addProject(name, color) {
+  if (!name) return;
+  S.projects.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, color: color || '#e74c3c'});
+  saveState(); renderProjectList(); renderProjectSelects();
+}
+function deleteProject(id) {
+  S.projects = S.projects.filter(function(x) { return x.id !== id; });
+  S.tasks.forEach(function(t) { if (t.projectId === id) t.projectId = ''; });
+  saveState(); renderProjectList(); renderProjectSelects();
+}
+function renderProjectSelects() {
+  var opts = '<option value="">\u65e0\u9879\u76ee</option>' + S.projects.map(function(p) {
+    return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
+  }).join('');
+  var s1 = document.getElementById('qi-project'); var s2 = document.getElementById('det-project');
+  if (s1) s1.innerHTML = opts; if (s2) s2.innerHTML = opts;
+}
+function renderProjectList() {
+  var el = document.getElementById('project-list');
+  if (!el) return;
+  if (S.projects.length === 0) { el.innerHTML = '<span style="font-size:.78rem;color:var(--c-text2)">\u6682\u65e0\u9879\u76ee</span>'; return; }
+  el.innerHTML = S.projects.map(function(p) {
+    return '<div class="project-item"><span class="project-color" style="background:' + p.color + '"></span><span class="project-name">' + esc(p.name) + '</span><span class="project-del" data-del-project="' + p.id + '">\u2715</span></div>';
+  }).join('');
+}
+
+// ==================== GTD HELPERS ====================
+function getTasksForArea(area) {
+  if (area === 'all') return S.tasks;
+  return S.tasks.filter(function(t) { return t.area === area; });
+}
+function getOverdueTasks() {
+  var today = new Date().toISOString().slice(0, 10);
+  return S.tasks.filter(function(t) { return !t.completed && t.dueDate && t.dueDate < today; });
+}
+
+// ==================== DETAIL PANEL ====================
+function openDetail(taskId) {
+  var t = S.tasks.find(function(x) { return x.id === taskId; });
+  if (!t) return; detailTaskId = taskId;
+  document.getElementById('det-title').value = t.title || '';
+  document.getElementById('det-due').value = t.dueDate || '';
+  document.getElementById('det-area').value = t.area || 'inbox';
+  document.getElementById('det-notes').value = t.notes || '';
+  document.getElementById('det-estpomo').value = t.estimatedPomodoros || 0;
+  document.getElementById('det-pomo-count').textContent = t.pomodorosCompleted || 0;
+  document.getElementById('det-created').textContent = t.createdAt ? new Date(t.createdAt).toLocaleString('zh-CN') : '';
+  document.querySelectorAll('#det-prio-group .prio-btn').forEach(function(btn) {
+    btn.classList.toggle('active', parseInt(btn.dataset.prio) === (t.priority || 4));
+  });
+  renderDetailTags(t.tags || []);
+  renderProjectSelects();
+  var projSel = document.getElementById('det-project');
+  if (projSel) projSel.value = t.projectId || '';
+  document.getElementById('detail-overlay').removeAttribute('hidden');
+  var panel = document.getElementById('detail-panel');
+  panel.removeAttribute('hidden');
+  setTimeout(function() { panel.classList.add('open'); }, 10);
+}
+function closeDetail() {
+  var panel = document.getElementById('detail-panel');
+  panel.classList.remove('open');
+  setTimeout(function() { panel.setAttribute('hidden', ''); document.getElementById('detail-overlay').setAttribute('hidden', ''); }, 300);
+  detailTaskId = null;
+}
+function saveDetail() {
+  if (!detailTaskId) return;
+  var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
+  if (!t) return;
+  t.title = document.getElementById('det-title').value.trim() || t.title;
+  t.dueDate = document.getElementById('det-due').value || '';
+  t.area = document.getElementById('det-area').value || 'inbox';
+  t.projectId = document.getElementById('det-project').value || '';
+  t.notes = document.getElementById('det-notes').value || '';
+  t.estimatedPomodoros = parseInt(document.getElementById('det-estpomo').value) || 0;
+  var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
+  if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
+  if (t.dueDate && t.area === 'inbox') t.area = 'next';
+  if (t.area === 'next') t.today = true;
+  saveState(); renderTasks(); closeDetail();
+  toast('\u4efb\u52a1\u5df2\u4fdd\u5b58');
+}
+function renderDetailTags(tags) {
+  document.getElementById('det-tags').innerHTML = tags.map(function(tag) {
+    return '<span class="det-tag-chip" data-remove-tag="' + esc(tag) + '">#' + esc(tag) + ' \u2715</span>';
+  }).join('');
+}
+
+// ==================== CALENDAR ====================
+function initCalendar() {
+  var now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth(); calSelectedDate = '';
+  renderCalendar();
+}
+function renderCalendar() {
+  var mNames = ['1\u6708','2\u6708','3\u6708','4\u6708','5\u6708','6\u6708','7\u6708','8\u6708','9\u6708','10\u6708','11\u6708','12\u6708'];
+  document.getElementById('cal-month').textContent = calYear + '\u5e74 ' + mNames[calMonth];
+  var firstDay = new Date(calYear, calMonth, 1).getDay();
+  var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  var daysInPrev = new Date(calYear, calMonth, 0).getDate();
+  var today = new Date().toISOString().slice(0, 10);
+  var taskMap = {};
+  S.tasks.forEach(function(t) { if (t.dueDate) taskMap[t.dueDate] = (taskMap[t.dueDate] || 0) + 1; });
+  var html = '';
+  for (var i = firstDay - 1; i >= 0; i--) html += '<div class="cal-day other-month">' + (daysInPrev - i) + '</div>';
+  for (var day = 1; day <= daysInMonth; day++) {
+    var ds = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    var cls = 'cal-day';
+    if (ds === today) cls += ' today';
+    if (ds === calSelectedDate) cls += ' selected';
+    if (taskMap[ds]) cls += ' has-task';
+    html += '<div class="' + cls + '" data-date="' + ds + '">' + day + '</div>';
+  }
+  var totalCells = firstDay + daysInMonth;
+  var rem = (7 - (totalCells % 7)) % 7;
+  for (var j = 1; j <= rem; j++) html += '<div class="cal-day other-month">' + j + '</div>';
+  document.getElementById('cal-grid').innerHTML = html;
+  renderCalendarDayTasks();
+}
+function renderCalendarDayTasks() {
+  var dp = document.getElementById('cal-day-tasks');
+  if (!calSelectedDate) { dp.setAttribute('hidden', ''); return; }
+  dp.removeAttribute('hidden');
+  document.getElementById('cal-day-title').textContent = calSelectedDate.replace(/-/g, '/') + ' \u7684\u4efb\u52a1';
+  var dayTasks = S.tasks.filter(function(t) {
+    return t.dueDate === calSelectedDate || (t.today && calSelectedDate === new Date().toISOString().slice(0, 10) && !t.completed);
+  });
+  var le = document.getElementById('cal-task-list');
+  if (dayTasks.length === 0) { le.innerHTML = '<li style="font-size:.82rem;color:var(--c-text2)">\u8be5\u65e5\u65e0\u4efb\u52a1</li>'; return; }
+  le.innerHTML = dayTasks.map(function(t) {
+    var p = t.priority || 4; var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
+    return '<li class="cal-task-item" data-cal-task="' + t.id + '"><span style="width:8px;height:8px;border-radius:50%;background:' + pC[p] + ';flex-shrink:0"></span>' + (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</li>';
+  }).join('');
+}
+function selectCalDate(dateStr) { calSelectedDate = (calSelectedDate === dateStr) ? '' : dateStr; renderCalendar(); }
+
+// ==================== QUICK INPUT ====================
+function toggleQuickInput() {
+  quickInputVisible = !quickInputVisible;
+  var bar = document.getElementById('quick-input-bar'), btn = document.getElementById('task-input-more');
+  if (quickInputVisible) { bar.removeAttribute('hidden'); btn.classList.add('active'); }
+  else { bar.setAttribute('hidden', ''); btn.classList.remove('active'); }
+}
+function renderQITags() {
+  document.getElementById('qi-tags').innerHTML = quickInputTags.map(function(tag) {
+    return '<span class="qi-tag" data-qi-remove-tag="' + esc(tag) + '">#' + esc(tag) + '</span>';
+  }).join('');
+}
+function addTaskFromInput() {
+  var input = document.getElementById('task-input'), title = input.value.trim();
+  if (!title) return;
+  var opts = {priority: quickInputPrio, tags: quickInputTags.slice(), today: false,
+    dueDate: document.getElementById('qi-date').value || '',
+    area: document.getElementById('qi-area').value || 'inbox',
+    projectId: document.getElementById('qi-project').value || '', estimatedPomodoros: 0};
+  if (document.getElementById('qi-today-btn').classList.contains('active')) opts.today = true;
+  addTask(title, opts); input.value = '';
+  quickInputPrio = 4; quickInputTags = [];
+  document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) { b.classList.toggle('active', parseInt(b.dataset.prio) === 4); });
+  renderQITags(); document.getElementById('qi-date').value = '';
+  document.getElementById('qi-today-btn').classList.remove('active');
+  toast('\u571f\u8c46\u5df2\u6dfb\u52a0');
+}
 // ==================== RENDER ====================
 function updateTimerUI() {
   var total = getModeDuration(timer.mode) * 60;
@@ -334,6 +506,7 @@ function renderTasks() {
   if (filter === 'active') tasks = tasks.filter(function(t) { return !t.completed; });
   if (filter === 'completed') tasks = tasks.filter(function(t) { return t.completed; });
   if (filter === 'today') tasks = tasks.filter(function(t) { return t.today && !t.completed; });
+  if (filter === 'overdue') tasks = getOverdueTasks();
   var list = document.getElementById('task-list');
   if (tasks.length === 0) {
     list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>输入任务 #标签 !1紧急 @today</small></div>';
@@ -348,7 +521,7 @@ function renderTasks() {
     return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
       '<span class="task-prio-badge p' + p + '" data-act="prio" data-id="' + t.id + '" title="切换优先级">' + prioLabels[p] + '</span>' +
-      '<span class="task-text">' + esc(t.title) + ' ' + tagHtml + todayBadge + '</span>' +
+      '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + '</span>' +
       '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + (t.pomodorosCompleted > 5 ? '+' + t.pomodorosCompleted : '') + '</span>' +
       '<div class="task-btns">' +
       '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' +
@@ -511,6 +684,10 @@ function initSettings() {
   document.getElementById('opt-notify').checked = s.notificationsEnabled;
   var wl=document.getElementById('opt-wakelock');if(wl)wl.checked=s.wakeLockEnabled||false;
   applyTheme(s.theme);
+  renderProjectList();
+  renderProjectSelects();
+  var wlEl = document.getElementById('opt-wakelock');
+  if (wlEl) wlEl.checked = s.wakeLockEnabled;
 }
 
 function readSettings() {
@@ -523,6 +700,8 @@ function readSettings() {
   S.settings.soundEnabled = document.getElementById('opt-sound').checked;
   S.settings.soundVolume = parseFloat(document.getElementById('opt-volume').value);
   S.settings.notificationsEnabled = document.getElementById('opt-notify').checked;
+  var wlEl = document.getElementById('opt-wakelock');
+  if (wlEl) S.settings.wakeLockEnabled = wlEl.checked;
   saveState(); if (!timer.running) timer.remaining = getModeDuration(timer.mode) * 60; updateTimerUI();
 }
 
@@ -559,6 +738,7 @@ function importData(file) {
       if (d.settings) S.settings = Object.assign({}, DEFAULTS.settings, d.settings);
       if (Array.isArray(d.tasks)) S.tasks = d.tasks;
       if (Array.isArray(d.sessions)) S.sessions = d.sessions;
+      if (Array.isArray(d.projects)) S.projects = d.projects;
       S.tasks.forEach(function(t) { if (!t.priority) t.priority = 4; if (t.today === undefined) t.today = false; });
       saveState(); toast('数据已导入');
       initSettings(); renderTasks(); updateTimerUI(); updateDoneList();
@@ -648,7 +828,8 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (act === 'pin') pinTask(id);
     else if (act === 'select') selectTask(id);
     else if (act === 'prio') cyclePriority(id);else if(act==='detail')showDetail(id);
-    else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
+    else if (act === 'detail') openDetail(id);
+      else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
   });
   document.querySelectorAll('.filter-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -664,6 +845,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
       document.getElementById('view-' + btn.dataset.view).classList.add('active');
       if (btn.dataset.view === 'stats') renderStats();
+      if (btn.dataset.view === 'calendar') renderCalendar();
     });
   });
   document.querySelectorAll('.time-preset').forEach(function(btn) {
