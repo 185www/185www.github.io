@@ -1,7 +1,7 @@
 /**
- * Pomotodo V3 — app.js (Bug-fix rewrite)
- * Timestamp-based timer (works with screen off)
- * Priority P1-P4, GTD areas, Calendar, Detail Panel, Quick Input
+ * Pomotodo V3 — app.js (bug-fix release)
+ * All DOM IDs aligned with index.html; duplicate functions removed;
+ * undefined variables fixed; event bindings corrected.
  */
 
 // ==================== CONSTANTS ====================
@@ -24,12 +24,12 @@ var DEFAULTS = {
 var S = loadState();
 
 var currentArea = 'inbox';
-var currentFilter = 'all';
 var currentCalMonth = new Date().getMonth();
 var currentCalYear = new Date().getFullYear();
 var selectedCalDate = null;
 var detailTaskId = null;
 var wakeLockSentinel = null;
+var currentFilter = 'all';
 var quickInputVisible = false;
 var quickInputPrio = 4;
 var quickInputTags = [];
@@ -90,18 +90,19 @@ function migrateFromV2() {
       return {
         id: t.id, title: t.title, tags: t.tags || [], priority: t.priority || 4,
         today: t.today || false, completed: t.completed || false, pinned: t.pinned || false,
-        pomodorosCompleted: t.pomodorosCompleted || 0,
+        pomodorosCompleted: t.pomodorosCompleted || 0, estimatedPomodoros: 0,
         createdAt: t.createdAt || new Date().toISOString(),
         area: t.completed ? 'archive' : (t.today ? 'next' : 'inbox'),
-        dueDate: '', projectId: '', notes: '', estimatedPomodoros: 0
+        dueDate: '', projectId: '', notes: ''
       };
     });
     S = {
       settings: Object.assign({}, DEFAULTS.settings, old.settings || {}),
       tasks: nt, sessions: old.sessions || [], projects: []
     };
+    S.settings.wakeLockEnabled = false;
     saveState();
-  } catch (_) {}
+  } catch(_) {}
 }
 
 function saveState() {
@@ -209,7 +210,8 @@ function startTimer() {
   timer.running = true;
   timer.startedAt = new Date().toISOString();
   timer.startedRemaining = timer.remaining;
-  saveTimerState(); startInterval();
+  saveTimerState();
+  startInterval();
   if (timerWorker) timerWorker.postMessage({ type: 'start', startTime: Date.now(), duration: timer.remaining });
   updateTimerUI(); acquireWakeLock();
 }
@@ -302,30 +304,30 @@ function skipTimer() {
 
 // ==================== TASKS ====================
 function addTask(title, opts) {
-  var tags = []; var priority = 4; var isToday = false;
+  opts = opts || {};
+  var tags = opts.tags ? opts.tags.slice() : [];
+  var priority = opts.priority || 4;
+  var isToday = opts.today || false;
+
+  // Parse inline syntax from title
   title = title.replace(/!([1-4])/g, function(_, p) { priority = parseInt(p); return ''; });
   title = title.replace(/#(\S+)/g, function(_, t) { tags.push(t); return ''; });
   title = title.replace(/@today/gi, function() { isToday = true; return ''; });
-  title = title.trim(); if (!title) return;
-  // Merge opts from quick input bar
-  if (opts) {
-    if (opts.priority && opts.priority >= 1 && opts.priority <= 4) priority = opts.priority;
-    if (opts.tags && opts.tags.length) tags = tags.concat(opts.tags);
-    if (opts.today) isToday = true;
-  }
-  var area = (opts && opts.area) ? opts.area : (isToday ? 'next' : 'inbox');
-  var dueDate = (opts && opts.dueDate) ? opts.dueDate : '';
-  var projectId = (opts && opts.projectId) ? opts.projectId : '';
-  var estimatedPomodoros = (opts && opts.estimatedPomodoros) ? opts.estimatedPomodoros : 0;
+  title = title.trim();
+  if (!title) return null;
+
+  var area = opts.area || (isToday ? 'next' : 'inbox');
   var task = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title: title, tags: tags, priority: priority, today: isToday,
     completed: false, pinned: false, pomodorosCompleted: 0,
+    estimatedPomodoros: opts.estimatedPomodoros || 0,
     createdAt: new Date().toISOString(),
-    area: area, dueDate: dueDate, projectId: projectId,
-    notes: '', estimatedPomodoros: estimatedPomodoros
+    area: area, dueDate: opts.dueDate || '',
+    projectId: opts.projectId || '', notes: opts.notes || ''
   };
-  S.tasks.unshift(task); saveState(); renderTasks(); updateGtdCounts(); return task;
+  S.tasks.unshift(task); saveState(); renderTasks(); updateGtdCounts();
+  return task;
 }
 
 function toggleTask(id) {
@@ -339,8 +341,7 @@ function pinTask(id) {
   if (!t) return; t.pinned = !t.pinned; saveState(); renderTasks();
 }
 function deleteTask(id) {
-  S.tasks = S.tasks.filter(function(x) { return x.id !== id; });
-  saveState(); renderTasks(); updateGtdCounts();
+  S.tasks = S.tasks.filter(function(x) { return x.id !== id; }); saveState(); renderTasks(); updateGtdCounts();
 }
 function selectTask(id) {
   var el = document.querySelector('.task-item.active-task');
@@ -377,8 +378,10 @@ function renderProjectSelects() {
   var opts = '<option value="">无项目</option>' + S.projects.map(function(p) {
     return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
   }).join('');
-  var s1 = document.getElementById('qi-project'); var s2 = document.getElementById('det-project');
-  if (s1) s1.innerHTML = opts; if (s2) s2.innerHTML = opts;
+  var s1 = document.getElementById('qi-project');
+  var s2 = document.getElementById('det-project');
+  if (s1) s1.innerHTML = opts;
+  if (s2) s2.innerHTML = opts;
 }
 function renderProjectList() {
   var el = document.getElementById('project-list');
@@ -400,7 +403,7 @@ function getOverdueTasks() {
 }
 
 function updateGtdCounts() {
-  var c = {inbox:0, next:0, projects:0, someday:0, archive:0};
+  var c = { inbox: 0, next: 0, projects: 0, someday: 0, archive: 0 };
   S.tasks.forEach(function(t) {
     if (t.completed || t.area === 'archive') c.archive++;
     else if (t.area === 'inbox') c.inbox++;
@@ -409,78 +412,65 @@ function updateGtdCounts() {
     else if (t.area === 'someday') c.someday++;
     else c.inbox++;
   });
-  var el = function(id) { return document.getElementById(id); };
-  if (el('cnt-inbox')) el('cnt-inbox').textContent = c.inbox;
-  if (el('cnt-next')) el('cnt-next').textContent = c.next;
-  if (el('cnt-project')) el('cnt-project').textContent = c.projects;
-  if (el('cnt-someday')) el('cnt-someday').textContent = c.someday;
-  if (el('cnt-archive')) el('cnt-archive').textContent = c.archive;
+  var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+  set('cnt-inbox', c.inbox); set('cnt-next', c.next);
+  set('cnt-project', c.projects); set('cnt-someday', c.someday);
+  set('cnt-archive', c.archive);
 }
 
-// ==================== DETAIL PANEL (V3: uses det-* IDs) ====================
+// ==================== DETAIL PANEL ====================
 function openDetail(taskId) {
   var t = S.tasks.find(function(x) { return x.id === taskId; });
-  if (!t) return; detailTaskId = taskId;
-  var el = function(id) { return document.getElementById(id); };
-  if (el('det-title')) el('det-title').value = t.title || '';
-  if (el('det-due')) el('det-due').value = t.dueDate || '';
-  if (el('det-area')) el('det-area').value = t.area || 'inbox';
-  if (el('det-notes')) el('det-notes').value = t.notes || '';
-  if (el('det-estpomo')) el('det-estpomo').value = t.estimatedPomodoros || 0;
-  if (el('det-pomo-count')) el('det-pomo-count').textContent = t.pomodorosCompleted || 0;
-  if (el('det-created')) el('det-created').textContent = t.createdAt ? new Date(t.createdAt).toLocaleString('zh-CN') : '';
+  if (!t) return;
+  detailTaskId = taskId;
+  document.getElementById('det-title').value = t.title || '';
+  document.getElementById('det-due').value = t.dueDate || '';
+  document.getElementById('det-area').value = t.area || 'inbox';
+  document.getElementById('det-notes').value = t.notes || '';
+  document.getElementById('det-estpomo').value = t.estimatedPomodoros || 0;
+  document.getElementById('det-pomo-count').textContent = t.pomodorosCompleted || 0;
+  document.getElementById('det-created').textContent = t.createdAt ? new Date(t.createdAt).toLocaleString('zh-CN') : '';
   document.querySelectorAll('#det-prio-group .prio-btn').forEach(function(btn) {
     btn.classList.toggle('active', parseInt(btn.dataset.prio) === (t.priority || 4));
   });
   renderDetailTags(t.tags || []);
   renderProjectSelects();
-  var projSel = el('det-project');
+  var projSel = document.getElementById('det-project');
   if (projSel) projSel.value = t.projectId || '';
-  var ov = el('detail-overlay');
-  if (ov) ov.removeAttribute('hidden');
-  var panel = el('detail-panel');
+  document.getElementById('detail-overlay').removeAttribute('hidden');
+  var panel = document.getElementById('detail-panel');
   panel.removeAttribute('hidden');
   setTimeout(function() { panel.classList.add('open'); }, 10);
 }
+
 function closeDetail() {
   var panel = document.getElementById('detail-panel');
   panel.classList.remove('open');
   setTimeout(function() {
     panel.setAttribute('hidden', '');
-    var ov = document.getElementById('detail-overlay');
-    if (ov) ov.setAttribute('hidden', '');
+    document.getElementById('detail-overlay').setAttribute('hidden', '');
   }, 300);
   detailTaskId = null;
 }
+
 function saveDetail() {
   if (!detailTaskId) return;
   var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
   if (!t) return;
-  var el = function(id) { return document.getElementById(id); };
-  t.title = (el('det-title') ? el('det-title').value.trim() : '') || t.title;
-  t.dueDate = el('det-due') ? el('det-due').value : '';
-  t.area = el('det-area') ? el('det-area').value : 'inbox';
-  t.projectId = el('det-project') ? el('det-project').value : '';
-  t.notes = el('det-notes') ? el('det-notes').value : '';
-  t.estimatedPomodoros = parseInt(el('det-estpomo') ? el('det-estpomo').value : 0) || 0;
+  t.title = document.getElementById('det-title').value.trim() || t.title;
+  t.dueDate = document.getElementById('det-due').value || '';
+  t.area = document.getElementById('det-area').value || 'inbox';
+  t.projectId = document.getElementById('det-project').value || '';
+  t.notes = document.getElementById('det-notes').value || '';
+  t.estimatedPomodoros = parseInt(document.getElementById('det-estpomo').value) || 0;
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
   if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
-  // Handle tags from detail tag chips
-  var tagChips = document.querySelectorAll('#det-tags .det-tag-chip');
-  t.tags = []; tagChips.forEach(function(chip) {
-    var tag = chip.dataset.removeTag;
-    if (tag) t.tags.push(tag);
-  });
-  // Handle tag input
-  var tagInput = el('det-tag-input');
-  if (tagInput && tagInput.value.trim()) {
-    t.tags = t.tags.concat(tagInput.value.trim().split(/[\s,]+/).filter(Boolean));
-  }
   if (t.dueDate && t.area === 'inbox') t.area = 'next';
   if (t.area === 'next') t.today = true;
   saveState(); renderTasks(); updateGtdCounts(); closeDetail();
   toast('任务已保存');
 }
+
 function renderDetailTags(tags) {
   var el = document.getElementById('det-tags');
   if (!el) return;
@@ -489,18 +479,18 @@ function renderDetailTags(tags) {
   }).join('');
 }
 
-// ==================== CALENDAR (uses currentCalYear/currentCalMonth/selectedCalDate) ====================
+// ==================== CALENDAR ====================
 function renderCalendar() {
   var y = currentCalYear, m = currentCalMonth;
-  var mNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  var monthEl = document.getElementById('cal-month');
-  if (monthEl) monthEl.textContent = y + '年 ' + mNames[m];
+  var titleEl = document.getElementById('cal-month');
+  if (titleEl) titleEl.textContent = y + '年 ' + (m + 1) + '月';
   var firstDay = new Date(y, m, 1).getDay();
   var daysInMonth = new Date(y, m + 1, 0).getDate();
   var daysInPrev = new Date(y, m, 0).getDate();
   var today = new Date().toISOString().slice(0, 10);
   var taskMap = {};
   S.tasks.forEach(function(t) { if (t.dueDate) taskMap[t.dueDate] = (taskMap[t.dueDate] || 0) + 1; });
+
   var html = '';
   for (var i = firstDay - 1; i >= 0; i--) html += '<div class="cal-day other-month">' + (daysInPrev - i) + '</div>';
   for (var day = 1; day <= daysInMonth; day++) {
@@ -514,29 +504,32 @@ function renderCalendar() {
   var totalCells = firstDay + daysInMonth;
   var rem = (7 - (totalCells % 7)) % 7;
   for (var j = 1; j <= rem; j++) html += '<div class="cal-day other-month">' + j + '</div>';
+
   var grid = document.getElementById('cal-grid');
   if (grid) grid.innerHTML = html;
-  renderCalendarDayTasks();
-}
-function renderCalendarDayTasks() {
+
   var dp = document.getElementById('cal-day-tasks');
   if (!dp) return;
   if (!selectedCalDate) { dp.setAttribute('hidden', ''); return; }
   dp.removeAttribute('hidden');
-  var titleEl = document.getElementById('cal-day-title');
-  if (titleEl) titleEl.textContent = selectedCalDate.replace(/-/g, '/') + ' 的任务';
+  var dayTitle = document.getElementById('cal-day-title');
+  if (dayTitle) dayTitle.textContent = selectedCalDate.replace(/-/g, '/') + ' 的任务';
   var dayTasks = S.tasks.filter(function(t) {
-    return t.dueDate === selectedCalDate || (t.today && selectedCalDate === new Date().toISOString().slice(0, 10) && !t.completed);
+    return t.dueDate === selectedCalDate || (t.today && selectedCalDate === today && !t.completed);
   });
   var le = document.getElementById('cal-task-list');
   if (!le) return;
-  if (dayTasks.length === 0) { le.innerHTML = '<li style="font-size:.82rem;color:var(--c-text2)">该日无任务</li>'; return; }
-  le.innerHTML = dayTasks.map(function(t) {
-    var p = t.priority || 4;
-    var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
-    return '<li class="cal-task-item" data-cal-task="' + t.id + '"><span style="width:8px;height:8px;border-radius:50%;background:' + pC[p] + ';flex-shrink:0"></span>' + (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</li>';
-  }).join('');
+  if (dayTasks.length === 0) {
+    le.innerHTML = '<li style="font-size:.82rem;color:var(--c-text2)">该日无任务</li>';
+  } else {
+    le.innerHTML = dayTasks.map(function(t) {
+      var p = t.priority || 4;
+      var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
+      return '<li class="cal-task-item" data-cal-task="' + t.id + '"><span style="width:8px;height:8px;border-radius:50%;background:' + pC[p] + ';flex-shrink:0"></span>' + (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</li>';
+    }).join('');
+  }
 }
+
 function selectCalDate(dateStr) {
   selectedCalDate = (selectedCalDate === dateStr) ? '' : dateStr;
   renderCalendar();
@@ -550,30 +543,39 @@ function toggleQuickInput() {
   if (quickInputVisible) { bar.removeAttribute('hidden'); btn.classList.add('active'); }
   else { bar.setAttribute('hidden', ''); btn.classList.remove('active'); }
 }
+
 function renderQITags() {
   var el = document.getElementById('qi-tags');
-  if (el) el.innerHTML = quickInputTags.map(function(tag) {
+  if (!el) return;
+  el.innerHTML = quickInputTags.map(function(tag) {
     return '<span class="qi-tag" data-qi-remove-tag="' + esc(tag) + '">#' + esc(tag) + '</span>';
   }).join('');
 }
+
 function addTaskFromInput() {
   var input = document.getElementById('task-input');
   var title = input.value.trim();
   if (!title) return;
   var opts = {
-    priority: quickInputPrio, tags: quickInputTags.slice(), today: false,
-    dueDate: document.getElementById('qi-date') ? document.getElementById('qi-date').value : '',
-    area: document.getElementById('qi-area') ? document.getElementById('qi-area').value : 'inbox',
-    projectId: document.getElementById('qi-project') ? document.getElementById('qi-project').value : '',
+    priority: quickInputPrio,
+    tags: quickInputTags.slice(),
+    today: false,
+    dueDate: document.getElementById('qi-date').value || '',
+    area: document.getElementById('qi-area').value || 'inbox',
+    projectId: document.getElementById('qi-project').value || '',
     estimatedPomodoros: 0
   };
   var todayBtn = document.getElementById('qi-today-btn');
   if (todayBtn && todayBtn.classList.contains('active')) opts.today = true;
-  addTask(title, opts); input.value = '';
+  addTask(title, opts);
+  input.value = '';
   quickInputPrio = 4; quickInputTags = [];
-  document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) { b.classList.toggle('active', parseInt(b.dataset.prio) === 4); });
+  document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.dataset.prio) === 4);
+  });
   renderQITags();
-  if (document.getElementById('qi-date')) document.getElementById('qi-date').value = '';
+  var qiDate = document.getElementById('qi-date');
+  if (qiDate) qiDate.value = '';
   if (todayBtn) todayBtn.classList.remove('active');
   toast('土豆已添加');
 }
@@ -598,8 +600,8 @@ function updateTimerUI() {
     btn.textContent = timer.running ? '⏸ 暂停' : (timer.remaining < total ? '▶ 继续' : '▶ 开始专注');
     btn.classList.toggle('running', timer.running);
   }
-  var cycleEl = document.querySelector('.timer-cycle');
-  if (cycleEl) cycleEl.textContent = '#' + (timer.cycleCount + 1);
+  var cycle = document.querySelector('.timer-cycle');
+  if (cycle) cycle.textContent = '#' + (timer.cycleCount + 1);
   var label = document.getElementById('timer-active-task');
   if (label) {
     if (timer.taskId) {
@@ -612,35 +614,33 @@ function updateTimerUI() {
 
 function renderTasks() {
   var filter = currentFilter;
-  var area = currentArea;
   var tasks = S.tasks.slice();
-  // Filter by GTD area first
-  if (area && area !== 'all') {
+
+  // Filter by GTD area
+  if (currentArea && currentArea !== 'all') {
     tasks = tasks.filter(function(t) {
-      if (area === 'inbox') return t.area === 'inbox' && !t.completed;
-      if (area === 'next') return (t.area === 'next' || t.today) && !t.completed;
-      if (area === 'projects') return !!t.projectId && !t.completed;
-      if (area === 'someday') return t.area === 'someday' && !t.completed;
-      if (area === 'archive') return t.completed || t.area === 'archive';
-      return true;
+      if (currentArea === 'next') return t.area === 'next' || t.today;
+      if (currentArea === 'projects') return !!t.projectId && !t.completed && t.area !== 'archive';
+      return t.area === currentArea;
     });
   }
-  // Then apply status filter
-  if (filter === 'active') tasks = tasks.filter(function(t) { return !t.completed; });
-  else if (filter === 'completed') tasks = tasks.filter(function(t) { return t.completed; });
-  else if (filter === 'today') tasks = tasks.filter(function(t) { return t.today && !t.completed; });
-  else if (filter === 'overdue') tasks = getOverdueTasks();
-  // Sort
+
   tasks.sort(function(a, b) {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     if (a.priority !== b.priority) return a.priority - b.priority;
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
     return 0;
   });
+
+  if (filter === 'active') tasks = tasks.filter(function(t) { return !t.completed; });
+  if (filter === 'completed') tasks = tasks.filter(function(t) { return t.completed; });
+  if (filter === 'today') tasks = tasks.filter(function(t) { return t.today && !t.completed; });
+  if (filter === 'overdue') tasks = getOverdueTasks();
+
   var list = document.getElementById('task-list');
   if (!list) return;
   if (tasks.length === 0) {
-    list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>输入任务 #标签 !1紧急 @today</small></div>';
+    list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>最佳的土豆是一周内可完成的小任务</small></div>';
     return;
   }
   var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
@@ -651,8 +651,7 @@ function renderTasks() {
     var todayBadge = t.today ? '<span class="task-today-badge">今日</span>' : '';
     var dueBadge = '';
     if (t.dueDate) {
-      var today = new Date().toISOString().slice(0, 10);
-      var isOverdue = t.dueDate < today && !t.completed;
+      var isOverdue = t.dueDate < new Date().toISOString().slice(0, 10) && !t.completed;
       dueBadge = '<span class="task-due-badge' + (isOverdue ? ' overdue' : '') + '">' + t.dueDate.slice(5) + '</span>';
     }
     var projBadge = '';
@@ -660,7 +659,8 @@ function renderTasks() {
       var proj = S.projects.find(function(pr) { return pr.id === t.projectId; });
       if (proj) projBadge = '<span class="task-area-badge">' + esc(proj.name) + '</span>';
     }
-    return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + (dueBadge && dueBadge.indexOf('overdue') >= 0 ? ' overdue' : '') + '" data-id="' + t.id + '">' +
+    var isOverdueItem = dueBadge.indexOf('overdue') > -1;
+    return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + (isOverdueItem ? ' overdue' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
       '<span class="task-prio-badge p' + p + '" data-act="prio" data-id="' + t.id + '" title="切换优先级">' + prioLabels[p] + '</span>' +
       '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + '</span>' +
@@ -692,10 +692,8 @@ function updateDoneList() {
 // ==================== COMPLETE MODAL ====================
 function showCompleteModal(session) {
   var overlay = document.getElementById('modal-complete');
-  if (!overlay) return;
   overlay.removeAttribute('hidden');
-  var subEl = document.getElementById('modal-sub');
-  if (subEl) subEl.textContent = '刚刚完成了 ' + S.settings.workDuration + ' 分钟专注';
+  document.getElementById('modal-sub').textContent = '刚刚完成了 ' + S.settings.workDuration + ' 分钟专注';
   var tasksDiv = document.getElementById('modal-tasks');
   var activeTasks = S.tasks.filter(function(t) { return !t.completed; });
   if (activeTasks.length === 0) {
@@ -711,14 +709,12 @@ function showCompleteModal(session) {
       });
     });
   }
-  var confirmBtn = document.getElementById('modal-confirm');
-  var skipBtn = document.getElementById('modal-skip');
-  confirmBtn.onclick = function() {
+  document.getElementById('modal-confirm').onclick = function() {
     var checked = tasksDiv.querySelectorAll('.modal-task-item.checked');
     var taskId = checked.length > 0 ? checked[0].dataset.id : null;
     overlay.setAttribute('hidden', ''); advanceAfterComplete(taskId);
   };
-  skipBtn.onclick = function() {
+  document.getElementById('modal-skip').onclick = function() {
     overlay.setAttribute('hidden', ''); advanceAfterComplete(null);
   };
 }
@@ -727,15 +723,14 @@ function showCompleteModal(session) {
 function showTimePicker() {
   if (timer.running) return;
   var overlay = document.getElementById('modal-time-picker');
-  if (!overlay) return;
   overlay.removeAttribute('hidden');
   var currentMin = getModeDuration(timer.mode);
   document.querySelectorAll('.time-preset').forEach(function(btn) {
     btn.classList.toggle('active', parseInt(btn.dataset.min) === currentMin);
   });
-  var customInput = document.getElementById('time-custom-input');
-  if (customInput) customInput.value = '';
+  document.getElementById('time-custom-input').value = '';
 }
+
 function applyTimePick(minutes) {
   minutes = Math.max(1, Math.min(90, parseInt(minutes) || getModeDuration(timer.mode)));
   if (timer.mode === 'work') S.settings.workDuration = minutes;
@@ -743,8 +738,7 @@ function applyTimePick(minutes) {
   else S.settings.longBreakDuration = minutes;
   saveState(); timer.remaining = minutes * 60;
   timer.startedAt = null; timer.startedRemaining = null;
-  var overlay = document.getElementById('modal-time-picker');
-  if (overlay) overlay.setAttribute('hidden', '');
+  document.getElementById('modal-time-picker').setAttribute('hidden', '');
   updateTimerUI(); initSettings();
 }
 
@@ -757,11 +751,10 @@ function renderStats() {
   var todaySess = S.sessions.filter(function(s) { return s.type === 'work' && s.start && s.start.slice(0, 10) === today; });
   var weekSess = S.sessions.filter(function(s) { return s.type === 'work' && s.start && s.start >= weekAgo; });
   var totalSess = S.sessions.filter(function(s) { return s.type === 'work'; });
-  var el = function(id) { return document.getElementById(id); };
-  if (el('s-today-count')) el('s-today-count').textContent = todaySess.length;
-  if (el('s-today-mins')) el('s-today-mins').textContent = Math.round(todaySess.reduce(function(a, s) { return a + s.duration; }, 0) / 60) + 'm';
-  if (el('s-week-count')) el('s-week-count').textContent = weekSess.length;
-  if (el('s-total-count')) el('s-total-count').textContent = totalSess.length;
+  var tc = document.getElementById('s-today-count'); if (tc) tc.textContent = todaySess.length;
+  var tm = document.getElementById('s-today-mins'); if (tm) tm.textContent = Math.round(todaySess.reduce(function(a, s) { return a + s.duration; }, 0) / 60) + 'm';
+  var wc = document.getElementById('s-week-count'); if (wc) wc.textContent = weekSess.length;
+  var ttl = document.getElementById('s-total-count'); if (ttl) ttl.textContent = totalSess.length;
   renderWeeklyChart(); renderTagBars();
 }
 
@@ -776,26 +769,40 @@ function renderWeeklyChart() {
     return S.sessions.filter(function(s) { return s.type === 'work' && s.start && s.start.slice(0, 10) === d; }).length;
   });
   var isDark = S.settings.theme === 'dark';
-  var tc = isDark ? '#8b949e' : '#636e72';
-  var gc = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  var tColor = isDark ? '#8b949e' : '#636e72';
+  var gColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
   if (weekChart) {
-    weekChart.data.labels = labels; weekChart.data.datasets[0].data = counts;
-    weekChart.options.scales.x.ticks.color = tc; weekChart.options.scales.y.ticks.color = tc;
+    weekChart.data.labels = labels;
+    weekChart.data.datasets[0].data = counts;
+    weekChart.options.scales.x.ticks.color = tColor;
+    weekChart.options.scales.y.ticks.color = tColor;
     weekChart.update(); return;
   }
+
   var ctx = document.getElementById('chart-weekly');
   if (!ctx) return;
-  var cfg = {}; cfg.type = 'bar'; cfg.data = {}; cfg.data.labels = labels;
-  cfg.data.datasets = [{}];
-  cfg.data.datasets[0].label = '番茄数';
-  cfg.data.datasets[0].data = counts;
-  cfg.data.datasets[0].backgroundColor = 'rgba(231,76,60,0.7)';
-  cfg.data.datasets[0].borderRadius = 4; cfg.data.datasets[0].maxBarThickness = 28;
-  cfg.options = {}; cfg.options.responsive = true; cfg.options.maintainAspectRatio = false;
-  cfg.options.plugins = { legend: { display: false } };
-  cfg.options.scales = {}; cfg.options.scales.x = {}; cfg.options.scales.x.ticks = { color: tc, font: { size: 11 } };
-  cfg.options.scales.x.grid = { color: gc }; cfg.options.scales.y = {}; cfg.options.scales.y.beginAtZero = true;
-  cfg.options.scales.y.ticks = { color: tc, stepSize: 1 }; cfg.options.scales.y.grid = { color: gc };
+  var cfg = {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '番茄数',
+        backgroundColor: 'rgba(231,76,60,0.7)',
+        borderRadius: 4,
+        maxBarThickness: 28
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: tColor, font: { size: 11 } }, grid: { color: gColor } },
+        y: { beginAtZero: true, ticks: { color: tColor, stepSize: 1 }, grid: { color: gColor } }
+      }
+    }
+  };
   weekChart = new Chart(ctx, cfg);
 }
 
@@ -836,43 +843,34 @@ function initSettings() {
   if (el('opt-volume')) el('opt-volume').value = s.soundVolume;
   if (el('range-val')) el('range-val').textContent = Math.round(s.soundVolume * 100) + '%';
   if (el('opt-notify')) el('opt-notify').checked = s.notificationsEnabled;
-  if (el('opt-wakelock')) el('opt-wakelock').checked = s.wakeLockEnabled || false;
+  var wl = el('opt-wakelock');
+  if (wl) wl.checked = s.wakeLockEnabled || false;
   applyTheme(s.theme);
-  renderProjectList(); renderProjectSelects();
+  renderProjectList();
+  renderProjectSelects();
 }
 
 function readSettings() {
   var el = function(id) { return document.getElementById(id); };
-  S.settings.workDuration = Math.max(1, parseInt(el('opt-work') ? el('opt-work').value : 25) || 25);
-  S.settings.shortBreakDuration = Math.max(1, parseInt(el('opt-short') ? el('opt-short').value : 5) || 5);
-  S.settings.longBreakDuration = Math.max(1, parseInt(el('opt-long') ? el('opt-long').value : 15) || 15);
-  S.settings.longBreakInterval = Math.max(2, parseInt(el('opt-interval') ? el('opt-interval').value : 4) || 4);
-  S.settings.autoStartBreak = el('opt-auto-break') ? el('opt-auto-break').checked : true;
-  S.settings.autoStartWork = el('opt-auto-work') ? el('opt-auto-work').checked : false;
-  S.settings.soundEnabled = el('opt-sound') ? el('opt-sound').checked : true;
-  S.settings.soundVolume = parseFloat(el('opt-volume') ? el('opt-volume').value : 0.7);
-  S.settings.notificationsEnabled = el('opt-notify') ? el('opt-notify').checked : false;
+  S.settings.workDuration = Math.max(1, parseInt(el('opt-work').value) || 25);
+  S.settings.shortBreakDuration = Math.max(1, parseInt(el('opt-short').value) || 5);
+  S.settings.longBreakDuration = Math.max(1, parseInt(el('opt-long').value) || 15);
+  S.settings.longBreakInterval = Math.max(2, parseInt(el('opt-interval').value) || 4);
+  S.settings.autoStartBreak = el('opt-auto-break').checked;
+  S.settings.autoStartWork = el('opt-auto-work').checked;
+  S.settings.soundEnabled = el('opt-sound').checked;
+  S.settings.soundVolume = parseFloat(el('opt-volume').value);
+  S.settings.notificationsEnabled = el('opt-notify').checked;
   var wlEl = el('opt-wakelock');
   if (wlEl) S.settings.wakeLockEnabled = wlEl.checked;
-  saveState(); if (!timer.running) timer.remaining = getModeDuration(timer.mode) * 60; updateTimerUI();
+  saveState();
+  if (!timer.running) timer.remaining = getModeDuration(timer.mode) * 60;
+  updateTimerUI();
 }
 
 function applyTheme(theme) {
   document.body.dataset.theme = theme; S.settings.theme = theme; saveState();
   document.querySelectorAll('.t-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.theme === theme); });
-}
-
-// ==================== UTILS ====================
-function fmtTime(sec) {
-  var m = Math.floor(sec / 60), s = sec % 60;
-  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-}
-function esc(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-function toast(msg) {
-  var wrap = document.getElementById('toast-wrap');
-  if (!wrap) return;
-  var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
-  wrap.appendChild(t); setTimeout(function() { t.remove(); }, 3000);
 }
 
 // ==================== DATA I/O ====================
@@ -882,6 +880,7 @@ function exportData() {
   a.download = 'pomotodo-backup-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click(); URL.revokeObjectURL(a.href); toast('数据已导出');
 }
+
 function importData(file) {
   var reader = new FileReader();
   reader.onload = function(e) {
@@ -895,7 +894,8 @@ function importData(file) {
       saveState(); toast('数据已导入');
       initSettings(); renderTasks(); updateTimerUI(); updateDoneList(); updateGtdCounts();
     } catch(err) { toast('导入失败: ' + err.message); }
-  }; reader.readAsText(file);
+  };
+  reader.readAsText(file);
 }
 
 // ==================== ONBOARDING ====================
@@ -908,25 +908,37 @@ var onboardSteps = [
 var onboardStep = 0;
 
 function showOnboarding() {
-  var overlay = document.getElementById('onboarding');
-  if (overlay) overlay.removeAttribute('hidden');
+  document.getElementById('onboarding').removeAttribute('hidden');
   renderOnboardStep();
 }
 function renderOnboardStep() {
   var step = onboardSteps[onboardStep];
   var body = document.getElementById('onboarding-body');
-  if (body) body.innerHTML = '<span class="ob-emoji">' + step.emoji + '</span><h3>' + step.title + '</h3><p>' + step.text + '</p>';
+  body.innerHTML = '<span class="ob-emoji">' + step.emoji + '</span><h3>' + step.title + '</h3><p>' + step.text + '</p>';
   var dots = document.getElementById('onboarding-dots');
-  if (dots) dots.innerHTML = onboardSteps.map(function(_, i) {
+  dots.innerHTML = onboardSteps.map(function(_, i) {
     return '<span class="onboarding-dot' + (i === onboardStep ? ' active' : '') + '"></span>';
   }).join('');
-  var nextBtn = document.getElementById('onboarding-next');
-  if (nextBtn) nextBtn.textContent = onboardStep === onboardSteps.length - 1 ? '开始使用' : '下一步';
+  document.getElementById('onboarding-next').textContent = onboardStep === onboardSteps.length - 1 ? '开始使用' : '下一步';
 }
 function closeOnboarding() {
-  var overlay = document.getElementById('onboarding');
-  if (overlay) overlay.setAttribute('hidden', '');
+  document.getElementById('onboarding').setAttribute('hidden', '');
   try { localStorage.setItem(ONBOARD_KEY, '1'); } catch(_) {}
+}
+
+// ==================== UTILS ====================
+function fmtTime(sec) {
+  var m = Math.floor(sec / 60), s = sec % 60;
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+function esc(str) {
+  var d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+}
+function toast(msg) {
+  var wrap = document.getElementById('toast-wrap');
+  if (!wrap) return;
+  var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  wrap.appendChild(t); setTimeout(function() { t.remove(); }, 3000);
 }
 
 // ==================== INIT & EVENTS ====================
@@ -943,28 +955,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Onboarding
   var onboarded = false;
   try { onboarded = localStorage.getItem(ONBOARD_KEY) === '1'; } catch(_) {}
   if (!onboarded) setTimeout(showOnboarding, 600);
 
-  // Service Worker
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(function() {}); }
+  if (S.settings.notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 
-  // Notification permission
-  if (S.settings.notificationsEnabled && 'Notification' in window && Notification.permission === 'default') { Notification.requestPermission(); }
-
-  // ---- Timer buttons ----
+  // ---- Timer ----
   document.getElementById('btn-start').addEventListener('click', function() { timer.running ? pauseTimer() : startTimer(); });
   document.getElementById('btn-reset').addEventListener('click', resetTimer);
   document.getElementById('btn-skip').addEventListener('click', skipTimer);
-  document.getElementById('timer-ring-wrap').addEventListener('click', function() { if (timer.running) return; showTimePicker(); });
+  document.getElementById('timer-ring-wrap').addEventListener('click', function() { if (!timer.running) showTimePicker(); });
 
-  // ---- Timer mode buttons ----
+  // ---- Mode buttons ----
   document.querySelectorAll('.mode-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       if (timer.running) return;
-      timer.mode = btn.dataset.mode; timer.remaining = getModeDuration(btn.dataset.mode) * 60;
+      timer.mode = btn.dataset.mode;
+      timer.remaining = getModeDuration(btn.dataset.mode) * 60;
       timer.startedAt = null; timer.startedRemaining = null;
       document.querySelectorAll('.mode-btn').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active'); updateTimerUI();
@@ -972,46 +983,45 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // ---- Task input ----
-  var input = document.getElementById('task-input');
-  document.getElementById('task-add-btn').addEventListener('click', function() { addTaskFromInput(); input.focus(); });
-  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { addTaskFromInput(); } });
+  var taskInput = document.getElementById('task-input');
+  document.getElementById('task-add-btn').addEventListener('click', addTaskFromInput);
+  taskInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') addTaskFromInput(); });
 
-  // ---- Quick input bar toggle ----
-  var moreBtn = document.getElementById('task-input-more');
-  if (moreBtn) moreBtn.addEventListener('click', toggleQuickInput);
+  // ---- Quick input toggle ----
+  document.getElementById('task-input-more').addEventListener('click', toggleQuickInput);
 
-  // ---- Quick input: priority buttons ----
-  document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      quickInputPrio = parseInt(btn.dataset.prio) || 4;
-      document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
+  // ---- Quick input bar ----
+  var qiBar = document.getElementById('quick-input-bar');
+  if (qiBar) {
+    qiBar.addEventListener('click', function(e) {
+      var btn = e.target.closest('.prio-btn');
+      if (btn && btn.dataset.prio) {
+        quickInputPrio = parseInt(btn.dataset.prio);
+        document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) {
+          b.classList.toggle('active', parseInt(b.dataset.prio) === quickInputPrio);
+        });
+      }
     });
-  });
-  // ---- Quick input: today button ----
-  var qiTodayBtn = document.getElementById('qi-today-btn');
-  if (qiTodayBtn) qiTodayBtn.addEventListener('click', function() { qiTodayBtn.classList.toggle('active'); });
-  // ---- Quick input: tag input ----
-  var qiTagInput = document.getElementById('qi-tag-input');
-  if (qiTagInput) qiTagInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      var tag = qiTagInput.value.trim();
-      if (tag && quickInputTags.indexOf(tag) === -1) { quickInputTags.push(tag); renderQITags(); }
-      qiTagInput.value = '';
-    }
-  });
-  // ---- Quick input: remove tag ----
-  var qiTags = document.getElementById('qi-tags');
-  if (qiTags) qiTags.addEventListener('click', function(e) {
-    var chip = e.target.closest('[data-qi-remove-tag]');
-    if (!chip) return;
-    quickInputTags = quickInputTags.filter(function(t) { return t !== chip.dataset.qiRemoveTag; });
-    renderQITags();
-  });
+    var todayBtn = document.getElementById('qi-today-btn');
+    if (todayBtn) todayBtn.addEventListener('click', function() { todayBtn.classList.toggle('active'); });
+    var tagInput = document.getElementById('qi-tag-input');
+    if (tagInput) tagInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var val = tagInput.value.trim();
+        if (val && quickInputTags.indexOf(val) === -1) { quickInputTags.push(val); renderQITags(); }
+        tagInput.value = '';
+      }
+    });
+    qiBar.addEventListener('click', function(e) {
+      var tag = e.target.closest('[data-qi-remove-tag]');
+      if (tag) { quickInputTags = quickInputTags.filter(function(t) { return t !== tag.dataset.qiRemoveTag; }); renderQITags(); }
+    });
+  }
 
-  // ---- Task list delegation ----
+  // ---- Task list ----
   document.getElementById('task-list').addEventListener('click', function(e) {
-    var btn = e.target.closest('[data-act]'); if (!btn) return;
+    var btn = e.target.closest('[data-act]');
+    if (!btn) return;
     var id = btn.dataset.id, act = btn.dataset.act;
     if (act === 'toggle') toggleTask(id);
     else if (act === 'pin') pinTask(id);
@@ -1030,7 +1040,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // ---- GTD area tabs ----
+  // ---- GTD tabs ----
   var gtdTabs = document.getElementById('gtd-tabs');
   if (gtdTabs) gtdTabs.addEventListener('click', function(e) {
     var tab = e.target.closest('.gtd-tab');
@@ -1040,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tab.classList.add('active'); renderTasks();
   });
 
-  // ---- Nav buttons (single binding!) ----
+  // ---- Nav buttons ----
   document.querySelectorAll('.nav-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -1053,70 +1063,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // ---- Time picker ----
-  document.querySelectorAll('.time-preset').forEach(function(btn) {
-    btn.addEventListener('click', function() { applyTimePick(parseInt(btn.dataset.min)); });
-  });
-  var customConfirm = document.getElementById('time-custom-confirm');
-  if (customConfirm) customConfirm.addEventListener('click', function() {
-    applyTimePick(parseInt(document.getElementById('time-custom-input').value));
-  });
-  var customInput = document.getElementById('time-custom-input');
-  if (customInput) customInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') applyTimePick(parseInt(this.value));
-  });
-  var timeCancel = document.getElementById('time-picker-cancel');
-  if (timeCancel) timeCancel.addEventListener('click', function() {
-    document.getElementById('modal-time-picker').setAttribute('hidden', '');
-  });
-
-  // ---- Onboarding ----
-  document.getElementById('onboarding-next').addEventListener('click', function() {
-    if (onboardStep < onboardSteps.length - 1) { onboardStep++; renderOnboardStep(); }
-    else closeOnboarding();
-  });
-  document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
-
-  // ---- Settings inputs ----
-  ['opt-work','opt-short','opt-long','opt-interval','opt-auto-break','opt-auto-work','opt-sound','opt-notify'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.addEventListener('change', readSettings);
-  });
-  var volEl = document.getElementById('opt-volume');
-  if (volEl) volEl.addEventListener('input', function(e) {
-    var rv = document.getElementById('range-val');
-    if (rv) rv.textContent = Math.round(e.target.value * 100) + '%';
-    readSettings();
-  });
-  document.getElementById('btn-test-sound').addEventListener('click', function() { chime(S.settings.soundVolume); });
-
-  // ---- Theme buttons ----
-  document.querySelectorAll('.t-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() { applyTheme(btn.dataset.theme); });
-  });
-
-  // ---- Settings reset/clear ----
-  document.getElementById('btn-reset-sett').addEventListener('click', function() {
-    if (!confirm('恢复默认设置？')) return;
-    S.settings = JSON.parse(JSON.stringify(DEFAULTS.settings)); saveState(); initSettings();
-    if (!timer.running) { timer.remaining = getModeDuration(timer.mode) * 60; updateTimerUI(); }
-    toast('设置已重置');
-  });
-  document.getElementById('btn-clear-all').addEventListener('click', function() {
-    if (!confirm('⚠ 清除所有数据？不可恢复！')) return;
-    localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '_timer');
-    S = JSON.parse(JSON.stringify(DEFAULTS));
-    timer = {mode:'work', remaining:S.settings.workDuration*60, running:false, intervalId:null, startedAt:null, startedRemaining:null, cycleCount:0, taskId:null};
-    saveState(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); toast('数据已清除');
-  });
-
-  // ---- Export/Import ----
-  document.getElementById('btn-export').addEventListener('click', exportData);
-  document.getElementById('btn-import').addEventListener('change', function(e) {
-    if (e.target.files[0]) importData(e.target.files[0]); e.target.value = '';
-  });
-
-  // ---- Calendar navigation ----
+  // ---- Calendar nav ----
   var calPrev = document.getElementById('cal-prev');
   if (calPrev) calPrev.addEventListener('click', function() {
     currentCalMonth--; if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
@@ -1133,14 +1080,15 @@ document.addEventListener('DOMContentLoaded', function() {
     selectedCalDate = null; renderCalendar();
   });
 
-  // ---- Calendar grid click ----
+  // ---- Calendar grid ----
   var calGrid = document.getElementById('cal-grid');
   if (calGrid) calGrid.addEventListener('click', function(e) {
-    var c = e.target.closest('.cal-day');
-    if (!c || c.classList.contains('other-month')) return;
-    if (c.dataset.date) selectCalDate(c.dataset.date);
+    var cell = e.target.closest('.cal-day');
+    if (!cell || cell.classList.contains('other-month')) return;
+    if (cell.dataset.date) selectCalDate(cell.dataset.date);
   });
-  // ---- Calendar task click -> open detail ----
+
+  // ---- Calendar task click ----
   var calTaskList = document.getElementById('cal-task-list');
   if (calTaskList) calTaskList.addEventListener('click', function(e) {
     var item = e.target.closest('[data-cal-task]');
@@ -1158,39 +1106,105 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   var detailOverlay = document.getElementById('detail-overlay');
   if (detailOverlay) detailOverlay.addEventListener('click', function(e) { if (e.target === this) closeDetail(); });
-  // ---- Detail priority buttons ----
+
+  // Detail priority
   document.querySelectorAll('#det-prio-group .prio-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('#det-prio-group .prio-btn').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
     });
   });
-  // ---- Detail tag remove ----
-  var detTags = document.getElementById('det-tags');
-  if (detTags) detTags.addEventListener('click', function(e) {
+
+  // Detail tag remove
+  document.getElementById('detail-panel').addEventListener('click', function(e) {
     var chip = e.target.closest('[data-remove-tag]');
     if (!chip || !detailTaskId) return;
     var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
     if (!t) return;
     t.tags = (t.tags || []).filter(function(tag) { return tag !== chip.dataset.removeTag; });
-    renderDetailTags(t.tags); saveState();
+    saveState(); renderDetailTags(t.tags);
   });
-  // ---- Detail tag add ----
+
+  // Detail tag add
   var detTagInput = document.getElementById('det-tag-input');
   if (detTagInput) detTagInput.addEventListener('keydown', function(e) {
     if (e.key !== 'Enter') return;
-    var tag = detTagInput.value.trim();
-    if (!tag || !detailTaskId) return;
+    var val = detTagInput.value.trim();
+    if (!val || !detailTaskId) return;
     var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
     if (!t) return;
     if (!t.tags) t.tags = [];
-    if (t.tags.indexOf(tag) === -1) { t.tags.push(tag); renderDetailTags(t.tags); saveState(); }
+    if (t.tags.indexOf(val) === -1) { t.tags.push(val); saveState(); renderDetailTags(t.tags); }
     detTagInput.value = '';
   });
 
+  // ---- Time picker ----
+  document.querySelectorAll('.time-preset').forEach(function(btn) {
+    btn.addEventListener('click', function() { applyTimePick(parseInt(btn.dataset.min)); });
+  });
+  document.getElementById('time-custom-confirm').addEventListener('click', function() {
+    applyTimePick(parseInt(document.getElementById('time-custom-input').value));
+  });
+  document.getElementById('time-custom-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') applyTimePick(parseInt(this.value));
+  });
+  document.getElementById('time-picker-cancel').addEventListener('click', function() {
+    document.getElementById('modal-time-picker').setAttribute('hidden', '');
+  });
+
+  // ---- Onboarding ----
+  document.getElementById('onboarding-next').addEventListener('click', function() {
+    if (onboardStep < onboardSteps.length - 1) { onboardStep++; renderOnboardStep(); }
+    else closeOnboarding();
+  });
+  document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
+
+  // ---- Settings inputs ----
+  ['opt-work','opt-short','opt-long','opt-interval','opt-auto-break','opt-auto-work','opt-sound','opt-notify'].forEach(function(id) {
+    var s = document.getElementById(id);
+    if (s) s.addEventListener('change', readSettings);
+  });
+  var volEl = document.getElementById('opt-volume');
+  if (volEl) volEl.addEventListener('input', function(e) {
+    var rv = document.getElementById('range-val');
+    if (rv) rv.textContent = Math.round(e.target.value * 100) + '%';
+    readSettings();
+  });
+  var testSound = document.getElementById('btn-test-sound');
+  if (testSound) testSound.addEventListener('click', function() { chime(S.settings.soundVolume); });
+
+  document.querySelectorAll('.t-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { applyTheme(btn.dataset.theme); });
+  });
+
+  var resetSett = document.getElementById('btn-reset-sett');
+  if (resetSett) resetSett.addEventListener('click', function() {
+    if (!confirm('恢复默认设置？')) return;
+    S.settings = JSON.parse(JSON.stringify(DEFAULTS.settings)); saveState(); initSettings();
+    if (!timer.running) { timer.remaining = getModeDuration(timer.mode) * 60; updateTimerUI(); }
+    toast('设置已重置');
+  });
+
+  var clearAll = document.getElementById('btn-clear-all');
+  if (clearAll) clearAll.addEventListener('click', function() {
+    if (!confirm('⚠ 清除所有数据？不可恢复！')) return;
+    localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '_timer');
+    S = JSON.parse(JSON.stringify(DEFAULTS));
+    timer = {mode:'work', remaining:S.settings.workDuration*60, running:false, intervalId:null, startedAt:null, startedRemaining:null, cycleCount:0, taskId:null};
+    saveState(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); toast('数据已清除');
+  });
+
+  document.getElementById('btn-export').addEventListener('click', exportData);
+  document.getElementById('btn-import').addEventListener('change', function(e) {
+    if (e.target.files[0]) importData(e.target.files[0]); e.target.value = '';
+  });
+
+  var wle = document.getElementById('opt-wakelock');
+  if (wle) wle.addEventListener('change', readSettings);
+
   // ---- Project management ----
-  var addProjectBtn = document.getElementById('btn-add-project');
-  if (addProjectBtn) addProjectBtn.addEventListener('click', function() {
+  var addProjBtn = document.getElementById('btn-add-project');
+  if (addProjBtn) addProjBtn.addEventListener('click', function() {
     var nameEl = document.getElementById('project-new-name');
     var colorEl = document.getElementById('project-new-color');
     if (nameEl && nameEl.value.trim()) {
@@ -1198,22 +1212,18 @@ document.addEventListener('DOMContentLoaded', function() {
       nameEl.value = '';
     }
   });
-  var projectListEl = document.getElementById('project-list');
-  if (projectListEl) projectListEl.addEventListener('click', function(e) {
+  var projList = document.getElementById('project-list');
+  if (projList) projList.addEventListener('click', function(e) {
     var del = e.target.closest('[data-del-project]');
     if (del && confirm('删除此项目？')) deleteProject(del.dataset.delProject);
   });
 
-  // ---- Wake lock toggle ----
-  var wle = document.getElementById('opt-wakelock');
-  if (wle) wle.addEventListener('change', readSettings);
-
   // ---- Keyboard shortcuts ----
   document.addEventListener('keydown', function(e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space') { e.preventDefault(); timer.running ? pauseTimer() : startTimer(); }
     if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) resetTimer();
-    if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey) document.querySelector('[data-view="work"]').click();
-    if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) document.querySelector('[data-view="settings"]').click();
+    if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey) { var w = document.querySelector('[data-view="work"]'); if (w) w.click(); }
+    if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) { var s = document.querySelector('[data-view="settings"]'); if (s) s.click(); }
   });
 });
