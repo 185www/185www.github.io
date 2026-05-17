@@ -1,31 +1,40 @@
 /**
- * Pomotodo V2 — app.js
+ * Pomotodo V3 — app.js (Bug-fix rewrite)
  * Timestamp-based timer (works with screen off)
- * Priority P1-P4, GTD @today, #tags, onboarding
+ * Priority P1-P4, GTD areas, Calendar, Detail Panel, Quick Input
  */
 
 // ==================== CONSTANTS ====================
-const LS_KEY = 'pomotodo_v3';
-var LS_KEY_V2='pomotodo_v2';
-const CIRC = 2 * Math.PI * 88;
-const ONBOARD_KEY = 'pomotodo_onboarded_v3';
+var LS_KEY = 'pomotodo_v3';
+var LS_KEY_V2 = 'pomotodo_v2';
+var CIRC = 2 * Math.PI * 88;
+var ONBOARD_KEY = 'pomotodo_onboarded_v3';
 
-const DEFAULTS = {
+var DEFAULTS = {
   settings: {
     workDuration: 25, shortBreakDuration: 5, longBreakDuration: 15,
     longBreakInterval: 4, autoStartBreak: true, autoStartWork: false,
     soundEnabled: true, soundVolume: 0.7, notificationsEnabled: false,
-    theme: 'light'
+    wakeLockEnabled: false, theme: 'light'
   },
-  tasks: [],
-  sessions: [], projects: []
+  tasks: [], sessions: [], projects: []
 };
 
 // ==================== STATE ====================
-let S = loadState();
+var S = loadState();
 
-var currentArea='inbox',currentCalMonth=new Date().getMonth(),currentCalYear=new Date().getFullYear(),selectedCalDate=null,detailTaskId=null,wakeLockSentinel=null;
-let timer = {
+var currentArea = 'inbox';
+var currentFilter = 'all';
+var currentCalMonth = new Date().getMonth();
+var currentCalYear = new Date().getFullYear();
+var selectedCalDate = null;
+var detailTaskId = null;
+var wakeLockSentinel = null;
+var quickInputVisible = false;
+var quickInputPrio = 4;
+var quickInputTags = [];
+
+var timer = {
   mode: 'work', remaining: S.settings.workDuration * 60,
   running: false, intervalId: null,
   startedAt: null, startedRemaining: null,
@@ -33,7 +42,7 @@ let timer = {
 };
 
 // Web Worker for background timing
-let timerWorker = null;
+var timerWorker = null;
 try {
   timerWorker = new Worker('./timer-worker.js');
   timerWorker.onmessage = function(e) {
@@ -44,28 +53,61 @@ try {
 } catch(_) { timerWorker = null; }
 
 // ==================== STATE I/O ====================
-function acquireWakeLock(){if(!S.settings.wakeLockEnabled||!('wakeLock' in navigator))return;navigator.wakeLock.request('screen').then(function(s){wakeLockSentinel=s;wakeLockSentinel.addEventListener('release',function(){wakeLockSentinel=null;});}).catch(function(){wakeLockSentinel=null;});}
-function releaseWakeLock(){if(wakeLockSentinel){wakeLockSentinel.release();wakeLockSentinel=null;}}
+function acquireWakeLock() {
+  if (!S.settings.wakeLockEnabled || !('wakeLock' in navigator)) return;
+  navigator.wakeLock.request('screen').then(function(s) {
+    wakeLockSentinel = s;
+    wakeLockSentinel.addEventListener('release', function() { wakeLockSentinel = null; });
+  }).catch(function() { wakeLockSentinel = null; });
+}
+function releaseWakeLock() {
+  if (wakeLockSentinel) { wakeLockSentinel.release(); wakeLockSentinel = null; }
+}
 
 function loadState() {
   try {
     var raw = localStorage.getItem(LS_KEY);
     if (raw) {
       var d = JSON.parse(raw);
-      return { settings: Object.assign({}, DEFAULTS.settings, d.settings || {}),
-               tasks: d.tasks || [], sessions: d.sessions || [] };
+      return {
+        settings: Object.assign({}, DEFAULTS.settings, d.settings || {}),
+        tasks: d.tasks || [],
+        sessions: d.sessions || [],
+        projects: d.projects || []
+      };
     }
   } catch (_) {}
   return JSON.parse(JSON.stringify(DEFAULTS));
 }
 
-function migrateFromV2(){try{if(localStorage.getItem(LS_KEY))return;var raw=localStorage.getItem(LS_KEY_V2);if(!raw)return;var old=JSON.parse(raw);var nt=(old.tasks||[]).map(function(t){return{id:t.id,title:t.title,tags:t.tags||[],priority:t.priority||4,today:t.today||false,completed:t.completed||false,pinned:t.pinned||false,pomodorosCompleted:t.pomodorosCompleted||0,createdAt:t.createdAt||new Date().toISOString(),area:t.completed?'archive':(t.today?'next':'inbox'),dueDate:'',projectId:'',notes:''};});S={settings:Object.assign({},DEFAULTS.settings,old.settings||{}),tasks:nt,sessions:old.sessions||[],projects:[]};if(!S.settings.wakeLockEnabled)S.settings.wakeLockEnabled=false;saveState();}catch(_){}}
+function migrateFromV2() {
+  try {
+    if (localStorage.getItem(LS_KEY)) return;
+    var raw = localStorage.getItem(LS_KEY_V2);
+    if (!raw) return;
+    var old = JSON.parse(raw);
+    var nt = (old.tasks || []).map(function(t) {
+      return {
+        id: t.id, title: t.title, tags: t.tags || [], priority: t.priority || 4,
+        today: t.today || false, completed: t.completed || false, pinned: t.pinned || false,
+        pomodorosCompleted: t.pomodorosCompleted || 0,
+        createdAt: t.createdAt || new Date().toISOString(),
+        area: t.completed ? 'archive' : (t.today ? 'next' : 'inbox'),
+        dueDate: '', projectId: '', notes: '', estimatedPomodoros: 0
+      };
+    });
+    S = {
+      settings: Object.assign({}, DEFAULTS.settings, old.settings || {}),
+      tasks: nt, sessions: old.sessions || [], projects: []
+    };
+    saveState();
+  } catch (_) {}
+}
 
 function saveState() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (_) {}
 }
 
-// Persist timer state for recovery after screen off
 function saveTimerState() {
   try {
     localStorage.setItem(LS_KEY + '_timer', JSON.stringify({
@@ -88,7 +130,6 @@ function clearTimerState() {
   try { localStorage.removeItem(LS_KEY + '_timer'); } catch(_) {}
 }
 
-// Recover timer on page load (handles screen-off scenario)
 function recoverTimer() {
   var saved = loadTimerState();
   if (!saved || !saved.running || !saved.startedAt) return;
@@ -168,10 +209,9 @@ function startTimer() {
   timer.running = true;
   timer.startedAt = new Date().toISOString();
   timer.startedRemaining = timer.remaining;
-  saveTimerState();
-  startInterval();
-  if (timerWorker) { timerWorker.postMessage({ type: 'start', startTime: Date.now(), duration: timer.remaining }); }
-  updateTimerUI();acquireWakeLock();
+  saveTimerState(); startInterval();
+  if (timerWorker) timerWorker.postMessage({ type: 'start', startTime: Date.now(), duration: timer.remaining });
+  updateTimerUI(); acquireWakeLock();
 }
 
 function pauseTimer() {
@@ -210,7 +250,7 @@ function onTimerComplete() {
     var names = {work: '专注完成', shortBreak: '短休息结束', longBreak: '长休息结束'};
     notify('🍅 ' + names[timer.mode], timer.mode === 'work' ? '休息一下吧' : '开始专注吧');
   }
-  clearTimerState();releaseWakeLock();
+  clearTimerState(); releaseWakeLock();
   if (timer.mode === 'work') {
     timer.cycleCount++; S.sessions.push(session); saveState(); showCompleteModal(session);
   } else {
@@ -261,32 +301,46 @@ function skipTimer() {
 }
 
 // ==================== TASKS ====================
-function addTask(title) {
+function addTask(title, opts) {
   var tags = []; var priority = 4; var isToday = false;
   title = title.replace(/!([1-4])/g, function(_, p) { priority = parseInt(p); return ''; });
   title = title.replace(/#(\S+)/g, function(_, t) { tags.push(t); return ''; });
   title = title.replace(/@today/gi, function() { isToday = true; return ''; });
   title = title.trim(); if (!title) return;
+  // Merge opts from quick input bar
+  if (opts) {
+    if (opts.priority && opts.priority >= 1 && opts.priority <= 4) priority = opts.priority;
+    if (opts.tags && opts.tags.length) tags = tags.concat(opts.tags);
+    if (opts.today) isToday = true;
+  }
+  var area = (opts && opts.area) ? opts.area : (isToday ? 'next' : 'inbox');
+  var dueDate = (opts && opts.dueDate) ? opts.dueDate : '';
+  var projectId = (opts && opts.projectId) ? opts.projectId : '';
+  var estimatedPomodoros = (opts && opts.estimatedPomodoros) ? opts.estimatedPomodoros : 0;
   var task = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title: title, tags: tags, priority: priority, today: isToday,
     completed: false, pinned: false, pomodorosCompleted: 0,
     createdAt: new Date().toISOString(),
-        area: isToday?'next':'inbox', dueDate:'', projectId:'', notes:''
+    area: area, dueDate: dueDate, projectId: projectId,
+    notes: '', estimatedPomodoros: estimatedPomodoros
   };
-  S.tasks.unshift(task); saveState(); renderTasks(); return task;
+  S.tasks.unshift(task); saveState(); renderTasks(); updateGtdCounts(); return task;
 }
 
 function toggleTask(id) {
   var t = S.tasks.find(function(x) { return x.id === id; });
-  if (!t) return; t.completed = !t.completed; saveState(); renderTasks();
+  if (!t) return; t.completed = !t.completed;
+  if (t.completed) t.area = 'archive';
+  saveState(); renderTasks(); updateGtdCounts();
 }
 function pinTask(id) {
   var t = S.tasks.find(function(x) { return x.id === id; });
   if (!t) return; t.pinned = !t.pinned; saveState(); renderTasks();
 }
 function deleteTask(id) {
-  S.tasks = S.tasks.filter(function(x) { return x.id !== id; }); saveState(); renderTasks();
+  S.tasks = S.tasks.filter(function(x) { return x.id !== id; });
+  saveState(); renderTasks(); updateGtdCounts();
 }
 function selectTask(id) {
   var el = document.querySelector('.task-item.active-task');
@@ -300,13 +354,12 @@ function cyclePriority(id) {
   saveState(); renderTasks();
 }
 
-
-// ==================== TASK EXTENSIONS ====================
 function updateTask(id, updates) {
   var t = S.tasks.find(function(x) { return x.id === id; });
   if (!t) return;
   Object.keys(updates).forEach(function(k) { t[k] = updates[k]; });
-  saveState(); renderTasks();
+  if (t.today && t.area === 'inbox') t.area = 'next';
+  saveState(); renderTasks(); updateGtdCounts();
 }
 
 // ==================== PROJECTS ====================
@@ -321,7 +374,7 @@ function deleteProject(id) {
   saveState(); renderProjectList(); renderProjectSelects();
 }
 function renderProjectSelects() {
-  var opts = '<option value="">\u65e0\u9879\u76ee</option>' + S.projects.map(function(p) {
+  var opts = '<option value="">无项目</option>' + S.projects.map(function(p) {
     return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
   }).join('');
   var s1 = document.getElementById('qi-project'); var s2 = document.getElementById('det-project');
@@ -330,9 +383,9 @@ function renderProjectSelects() {
 function renderProjectList() {
   var el = document.getElementById('project-list');
   if (!el) return;
-  if (S.projects.length === 0) { el.innerHTML = '<span style="font-size:.78rem;color:var(--c-text2)">\u6682\u65e0\u9879\u76ee</span>'; return; }
+  if (S.projects.length === 0) { el.innerHTML = '<span style="font-size:.78rem;color:var(--c-text2)">暂无项目</span>'; return; }
   el.innerHTML = S.projects.map(function(p) {
-    return '<div class="project-item"><span class="project-color" style="background:' + p.color + '"></span><span class="project-name">' + esc(p.name) + '</span><span class="project-del" data-del-project="' + p.id + '">\u2715</span></div>';
+    return '<div class="project-item"><span class="project-color" style="background:' + p.color + '"></span><span class="project-name">' + esc(p.name) + '</span><span class="project-del" data-del-project="' + p.id + '">✕</span></div>';
   }).join('');
 }
 
@@ -346,168 +399,246 @@ function getOverdueTasks() {
   return S.tasks.filter(function(t) { return !t.completed && t.dueDate && t.dueDate < today; });
 }
 
-// ==================== DETAIL PANEL ====================
+function updateGtdCounts() {
+  var c = {inbox:0, next:0, projects:0, someday:0, archive:0};
+  S.tasks.forEach(function(t) {
+    if (t.completed || t.area === 'archive') c.archive++;
+    else if (t.area === 'inbox') c.inbox++;
+    else if (t.area === 'next' || t.today) c.next++;
+    else if (t.projectId) c.projects++;
+    else if (t.area === 'someday') c.someday++;
+    else c.inbox++;
+  });
+  var el = function(id) { return document.getElementById(id); };
+  if (el('cnt-inbox')) el('cnt-inbox').textContent = c.inbox;
+  if (el('cnt-next')) el('cnt-next').textContent = c.next;
+  if (el('cnt-project')) el('cnt-project').textContent = c.projects;
+  if (el('cnt-someday')) el('cnt-someday').textContent = c.someday;
+  if (el('cnt-archive')) el('cnt-archive').textContent = c.archive;
+}
+
+// ==================== DETAIL PANEL (V3: uses det-* IDs) ====================
 function openDetail(taskId) {
   var t = S.tasks.find(function(x) { return x.id === taskId; });
   if (!t) return; detailTaskId = taskId;
-  document.getElementById('det-title').value = t.title || '';
-  document.getElementById('det-due').value = t.dueDate || '';
-  document.getElementById('det-area').value = t.area || 'inbox';
-  document.getElementById('det-notes').value = t.notes || '';
-  document.getElementById('det-estpomo').value = t.estimatedPomodoros || 0;
-  document.getElementById('det-pomo-count').textContent = t.pomodorosCompleted || 0;
-  document.getElementById('det-created').textContent = t.createdAt ? new Date(t.createdAt).toLocaleString('zh-CN') : '';
+  var el = function(id) { return document.getElementById(id); };
+  if (el('det-title')) el('det-title').value = t.title || '';
+  if (el('det-due')) el('det-due').value = t.dueDate || '';
+  if (el('det-area')) el('det-area').value = t.area || 'inbox';
+  if (el('det-notes')) el('det-notes').value = t.notes || '';
+  if (el('det-estpomo')) el('det-estpomo').value = t.estimatedPomodoros || 0;
+  if (el('det-pomo-count')) el('det-pomo-count').textContent = t.pomodorosCompleted || 0;
+  if (el('det-created')) el('det-created').textContent = t.createdAt ? new Date(t.createdAt).toLocaleString('zh-CN') : '';
   document.querySelectorAll('#det-prio-group .prio-btn').forEach(function(btn) {
     btn.classList.toggle('active', parseInt(btn.dataset.prio) === (t.priority || 4));
   });
   renderDetailTags(t.tags || []);
   renderProjectSelects();
-  var projSel = document.getElementById('det-project');
+  var projSel = el('det-project');
   if (projSel) projSel.value = t.projectId || '';
-  document.getElementById('detail-overlay').removeAttribute('hidden');
-  var panel = document.getElementById('detail-panel');
+  var ov = el('detail-overlay');
+  if (ov) ov.removeAttribute('hidden');
+  var panel = el('detail-panel');
   panel.removeAttribute('hidden');
   setTimeout(function() { panel.classList.add('open'); }, 10);
 }
 function closeDetail() {
   var panel = document.getElementById('detail-panel');
   panel.classList.remove('open');
-  setTimeout(function() { panel.setAttribute('hidden', ''); document.getElementById('detail-overlay').setAttribute('hidden', ''); }, 300);
+  setTimeout(function() {
+    panel.setAttribute('hidden', '');
+    var ov = document.getElementById('detail-overlay');
+    if (ov) ov.setAttribute('hidden', '');
+  }, 300);
   detailTaskId = null;
 }
 function saveDetail() {
   if (!detailTaskId) return;
   var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
   if (!t) return;
-  t.title = document.getElementById('det-title').value.trim() || t.title;
-  t.dueDate = document.getElementById('det-due').value || '';
-  t.area = document.getElementById('det-area').value || 'inbox';
-  t.projectId = document.getElementById('det-project').value || '';
-  t.notes = document.getElementById('det-notes').value || '';
-  t.estimatedPomodoros = parseInt(document.getElementById('det-estpomo').value) || 0;
+  var el = function(id) { return document.getElementById(id); };
+  t.title = (el('det-title') ? el('det-title').value.trim() : '') || t.title;
+  t.dueDate = el('det-due') ? el('det-due').value : '';
+  t.area = el('det-area') ? el('det-area').value : 'inbox';
+  t.projectId = el('det-project') ? el('det-project').value : '';
+  t.notes = el('det-notes') ? el('det-notes').value : '';
+  t.estimatedPomodoros = parseInt(el('det-estpomo') ? el('det-estpomo').value : 0) || 0;
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
   if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
+  // Handle tags from detail tag chips
+  var tagChips = document.querySelectorAll('#det-tags .det-tag-chip');
+  t.tags = []; tagChips.forEach(function(chip) {
+    var tag = chip.dataset.removeTag;
+    if (tag) t.tags.push(tag);
+  });
+  // Handle tag input
+  var tagInput = el('det-tag-input');
+  if (tagInput && tagInput.value.trim()) {
+    t.tags = t.tags.concat(tagInput.value.trim().split(/[\s,]+/).filter(Boolean));
+  }
   if (t.dueDate && t.area === 'inbox') t.area = 'next';
   if (t.area === 'next') t.today = true;
-  saveState(); renderTasks(); closeDetail();
-  toast('\u4efb\u52a1\u5df2\u4fdd\u5b58');
+  saveState(); renderTasks(); updateGtdCounts(); closeDetail();
+  toast('任务已保存');
 }
 function renderDetailTags(tags) {
-  document.getElementById('det-tags').innerHTML = tags.map(function(tag) {
-    return '<span class="det-tag-chip" data-remove-tag="' + esc(tag) + '">#' + esc(tag) + ' \u2715</span>';
+  var el = document.getElementById('det-tags');
+  if (!el) return;
+  el.innerHTML = tags.map(function(tag) {
+    return '<span class="det-tag-chip" data-remove-tag="' + esc(tag) + '">#' + esc(tag) + ' ✕</span>';
   }).join('');
 }
 
-// ==================== CALENDAR ====================
-function initCalendar() {
-  var now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth(); calSelectedDate = '';
-  renderCalendar();
-}
+// ==================== CALENDAR (uses currentCalYear/currentCalMonth/selectedCalDate) ====================
 function renderCalendar() {
-  var mNames = ['1\u6708','2\u6708','3\u6708','4\u6708','5\u6708','6\u6708','7\u6708','8\u6708','9\u6708','10\u6708','11\u6708','12\u6708'];
-  document.getElementById('cal-month').textContent = calYear + '\u5e74 ' + mNames[calMonth];
-  var firstDay = new Date(calYear, calMonth, 1).getDay();
-  var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  var daysInPrev = new Date(calYear, calMonth, 0).getDate();
+  var y = currentCalYear, m = currentCalMonth;
+  var mNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  var monthEl = document.getElementById('cal-month');
+  if (monthEl) monthEl.textContent = y + '年 ' + mNames[m];
+  var firstDay = new Date(y, m, 1).getDay();
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var daysInPrev = new Date(y, m, 0).getDate();
   var today = new Date().toISOString().slice(0, 10);
   var taskMap = {};
   S.tasks.forEach(function(t) { if (t.dueDate) taskMap[t.dueDate] = (taskMap[t.dueDate] || 0) + 1; });
   var html = '';
   for (var i = firstDay - 1; i >= 0; i--) html += '<div class="cal-day other-month">' + (daysInPrev - i) + '</div>';
   for (var day = 1; day <= daysInMonth; day++) {
-    var ds = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    var ds = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
     var cls = 'cal-day';
     if (ds === today) cls += ' today';
-    if (ds === calSelectedDate) cls += ' selected';
+    if (ds === selectedCalDate) cls += ' selected';
     if (taskMap[ds]) cls += ' has-task';
     html += '<div class="' + cls + '" data-date="' + ds + '">' + day + '</div>';
   }
   var totalCells = firstDay + daysInMonth;
   var rem = (7 - (totalCells % 7)) % 7;
   for (var j = 1; j <= rem; j++) html += '<div class="cal-day other-month">' + j + '</div>';
-  document.getElementById('cal-grid').innerHTML = html;
+  var grid = document.getElementById('cal-grid');
+  if (grid) grid.innerHTML = html;
   renderCalendarDayTasks();
 }
 function renderCalendarDayTasks() {
   var dp = document.getElementById('cal-day-tasks');
-  if (!calSelectedDate) { dp.setAttribute('hidden', ''); return; }
+  if (!dp) return;
+  if (!selectedCalDate) { dp.setAttribute('hidden', ''); return; }
   dp.removeAttribute('hidden');
-  document.getElementById('cal-day-title').textContent = calSelectedDate.replace(/-/g, '/') + ' \u7684\u4efb\u52a1';
+  var titleEl = document.getElementById('cal-day-title');
+  if (titleEl) titleEl.textContent = selectedCalDate.replace(/-/g, '/') + ' 的任务';
   var dayTasks = S.tasks.filter(function(t) {
-    return t.dueDate === calSelectedDate || (t.today && calSelectedDate === new Date().toISOString().slice(0, 10) && !t.completed);
+    return t.dueDate === selectedCalDate || (t.today && selectedCalDate === new Date().toISOString().slice(0, 10) && !t.completed);
   });
   var le = document.getElementById('cal-task-list');
-  if (dayTasks.length === 0) { le.innerHTML = '<li style="font-size:.82rem;color:var(--c-text2)">\u8be5\u65e5\u65e0\u4efb\u52a1</li>'; return; }
+  if (!le) return;
+  if (dayTasks.length === 0) { le.innerHTML = '<li style="font-size:.82rem;color:var(--c-text2)">该日无任务</li>'; return; }
   le.innerHTML = dayTasks.map(function(t) {
-    var p = t.priority || 4; var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
+    var p = t.priority || 4;
+    var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
     return '<li class="cal-task-item" data-cal-task="' + t.id + '"><span style="width:8px;height:8px;border-radius:50%;background:' + pC[p] + ';flex-shrink:0"></span>' + (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</li>';
   }).join('');
 }
-function selectCalDate(dateStr) { calSelectedDate = (calSelectedDate === dateStr) ? '' : dateStr; renderCalendar(); }
+function selectCalDate(dateStr) {
+  selectedCalDate = (selectedCalDate === dateStr) ? '' : dateStr;
+  renderCalendar();
+}
 
 // ==================== QUICK INPUT ====================
 function toggleQuickInput() {
   quickInputVisible = !quickInputVisible;
-  var bar = document.getElementById('quick-input-bar'), btn = document.getElementById('task-input-more');
+  var bar = document.getElementById('quick-input-bar');
+  var btn = document.getElementById('task-input-more');
   if (quickInputVisible) { bar.removeAttribute('hidden'); btn.classList.add('active'); }
   else { bar.setAttribute('hidden', ''); btn.classList.remove('active'); }
 }
 function renderQITags() {
-  document.getElementById('qi-tags').innerHTML = quickInputTags.map(function(tag) {
+  var el = document.getElementById('qi-tags');
+  if (el) el.innerHTML = quickInputTags.map(function(tag) {
     return '<span class="qi-tag" data-qi-remove-tag="' + esc(tag) + '">#' + esc(tag) + '</span>';
   }).join('');
 }
 function addTaskFromInput() {
-  var input = document.getElementById('task-input'), title = input.value.trim();
+  var input = document.getElementById('task-input');
+  var title = input.value.trim();
   if (!title) return;
-  var opts = {priority: quickInputPrio, tags: quickInputTags.slice(), today: false,
-    dueDate: document.getElementById('qi-date').value || '',
-    area: document.getElementById('qi-area').value || 'inbox',
-    projectId: document.getElementById('qi-project').value || '', estimatedPomodoros: 0};
-  if (document.getElementById('qi-today-btn').classList.contains('active')) opts.today = true;
+  var opts = {
+    priority: quickInputPrio, tags: quickInputTags.slice(), today: false,
+    dueDate: document.getElementById('qi-date') ? document.getElementById('qi-date').value : '',
+    area: document.getElementById('qi-area') ? document.getElementById('qi-area').value : 'inbox',
+    projectId: document.getElementById('qi-project') ? document.getElementById('qi-project').value : '',
+    estimatedPomodoros: 0
+  };
+  var todayBtn = document.getElementById('qi-today-btn');
+  if (todayBtn && todayBtn.classList.contains('active')) opts.today = true;
   addTask(title, opts); input.value = '';
   quickInputPrio = 4; quickInputTags = [];
   document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) { b.classList.toggle('active', parseInt(b.dataset.prio) === 4); });
-  renderQITags(); document.getElementById('qi-date').value = '';
-  document.getElementById('qi-today-btn').classList.remove('active');
-  toast('\u571f\u8c46\u5df2\u6dfb\u52a0');
+  renderQITags();
+  if (document.getElementById('qi-date')) document.getElementById('qi-date').value = '';
+  if (todayBtn) todayBtn.classList.remove('active');
+  toast('土豆已添加');
 }
+
 // ==================== RENDER ====================
 function updateTimerUI() {
   var total = getModeDuration(timer.mode) * 60;
   var pct = total > 0 ? timer.remaining / total : 1;
   var ring = document.querySelector('.ring-fill');
-  ring.style.strokeDasharray = CIRC;
-  ring.style.strokeDashoffset = CIRC * (1 - pct);
-  ring.className = 'ring-fill' + (timer.mode === 'shortBreak' ? ' short' : '') + (timer.mode === 'longBreak' ? ' long' : '');
+  if (ring) {
+    ring.style.strokeDasharray = CIRC;
+    ring.style.strokeDashoffset = CIRC * (1 - pct);
+    ring.className = 'ring-fill' + (timer.mode === 'shortBreak' ? ' short' : '') + (timer.mode === 'longBreak' ? ' long' : '');
+  }
   var digits = document.querySelector('.timer-digits');
-  digits.textContent = fmtTime(timer.remaining);
-  digits.className = 'timer-digits' + (timer.mode === 'shortBreak' ? ' short' : '') + (timer.mode === 'longBreak' ? ' long' : '');
+  if (digits) {
+    digits.textContent = fmtTime(timer.remaining);
+    digits.className = 'timer-digits' + (timer.mode === 'shortBreak' ? ' short' : '') + (timer.mode === 'longBreak' ? ' long' : '');
+  }
   var btn = document.getElementById('btn-start');
-  btn.textContent = timer.running ? '⏸ 暂停' : (timer.remaining < total ? '▶ 继续' : '▶ 开始专注');
-  btn.classList.toggle('running', timer.running);
-  document.querySelector('.timer-cycle').textContent = '#' + (timer.cycleCount + 1);
+  if (btn) {
+    btn.textContent = timer.running ? '⏸ 暂停' : (timer.remaining < total ? '▶ 继续' : '▶ 开始专注');
+    btn.classList.toggle('running', timer.running);
+  }
+  var cycleEl = document.querySelector('.timer-cycle');
+  if (cycleEl) cycleEl.textContent = '#' + (timer.cycleCount + 1);
   var label = document.getElementById('timer-active-task');
-  if (timer.taskId) {
-    var t = S.tasks.find(function(x) { return x.id === timer.taskId; });
-    label.textContent = t ? '🍅 ' + t.title : '';
-  } else { label.textContent = ''; }
+  if (label) {
+    if (timer.taskId) {
+      var t = S.tasks.find(function(x) { return x.id === timer.taskId; });
+      label.textContent = t ? '🍅 ' + t.title : '';
+    } else { label.textContent = ''; }
+  }
   document.title = timer.running ? fmtTime(timer.remaining) + ' - Pomotodo' : 'Pomotodo';
 }
 
 function renderTasks() {
-  var filter = currentFilter; var tasks = S.tasks.slice();
+  var filter = currentFilter;
+  var area = currentArea;
+  var tasks = S.tasks.slice();
+  // Filter by GTD area first
+  if (area && area !== 'all') {
+    tasks = tasks.filter(function(t) {
+      if (area === 'inbox') return t.area === 'inbox' && !t.completed;
+      if (area === 'next') return (t.area === 'next' || t.today) && !t.completed;
+      if (area === 'projects') return !!t.projectId && !t.completed;
+      if (area === 'someday') return t.area === 'someday' && !t.completed;
+      if (area === 'archive') return t.completed || t.area === 'archive';
+      return true;
+    });
+  }
+  // Then apply status filter
+  if (filter === 'active') tasks = tasks.filter(function(t) { return !t.completed; });
+  else if (filter === 'completed') tasks = tasks.filter(function(t) { return t.completed; });
+  else if (filter === 'today') tasks = tasks.filter(function(t) { return t.today && !t.completed; });
+  else if (filter === 'overdue') tasks = getOverdueTasks();
+  // Sort
   tasks.sort(function(a, b) {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    if (a.priority !== b.priority) return a.priority - b.priority;
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    if (a.priority !== b.priority) return a.priority - b.priority;
     return 0;
   });
-  if (filter === 'active') tasks = tasks.filter(function(t) { return !t.completed; });
-  if (filter === 'completed') tasks = tasks.filter(function(t) { return t.completed; });
-  if (filter === 'today') tasks = tasks.filter(function(t) { return t.today && !t.completed; });
-  if (filter === 'overdue') tasks = getOverdueTasks();
   var list = document.getElementById('task-list');
+  if (!list) return;
   if (tasks.length === 0) {
     list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>输入任务 #标签 !1紧急 @today</small></div>';
     return;
@@ -518,7 +649,18 @@ function renderTasks() {
     var p = t.priority || 4;
     var tagHtml = (t.tags || []).map(function(tag) { return '<span class="task-tag">#' + esc(tag) + '</span>'; }).join(' ');
     var todayBadge = t.today ? '<span class="task-today-badge">今日</span>' : '';
-    return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + '" data-id="' + t.id + '">' +
+    var dueBadge = '';
+    if (t.dueDate) {
+      var today = new Date().toISOString().slice(0, 10);
+      var isOverdue = t.dueDate < today && !t.completed;
+      dueBadge = '<span class="task-due-badge' + (isOverdue ? ' overdue' : '') + '">' + t.dueDate.slice(5) + '</span>';
+    }
+    var projBadge = '';
+    if (t.projectId) {
+      var proj = S.projects.find(function(pr) { return pr.id === t.projectId; });
+      if (proj) projBadge = '<span class="task-area-badge">' + esc(proj.name) + '</span>';
+    }
+    return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + (dueBadge && dueBadge.indexOf('overdue') >= 0 ? ' overdue' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
       '<span class="task-prio-badge p' + p + '" data-act="prio" data-id="' + t.id + '" title="切换优先级">' + prioLabels[p] + '</span>' +
       '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + '</span>' +
@@ -534,8 +676,10 @@ function renderTasks() {
 function updateDoneList() {
   var today = new Date().toISOString().slice(0, 10);
   var todaySessions = S.sessions.filter(function(s) { return s.start && s.start.slice(0, 10) === today; });
-  document.getElementById('done-count').textContent = todaySessions.length;
+  var countEl = document.getElementById('done-count');
+  if (countEl) countEl.textContent = todaySessions.length;
   var list = document.getElementById('done-list');
+  if (!list) return;
   list.innerHTML = todaySessions.slice(-10).reverse().map(function(s) {
     var task = s.taskId ? S.tasks.find(function(t) { return t.id === s.taskId; }) : null;
     var name = task ? esc(task.title) : (s.type === 'work' ? '专注' : '休息');
@@ -548,8 +692,10 @@ function updateDoneList() {
 // ==================== COMPLETE MODAL ====================
 function showCompleteModal(session) {
   var overlay = document.getElementById('modal-complete');
+  if (!overlay) return;
   overlay.removeAttribute('hidden');
-  document.getElementById('modal-sub').textContent = '刚刚完成了 ' + S.settings.workDuration + ' 分钟专注';
+  var subEl = document.getElementById('modal-sub');
+  if (subEl) subEl.textContent = '刚刚完成了 ' + S.settings.workDuration + ' 分钟专注';
   var tasksDiv = document.getElementById('modal-tasks');
   var activeTasks = S.tasks.filter(function(t) { return !t.completed; });
   if (activeTasks.length === 0) {
@@ -565,12 +711,14 @@ function showCompleteModal(session) {
       });
     });
   }
-  document.getElementById('modal-confirm').onclick = function() {
+  var confirmBtn = document.getElementById('modal-confirm');
+  var skipBtn = document.getElementById('modal-skip');
+  confirmBtn.onclick = function() {
     var checked = tasksDiv.querySelectorAll('.modal-task-item.checked');
     var taskId = checked.length > 0 ? checked[0].dataset.id : null;
     overlay.setAttribute('hidden', ''); advanceAfterComplete(taskId);
   };
-  document.getElementById('modal-skip').onclick = function() {
+  skipBtn.onclick = function() {
     overlay.setAttribute('hidden', ''); advanceAfterComplete(null);
   };
 }
@@ -579,14 +727,15 @@ function showCompleteModal(session) {
 function showTimePicker() {
   if (timer.running) return;
   var overlay = document.getElementById('modal-time-picker');
+  if (!overlay) return;
   overlay.removeAttribute('hidden');
   var currentMin = getModeDuration(timer.mode);
   document.querySelectorAll('.time-preset').forEach(function(btn) {
     btn.classList.toggle('active', parseInt(btn.dataset.min) === currentMin);
   });
-  document.getElementById('time-custom-input').value = '';
+  var customInput = document.getElementById('time-custom-input');
+  if (customInput) customInput.value = '';
 }
-
 function applyTimePick(minutes) {
   minutes = Math.max(1, Math.min(90, parseInt(minutes) || getModeDuration(timer.mode)));
   if (timer.mode === 'work') S.settings.workDuration = minutes;
@@ -594,7 +743,8 @@ function applyTimePick(minutes) {
   else S.settings.longBreakDuration = minutes;
   saveState(); timer.remaining = minutes * 60;
   timer.startedAt = null; timer.startedRemaining = null;
-  document.getElementById('modal-time-picker').setAttribute('hidden', '');
+  var overlay = document.getElementById('modal-time-picker');
+  if (overlay) overlay.setAttribute('hidden', '');
   updateTimerUI(); initSettings();
 }
 
@@ -606,9 +756,12 @@ function renderStats() {
   var weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
   var todaySess = S.sessions.filter(function(s) { return s.type === 'work' && s.start && s.start.slice(0, 10) === today; });
   var weekSess = S.sessions.filter(function(s) { return s.type === 'work' && s.start && s.start >= weekAgo; });
-  document.getElementById('s-today-count').textContent = todaySess.length;
-  document.getElementById('s-today-mins').textContent = Math.round(todaySess.reduce(function(a, s) { return a + s.duration; }, 0) / 60) + 'm';
-  document.getElementById('s-week-count').textContent = weekSess.length;
+  var totalSess = S.sessions.filter(function(s) { return s.type === 'work'; });
+  var el = function(id) { return document.getElementById(id); };
+  if (el('s-today-count')) el('s-today-count').textContent = todaySess.length;
+  if (el('s-today-mins')) el('s-today-mins').textContent = Math.round(todaySess.reduce(function(a, s) { return a + s.duration; }, 0) / 60) + 'm';
+  if (el('s-week-count')) el('s-week-count').textContent = weekSess.length;
+  if (el('s-total-count')) el('s-total-count').textContent = totalSess.length;
   renderWeeklyChart(); renderTagBars();
 }
 
@@ -631,6 +784,7 @@ function renderWeeklyChart() {
     weekChart.update(); return;
   }
   var ctx = document.getElementById('chart-weekly');
+  if (!ctx) return;
   var cfg = {}; cfg.type = 'bar'; cfg.data = {}; cfg.data.labels = labels;
   cfg.data.datasets = [{}];
   cfg.data.datasets[0].label = '番茄数';
@@ -658,9 +812,8 @@ function renderTagBars() {
   var max = entries.length > 0 ? entries[0][1] : 1;
   var colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6'];
   var container = document.getElementById('tag-bars');
-  if (entries.length === 0) {
-    container.innerHTML = '<p style="font-size:.8rem;color:var(--c-text2)">暂无标签数据</p>'; return;
-  }
+  if (!container) return;
+  if (entries.length === 0) { container.innerHTML = '<p style="font-size:.8rem;color:var(--c-text2)">暂无标签数据</p>'; return; }
   container.innerHTML = entries.map(function(pair, i) {
     var name = pair[0], count = pair[1];
     return '<div class="tag-bar-row"><span class="tag-bar-name">' + esc(name) + '</span>' +
@@ -672,35 +825,34 @@ function renderTagBars() {
 // ==================== SETTINGS ====================
 function initSettings() {
   var s = S.settings;
-  document.getElementById('opt-work').value = s.workDuration;
-  document.getElementById('opt-short').value = s.shortBreakDuration;
-  document.getElementById('opt-long').value = s.longBreakDuration;
-  document.getElementById('opt-interval').value = s.longBreakInterval;
-  document.getElementById('opt-auto-break').checked = s.autoStartBreak;
-  document.getElementById('opt-auto-work').checked = s.autoStartWork;
-  document.getElementById('opt-sound').checked = s.soundEnabled;
-  document.getElementById('opt-volume').value = s.soundVolume;
-  document.getElementById('range-val').textContent = Math.round(s.soundVolume * 100) + '%';
-  document.getElementById('opt-notify').checked = s.notificationsEnabled;
-  var wl=document.getElementById('opt-wakelock');if(wl)wl.checked=s.wakeLockEnabled||false;
+  var el = function(id) { return document.getElementById(id); };
+  if (el('opt-work')) el('opt-work').value = s.workDuration;
+  if (el('opt-short')) el('opt-short').value = s.shortBreakDuration;
+  if (el('opt-long')) el('opt-long').value = s.longBreakDuration;
+  if (el('opt-interval')) el('opt-interval').value = s.longBreakInterval;
+  if (el('opt-auto-break')) el('opt-auto-break').checked = s.autoStartBreak;
+  if (el('opt-auto-work')) el('opt-auto-work').checked = s.autoStartWork;
+  if (el('opt-sound')) el('opt-sound').checked = s.soundEnabled;
+  if (el('opt-volume')) el('opt-volume').value = s.soundVolume;
+  if (el('range-val')) el('range-val').textContent = Math.round(s.soundVolume * 100) + '%';
+  if (el('opt-notify')) el('opt-notify').checked = s.notificationsEnabled;
+  if (el('opt-wakelock')) el('opt-wakelock').checked = s.wakeLockEnabled || false;
   applyTheme(s.theme);
-  renderProjectList();
-  renderProjectSelects();
-  var wlEl = document.getElementById('opt-wakelock');
-  if (wlEl) wlEl.checked = s.wakeLockEnabled;
+  renderProjectList(); renderProjectSelects();
 }
 
 function readSettings() {
-  S.settings.workDuration = Math.max(1, parseInt(document.getElementById('opt-work').value) || 25);
-  S.settings.shortBreakDuration = Math.max(1, parseInt(document.getElementById('opt-short').value) || 5);
-  S.settings.longBreakDuration = Math.max(1, parseInt(document.getElementById('opt-long').value) || 15);
-  S.settings.longBreakInterval = Math.max(2, parseInt(document.getElementById('opt-interval').value) || 4);
-  S.settings.autoStartBreak = document.getElementById('opt-auto-break').checked;
-  S.settings.autoStartWork = document.getElementById('opt-auto-work').checked;
-  S.settings.soundEnabled = document.getElementById('opt-sound').checked;
-  S.settings.soundVolume = parseFloat(document.getElementById('opt-volume').value);
-  S.settings.notificationsEnabled = document.getElementById('opt-notify').checked;
-  var wlEl = document.getElementById('opt-wakelock');
+  var el = function(id) { return document.getElementById(id); };
+  S.settings.workDuration = Math.max(1, parseInt(el('opt-work') ? el('opt-work').value : 25) || 25);
+  S.settings.shortBreakDuration = Math.max(1, parseInt(el('opt-short') ? el('opt-short').value : 5) || 5);
+  S.settings.longBreakDuration = Math.max(1, parseInt(el('opt-long') ? el('opt-long').value : 15) || 15);
+  S.settings.longBreakInterval = Math.max(2, parseInt(el('opt-interval') ? el('opt-interval').value : 4) || 4);
+  S.settings.autoStartBreak = el('opt-auto-break') ? el('opt-auto-break').checked : true;
+  S.settings.autoStartWork = el('opt-auto-work') ? el('opt-auto-work').checked : false;
+  S.settings.soundEnabled = el('opt-sound') ? el('opt-sound').checked : true;
+  S.settings.soundVolume = parseFloat(el('opt-volume') ? el('opt-volume').value : 0.7);
+  S.settings.notificationsEnabled = el('opt-notify') ? el('opt-notify').checked : false;
+  var wlEl = el('opt-wakelock');
   if (wlEl) S.settings.wakeLockEnabled = wlEl.checked;
   saveState(); if (!timer.running) timer.remaining = getModeDuration(timer.mode) * 60; updateTimerUI();
 }
@@ -718,6 +870,7 @@ function fmtTime(sec) {
 function esc(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 function toast(msg) {
   var wrap = document.getElementById('toast-wrap');
+  if (!wrap) return;
   var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   wrap.appendChild(t); setTimeout(function() { t.remove(); }, 3000);
 }
@@ -729,7 +882,6 @@ function exportData() {
   a.download = 'pomotodo-backup-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click(); URL.revokeObjectURL(a.href); toast('数据已导出');
 }
-
 function importData(file) {
   var reader = new FileReader();
   reader.onload = function(e) {
@@ -741,7 +893,7 @@ function importData(file) {
       if (Array.isArray(d.projects)) S.projects = d.projects;
       S.tasks.forEach(function(t) { if (!t.priority) t.priority = 4; if (t.today === undefined) t.today = false; });
       saveState(); toast('数据已导入');
-      initSettings(); renderTasks(); updateTimerUI(); updateDoneList();
+      initSettings(); renderTasks(); updateTimerUI(); updateDoneList(); updateGtdCounts();
     } catch(err) { toast('导入失败: ' + err.message); }
   }; reader.readAsText(file);
 }
@@ -756,42 +908,32 @@ var onboardSteps = [
 var onboardStep = 0;
 
 function showOnboarding() {
-  var overlay = document.getElementById('onboarding'); overlay.removeAttribute('hidden');
+  var overlay = document.getElementById('onboarding');
+  if (overlay) overlay.removeAttribute('hidden');
   renderOnboardStep();
 }
-
 function renderOnboardStep() {
   var step = onboardSteps[onboardStep];
   var body = document.getElementById('onboarding-body');
-  body.innerHTML = '<span class="ob-emoji">' + step.emoji + '</span><h3>' + step.title + '</h3><p>' + step.text + '</p>';
+  if (body) body.innerHTML = '<span class="ob-emoji">' + step.emoji + '</span><h3>' + step.title + '</h3><p>' + step.text + '</p>';
   var dots = document.getElementById('onboarding-dots');
-  dots.innerHTML = onboardSteps.map(function(_, i) {
+  if (dots) dots.innerHTML = onboardSteps.map(function(_, i) {
     return '<span class="onboarding-dot' + (i === onboardStep ? ' active' : '') + '"></span>';
   }).join('');
-  document.getElementById('onboarding-next').textContent = onboardStep === onboardSteps.length - 1 ? '开始使用' : '下一步';
+  var nextBtn = document.getElementById('onboarding-next');
+  if (nextBtn) nextBtn.textContent = onboardStep === onboardSteps.length - 1 ? '开始使用' : '下一步';
 }
-
 function closeOnboarding() {
-  document.getElementById('onboarding').setAttribute('hidden', '');
+  var overlay = document.getElementById('onboarding');
+  if (overlay) overlay.setAttribute('hidden', '');
   try { localStorage.setItem(ONBOARD_KEY, '1'); } catch(_) {}
 }
 
-function updateGtdCounts(){var c={inbox:0,next:0,project:0,someday:0,archive:0};S.tasks.forEach(function(t){if(t.completed||t.area==='archive')c.archive++;else if(t.area==='inbox')c.inbox++;else if(t.area==='next'||t.today)c.next++;else if(t.projectId)c.project++;else if(t.area==='someday')c.someday++;else c.inbox++;});var el=function(id){return document.getElementById(id);};if(el('cnt-inbox'))el('cnt-inbox').textContent=c.inbox;if(el('cnt-next'))el('cnt-next').textContent=c.next;if(el('cnt-project'))el('cnt-project').textContent=c.project;if(el('cnt-someday'))el('cnt-someday').textContent=c.someday;if(el('cnt-archive'))el('cnt-archive').textContent=c.archive;}
-
-function renderCalendar(){var y=currentCalYear,m=currentCalMonth;var te=document.getElementById('cal-title');if(te)te.textContent=y+'年'+(m+1)+'月';var f=new Date(y,m,1),l=new Date(y,m+1,0);var sd=f.getDay(),dl=l.getDate();var pl=new Date(y,m,0).getDate();var ts=new Date().toISOString().slice(0,10);var td={};S.tasks.forEach(function(t){if(t.dueDate){if(!td[t.dueDate])td[t.dueDate]=[];td[t.dueDate].push(t);}if(t.today&&!t.completed){if(!td[ts])td[ts]=[];if(!td[ts].find(function(x){return x.id===t.id;}))td[ts].push(t);}});var h='';for(var i=sd-1;i>=0;i--)h+='<div class="cal-cell other">'+(pl-i)+'</div>';for(var d=1;d<=dl;d++){var ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');h+='<div class="cal-cell'+(ds===ts?' today':'')+(td[ds]?' has-task':'')+(selectedCalDate===ds?' selected':'')+'" data-date="'+ds+'">'+d+'</div>';}var tc=sd+dl,rm=(7-tc%7)%7;for(var r=1;r<=rm;r++)h+='<div class="cal-cell other">'+r+'</div>';var g=document.getElementById('cal-grid');if(g)g.innerHTML=h;}
-function showCalDayDetail(ds){selectedCalDate=ds;renderCalendar();var tasks=S.tasks.filter(function(t){if(t.dueDate===ds)return true;var ts=new Date().toISOString().slice(0,10);if(ds===ts&&t.today&&!t.completed)return true;return false;});var dt=document.getElementById('cal-day-detail');if(dt)dt.removeAttribute('hidden');var de=document.getElementById('cal-detail-date');if(de)de.textContent=ds;var le=document.getElementById('cal-task-list');if(!le)return;if(!tasks.length){le.innerHTML='<li style="font-size:.82rem;color:var(--c-text2)">该日无任务</li>';}else{le.innerHTML=tasks.map(function(t){var p=t.priority||4;var em={1:'🔴',2:'🟠',3:'🟡',4:'⚪'};return '<li class="cal-task-item" data-id="'+t.id+'">'+em[p]+' '+esc(t.title)+'</li>';}).join('');}}
-
-function showDetail(tid){var t=S.tasks.find(function(x){return x.id===tid;});if(!t)return;detailTaskId=tid;var el=function(id){return document.getElementById(id);};if(el('detail-title'))el('detail-title').value=t.title;if(el('detail-tags'))el('detail-tags').value=(t.tags||[]).join(' ');if(el('detail-due'))el('detail-due').value=t.dueDate||'';if(el('detail-area'))el('detail-area').value=t.area||'inbox';if(el('detail-today'))el('detail-today').checked=t.today||false;if(el('detail-notes'))el('detail-notes').value=t.notes||'';document.querySelectorAll('#detail-prio-bar .dp-btn').forEach(function(b){b.classList.toggle('active',parseInt(b.dataset.p)===(t.priority||4));});var ps=el('detail-project');if(ps)ps.innerHTML='<option value="">-- 无 --</option>'+(S.projects||[]).map(function(p){return '<option value="'+p.id+'"'+(t.projectId===p.id?' selected':'')+'>'+esc(p.name)+'</option>';}).join('');var ov=el('detail-overlay');if(ov)ov.removeAttribute('hidden');}
-function closeDetail(){var ov=document.getElementById('detail-overlay');if(ov)ov.setAttribute('hidden','');detailTaskId=null;}
-function saveDetail(){if(!detailTaskId)return;var el=function(id){return document.getElementById(id);};var ts=el('detail-tags')?el('detail-tags').value.trim():'';var tg=ts?ts.split(/[\s,]+/).filter(Boolean):[];var ap=document.querySelector('#detail-prio-bar .dp-btn.active');updateTask(detailTaskId,{title:el('detail-title')?el('detail-title').value.trim():'',tags:tg,priority:ap?parseInt(ap.dataset.p):4,dueDate:el('detail-due')?el('detail-due').value:'',area:el('detail-area')?el('detail-area').value:'inbox',projectId:el('detail-project')?el('detail-project').value:'',today:el('detail-today')?el('detail-today').checked:false,notes:el('detail-notes')?el('detail-notes').value:''});closeDetail();toast('任务已更新');}
-function updateTask(id,up){var t=S.tasks.find(function(x){return x.id===id;});if(!t)return;Object.keys(up).forEach(function(k){t[k]=up[k];});if(t.today&&t.area==='inbox')t.area='next';saveState();renderTasks();updateGtdCounts();}
-
 // ==================== INIT & EVENTS ====================
-var currentFilter = 'all';
-
 document.addEventListener('DOMContentLoaded', function() {
-  migrateFromV2();initSettings(); updateTimerUI(); renderTasks(); updateDoneList();updateGtdCounts();renderCalendar();
+  migrateFromV2(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); renderCalendar();
   recoverTimer();
+
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && timer.running && timer.startedAt) {
       var elapsed = (Date.now() - new Date(timer.startedAt).getTime()) / 1000;
@@ -800,15 +942,25 @@ document.addEventListener('DOMContentLoaded', function() {
       if (timer.remaining <= 0) { timer.running = false; onTimerComplete(); }
     }
   });
+
+  // Onboarding
   var onboarded = false;
   try { onboarded = localStorage.getItem(ONBOARD_KEY) === '1'; } catch(_) {}
   if (!onboarded) setTimeout(showOnboarding, 600);
+
+  // Service Worker
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(function() {}); }
+
+  // Notification permission
   if (S.settings.notificationsEnabled && 'Notification' in window && Notification.permission === 'default') { Notification.requestPermission(); }
+
+  // ---- Timer buttons ----
   document.getElementById('btn-start').addEventListener('click', function() { timer.running ? pauseTimer() : startTimer(); });
   document.getElementById('btn-reset').addEventListener('click', resetTimer);
   document.getElementById('btn-skip').addEventListener('click', skipTimer);
-  document.getElementById('timer-ring-wrap').addEventListener('click', function(e) { if (timer.running) return; showTimePicker(); });
+  document.getElementById('timer-ring-wrap').addEventListener('click', function() { if (timer.running) return; showTimePicker(); });
+
+  // ---- Timer mode buttons ----
   document.querySelectorAll('.mode-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       if (timer.running) return;
@@ -818,19 +970,58 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.classList.add('active'); updateTimerUI();
     });
   });
+
+  // ---- Task input ----
   var input = document.getElementById('task-input');
-  document.getElementById('task-add-btn').addEventListener('click', function() { addTask(input.value); input.value = ''; input.focus(); });
-  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { addTask(input.value); input.value = ''; } });
+  document.getElementById('task-add-btn').addEventListener('click', function() { addTaskFromInput(); input.focus(); });
+  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { addTaskFromInput(); } });
+
+  // ---- Quick input bar toggle ----
+  var moreBtn = document.getElementById('task-input-more');
+  if (moreBtn) moreBtn.addEventListener('click', toggleQuickInput);
+
+  // ---- Quick input: priority buttons ----
+  document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      quickInputPrio = parseInt(btn.dataset.prio) || 4;
+      document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+  // ---- Quick input: today button ----
+  var qiTodayBtn = document.getElementById('qi-today-btn');
+  if (qiTodayBtn) qiTodayBtn.addEventListener('click', function() { qiTodayBtn.classList.toggle('active'); });
+  // ---- Quick input: tag input ----
+  var qiTagInput = document.getElementById('qi-tag-input');
+  if (qiTagInput) qiTagInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      var tag = qiTagInput.value.trim();
+      if (tag && quickInputTags.indexOf(tag) === -1) { quickInputTags.push(tag); renderQITags(); }
+      qiTagInput.value = '';
+    }
+  });
+  // ---- Quick input: remove tag ----
+  var qiTags = document.getElementById('qi-tags');
+  if (qiTags) qiTags.addEventListener('click', function(e) {
+    var chip = e.target.closest('[data-qi-remove-tag]');
+    if (!chip) return;
+    quickInputTags = quickInputTags.filter(function(t) { return t !== chip.dataset.qiRemoveTag; });
+    renderQITags();
+  });
+
+  // ---- Task list delegation ----
   document.getElementById('task-list').addEventListener('click', function(e) {
     var btn = e.target.closest('[data-act]'); if (!btn) return;
     var id = btn.dataset.id, act = btn.dataset.act;
     if (act === 'toggle') toggleTask(id);
     else if (act === 'pin') pinTask(id);
     else if (act === 'select') selectTask(id);
-    else if (act === 'prio') cyclePriority(id);else if(act==='detail')showDetail(id);
+    else if (act === 'prio') cyclePriority(id);
     else if (act === 'detail') openDetail(id);
-      else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
+    else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
   });
+
+  // ---- Filter buttons ----
   document.querySelectorAll('.filter-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       currentFilter = btn.dataset.filter;
@@ -838,43 +1029,73 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.classList.add('active'); renderTasks();
     });
   });
+
+  // ---- GTD area tabs ----
+  var gtdTabs = document.getElementById('gtd-tabs');
+  if (gtdTabs) gtdTabs.addEventListener('click', function(e) {
+    var tab = e.target.closest('.gtd-tab');
+    if (!tab) return;
+    currentArea = tab.dataset.area;
+    document.querySelectorAll('.gtd-tab').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active'); renderTasks();
+  });
+
+  // ---- Nav buttons (single binding!) ----
   document.querySelectorAll('.nav-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
       document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
-      document.getElementById('view-' + btn.dataset.view).classList.add('active');
+      var target = document.getElementById('view-' + btn.dataset.view);
+      if (target) target.classList.add('active');
       if (btn.dataset.view === 'stats') renderStats();
       if (btn.dataset.view === 'calendar') renderCalendar();
     });
   });
+
+  // ---- Time picker ----
   document.querySelectorAll('.time-preset').forEach(function(btn) {
     btn.addEventListener('click', function() { applyTimePick(parseInt(btn.dataset.min)); });
   });
-  document.getElementById('time-custom-confirm').addEventListener('click', function() {
+  var customConfirm = document.getElementById('time-custom-confirm');
+  if (customConfirm) customConfirm.addEventListener('click', function() {
     applyTimePick(parseInt(document.getElementById('time-custom-input').value));
   });
-  document.getElementById('time-custom-input').addEventListener('keydown', function(e) {
+  var customInput = document.getElementById('time-custom-input');
+  if (customInput) customInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') applyTimePick(parseInt(this.value));
   });
-  document.getElementById('time-picker-cancel').addEventListener('click', function() {
+  var timeCancel = document.getElementById('time-picker-cancel');
+  if (timeCancel) timeCancel.addEventListener('click', function() {
     document.getElementById('modal-time-picker').setAttribute('hidden', '');
   });
+
+  // ---- Onboarding ----
   document.getElementById('onboarding-next').addEventListener('click', function() {
     if (onboardStep < onboardSteps.length - 1) { onboardStep++; renderOnboardStep(); }
     else closeOnboarding();
   });
   document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
+
+  // ---- Settings inputs ----
   ['opt-work','opt-short','opt-long','opt-interval','opt-auto-break','opt-auto-work','opt-sound','opt-notify'].forEach(function(id) {
-    document.getElementById(id).addEventListener('change', readSettings);
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', readSettings);
   });
-  document.getElementById('opt-volume').addEventListener('input', function(e) {
-    document.getElementById('range-val').textContent = Math.round(e.target.value * 100) + '%'; readSettings();
+  var volEl = document.getElementById('opt-volume');
+  if (volEl) volEl.addEventListener('input', function(e) {
+    var rv = document.getElementById('range-val');
+    if (rv) rv.textContent = Math.round(e.target.value * 100) + '%';
+    readSettings();
   });
   document.getElementById('btn-test-sound').addEventListener('click', function() { chime(S.settings.soundVolume); });
+
+  // ---- Theme buttons ----
   document.querySelectorAll('.t-btn').forEach(function(btn) {
     btn.addEventListener('click', function() { applyTheme(btn.dataset.theme); });
   });
+
+  // ---- Settings reset/clear ----
   document.getElementById('btn-reset-sett').addEventListener('click', function() {
     if (!confirm('恢复默认设置？')) return;
     S.settings = JSON.parse(JSON.stringify(DEFAULTS.settings)); saveState(); initSettings();
@@ -885,30 +1106,110 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!confirm('⚠ 清除所有数据？不可恢复！')) return;
     localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY + '_timer');
     S = JSON.parse(JSON.stringify(DEFAULTS));
-    timer = {mode:'work', remaining:S.settings.workDuration*60, running:false, intervalId:null, startedAt:null, startedRemaining:null, cycleCount:0};
-    saveState(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); toast('数据已清除');
+    timer = {mode:'work', remaining:S.settings.workDuration*60, running:false, intervalId:null, startedAt:null, startedRemaining:null, cycleCount:0, taskId:null};
+    saveState(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); toast('数据已清除');
   });
+
+  // ---- Export/Import ----
   document.getElementById('btn-export').addEventListener('click', exportData);
   document.getElementById('btn-import').addEventListener('change', function(e) {
     if (e.target.files[0]) importData(e.target.files[0]); e.target.value = '';
   });
-  
-  var cp=document.getElementById('cal-prev');if(cp)cp.addEventListener('click',function(){currentCalMonth--;if(currentCalMonth<0){currentCalMonth=11;currentCalYear--;}selectedCalDate=null;renderCalendar();});
-  var cn=document.getElementById('cal-next');if(cn)cn.addEventListener('click',function(){currentCalMonth++;if(currentCalMonth>11){currentCalMonth=0;currentCalYear++;}selectedCalDate=null;renderCalendar();});
-  var ct=document.getElementById('cal-today');if(ct)ct.addEventListener('click',function(){var n=new Date();currentCalYear=n.getFullYear();currentCalMonth=n.getMonth();selectedCalDate=null;renderCalendar();});
-  var cg=document.getElementById('cal-grid');if(cg)cg.addEventListener('click',function(e){var c=e.target.closest('.cal-cell');if(!c||c.classList.contains('other'))return;if(c.dataset.date)showCalDayDetail(c.dataset.date);});
-  var cdc=document.getElementById('cal-detail-close');if(cdc)cdc.addEventListener('click',function(){selectedCalDate=null;renderCalendar();document.getElementById('cal-day-detail').setAttribute('hidden','');});
-  var ctl=document.getElementById('cal-task-list');if(ctl)ctl.addEventListener('click',function(e){var i=e.target.closest('.cal-task-item');if(i&&i.dataset.id)showDetail(i.dataset.id);});
-  var gt=document.getElementById('gtd-tabs');if(gt)gt.addEventListener('click',function(e){var tab=e.target.closest('.gtd-tab');if(!tab)return;currentArea=tab.dataset.area;document.querySelectorAll('.gtd-tab').forEach(function(t){t.classList.remove('active');});tab.classList.add('active');renderTasks();});
-  var dc=document.getElementById('detail-close');if(dc)dc.addEventListener('click',closeDetail);
-  var dsv=document.getElementById('detail-save');if(dsv)dsv.addEventListener('click',saveDetail);
-  var dd=document.getElementById('detail-delete');if(dd)dd.addEventListener('click',function(){if(detailTaskId&&confirm('删除此任务？')){deleteTask(detailTaskId);closeDetail();}});
-  var dov=document.getElementById('detail-overlay');if(dov)dov.addEventListener('click',function(e){if(e.target===this)closeDetail();});
-  document.querySelectorAll('#detail-prio-bar .dp-btn').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('#detail-prio-bar .dp-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');});});
-  var qb=document.getElementById('quick-bar');if(qb){var qbs={priority:0,today:false,dueDate:''};function uQB(){document.querySelectorAll('.qb-prio').forEach(function(b){b.classList.toggle('active',qbs.priority===parseInt(b.dataset.val));});var tb=document.querySelector('[data-act="qb-today"]');if(tb)tb.classList.toggle('active',qbs.today);}qb.addEventListener('click',function(e){var btn=e.target.closest('[data-act]');if(!btn)return;var act=btn.dataset.act;if(act==='qb-prio'){var val=parseInt(btn.dataset.val);qbs.priority=(qbs.priority===val)?0:val;}else if(act==='qb-today'){qbs.today=!qbs.today;}else if(act==='qb-due'){var d=prompt('截止日期(YYYY-MM-DD):',new Date().toISOString().slice(0,10));qbs.dueDate=d||'';}else if(act==='qb-tag'){var t=prompt('标签:','');if(t&&t.trim())input.value=input.value.trim()+' #'+t.trim();}uQB();});}
-  document.querySelectorAll('.nav-btn').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});var target=document.getElementById('view-'+btn.dataset.view);if(target)target.classList.add('active');if(btn.dataset.view==='stats')renderStats();if(btn.dataset.view==='calendar')renderCalendar();});});
-  var wle=document.getElementById('opt-wakelock');if(wle)wle.addEventListener('change',function(){readSettings();});
-document.addEventListener('keydown', function(e) {
+
+  // ---- Calendar navigation ----
+  var calPrev = document.getElementById('cal-prev');
+  if (calPrev) calPrev.addEventListener('click', function() {
+    currentCalMonth--; if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
+    selectedCalDate = null; renderCalendar();
+  });
+  var calNext = document.getElementById('cal-next');
+  if (calNext) calNext.addEventListener('click', function() {
+    currentCalMonth++; if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
+    selectedCalDate = null; renderCalendar();
+  });
+  var calTodayBtn = document.getElementById('cal-today-btn');
+  if (calTodayBtn) calTodayBtn.addEventListener('click', function() {
+    var n = new Date(); currentCalYear = n.getFullYear(); currentCalMonth = n.getMonth();
+    selectedCalDate = null; renderCalendar();
+  });
+
+  // ---- Calendar grid click ----
+  var calGrid = document.getElementById('cal-grid');
+  if (calGrid) calGrid.addEventListener('click', function(e) {
+    var c = e.target.closest('.cal-day');
+    if (!c || c.classList.contains('other-month')) return;
+    if (c.dataset.date) selectCalDate(c.dataset.date);
+  });
+  // ---- Calendar task click -> open detail ----
+  var calTaskList = document.getElementById('cal-task-list');
+  if (calTaskList) calTaskList.addEventListener('click', function(e) {
+    var item = e.target.closest('[data-cal-task]');
+    if (item) openDetail(item.dataset.calTask);
+  });
+
+  // ---- Detail panel ----
+  var detailClose = document.getElementById('detail-close');
+  if (detailClose) detailClose.addEventListener('click', closeDetail);
+  var detailSave = document.getElementById('det-save');
+  if (detailSave) detailSave.addEventListener('click', saveDetail);
+  var detailDelete = document.getElementById('det-delete');
+  if (detailDelete) detailDelete.addEventListener('click', function() {
+    if (detailTaskId && confirm('删除此任务？')) { deleteTask(detailTaskId); closeDetail(); }
+  });
+  var detailOverlay = document.getElementById('detail-overlay');
+  if (detailOverlay) detailOverlay.addEventListener('click', function(e) { if (e.target === this) closeDetail(); });
+  // ---- Detail priority buttons ----
+  document.querySelectorAll('#det-prio-group .prio-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('#det-prio-group .prio-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+  // ---- Detail tag remove ----
+  var detTags = document.getElementById('det-tags');
+  if (detTags) detTags.addEventListener('click', function(e) {
+    var chip = e.target.closest('[data-remove-tag]');
+    if (!chip || !detailTaskId) return;
+    var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
+    if (!t) return;
+    t.tags = (t.tags || []).filter(function(tag) { return tag !== chip.dataset.removeTag; });
+    renderDetailTags(t.tags); saveState();
+  });
+  // ---- Detail tag add ----
+  var detTagInput = document.getElementById('det-tag-input');
+  if (detTagInput) detTagInput.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var tag = detTagInput.value.trim();
+    if (!tag || !detailTaskId) return;
+    var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
+    if (!t) return;
+    if (!t.tags) t.tags = [];
+    if (t.tags.indexOf(tag) === -1) { t.tags.push(tag); renderDetailTags(t.tags); saveState(); }
+    detTagInput.value = '';
+  });
+
+  // ---- Project management ----
+  var addProjectBtn = document.getElementById('btn-add-project');
+  if (addProjectBtn) addProjectBtn.addEventListener('click', function() {
+    var nameEl = document.getElementById('project-new-name');
+    var colorEl = document.getElementById('project-new-color');
+    if (nameEl && nameEl.value.trim()) {
+      addProject(nameEl.value.trim(), colorEl ? colorEl.value : '#e74c3c');
+      nameEl.value = '';
+    }
+  });
+  var projectListEl = document.getElementById('project-list');
+  if (projectListEl) projectListEl.addEventListener('click', function(e) {
+    var del = e.target.closest('[data-del-project]');
+    if (del && confirm('删除此项目？')) deleteProject(del.dataset.delProject);
+  });
+
+  // ---- Wake lock toggle ----
+  var wle = document.getElementById('opt-wakelock');
+  if (wle) wle.addEventListener('change', readSettings);
+
+  // ---- Keyboard shortcuts ----
+  document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.code === 'Space') { e.preventDefault(); timer.running ? pauseTimer() : startTimer(); }
     if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) resetTimer();
