@@ -803,7 +803,14 @@ function renderWeeklyChart() {
       }
     }
   };
-  weekChart = new Chart(ctx, cfg);
+  try {
+   weekChart = new Chart(ctx, cfg);
+ } catch(err) {
+   console.warn('Chart.js not available:', err);
+   if (ctx && ctx.parentNode) {
+     ctx.parentNode.innerHTML = '<p style="font-size:.8rem;color:var(--c-text2)">图表加载失败（Chart.js未就绪）</p>';
+   }
+ }
 }
 
 function renderTagBars() {
@@ -943,6 +950,9 @@ function toast(msg) {
 
 // ==================== INIT & EVENTS ====================
 document.addEventListener('DOMContentLoaded', function() {
+  // Safe event binding helper — never crashes on missing element
+  function $on(id, evt, fn) { var e = document.getElementById(id); if (e) e.addEventListener(evt, fn); }
+
   migrateFromV2(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); renderCalendar();
   recoverTimer();
 
@@ -965,10 +975,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ---- Timer ----
-  document.getElementById('btn-start').addEventListener('click', function() { timer.running ? pauseTimer() : startTimer(); });
-  document.getElementById('btn-reset').addEventListener('click', resetTimer);
-  document.getElementById('btn-skip').addEventListener('click', skipTimer);
-  document.getElementById('timer-ring-wrap').addEventListener('click', function() { if (!timer.running) showTimePicker(); });
+  $on('btn-start', 'click', function() { timer.running ? pauseTimer() : startTimer(); });
+  $on('btn-reset', 'click', resetTimer);
+  $on('btn-skip', 'click', skipTimer);
+  $on('timer-ring-wrap', 'click', function() { if (!timer.running) showTimePicker(); });
 
   // ---- Mode buttons ----
   document.querySelectorAll('.mode-btn').forEach(function(btn) {
@@ -984,11 +994,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ---- Task input ----
   var taskInput = document.getElementById('task-input');
-  document.getElementById('task-add-btn').addEventListener('click', addTaskFromInput);
+  $on('task-add-btn', 'click', addTaskFromInput);
   taskInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') addTaskFromInput(); });
 
   // ---- Quick input toggle ----
-  document.getElementById('task-input-more').addEventListener('click', toggleQuickInput);
+  $on('task-input-more', 'click', toggleQuickInput);
 
   // ---- Quick input bar ----
   var qiBar = document.getElementById('quick-input-bar');
@@ -1019,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ---- Task list ----
-  document.getElementById('task-list').addEventListener('click', function(e) {
+  $on('task-list', 'click', function(e) {
     var btn = e.target.closest('[data-act]');
     if (!btn) return;
     var id = btn.dataset.id, act = btn.dataset.act;
@@ -1116,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Detail tag remove
-  document.getElementById('detail-panel').addEventListener('click', function(e) {
+  $on('detail-panel', 'click', function(e) {
     var chip = e.target.closest('[data-remove-tag]');
     if (!chip || !detailTaskId) return;
     var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
@@ -1142,22 +1152,22 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.time-preset').forEach(function(btn) {
     btn.addEventListener('click', function() { applyTimePick(parseInt(btn.dataset.min)); });
   });
-  document.getElementById('time-custom-confirm').addEventListener('click', function() {
+  $on('time-custom-confirm', 'click', function() {
     applyTimePick(parseInt(document.getElementById('time-custom-input').value));
   });
-  document.getElementById('time-custom-input').addEventListener('keydown', function(e) {
+  $on('time-custom-input', 'keydown', function(e) {
     if (e.key === 'Enter') applyTimePick(parseInt(this.value));
   });
-  document.getElementById('time-picker-cancel').addEventListener('click', function() {
+  $on('time-picker-cancel', 'click', function() {
     document.getElementById('modal-time-picker').setAttribute('hidden', '');
   });
 
   // ---- Onboarding ----
-  document.getElementById('onboarding-next').addEventListener('click', function() {
+  $on('onboarding-next', 'click', function() {
     if (onboardStep < onboardSteps.length - 1) { onboardStep++; renderOnboardStep(); }
     else closeOnboarding();
   });
-  document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
+  $on('onboarding-skip', 'click', closeOnboarding);
 
   // ---- Settings inputs ----
   ['opt-work','opt-short','opt-long','opt-interval','opt-auto-break','opt-auto-work','opt-sound','opt-notify'].forEach(function(id) {
@@ -1194,8 +1204,8 @@ document.addEventListener('DOMContentLoaded', function() {
     saveState(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); toast('数据已清除');
   });
 
-  document.getElementById('btn-export').addEventListener('click', exportData);
-  document.getElementById('btn-import').addEventListener('change', function(e) {
+  $on('btn-export', 'click', exportData);
+  $on('btn-import', 'change', function(e) {
     if (e.target.files[0]) importData(e.target.files[0]); e.target.value = '';
   });
 
