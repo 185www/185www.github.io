@@ -65,7 +65,7 @@
         <button class="qi-btn prio-btn" data-prio="1">🔴</button>
       </div>
       <div class="qi-row"><span class="qi-label">标签</span><div class="qi-tags" id="qi-tags"></div><input type="text" class="qi-tag-input" id="qi-tag-input" placeholder="新标签" /></div>
-      <div class="qi-row"><span class="qi-label">日期</span><input type="date" class="qi-date" id="qi-date" /><button class="qi-btn today-btn" id="qi-today-btn">📌 今日</button></div>
+      <div class="qi-row"><span class="qi-label">日期时间</span><input type="datetime-local" class="qi-datetime" id="qi-datetime" /><button class="qi-btn today-btn" id="qi-today-btn">📌 今日</button></div>
       <div class="qi-row"><span class="qi-label">区域</span>
         <select class="qi-select" id="qi-area"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option></select>
         <select class="qi-select" id="qi-project"><option value="">无项目</option></select>
@@ -88,7 +88,7 @@
     <div class="detail-field"><label>标题</label><input type="text" id="det-title" class="det-input" /></div>
     <div class="detail-field"><label>优先级</label><div class="det-prio-group" id="det-prio-group"><button class="qi-btn prio-btn" data-prio="1">P1</button><button class="qi-btn prio-btn" data-prio="2">P2</button><button class="qi-btn prio-btn" data-prio="3">P3</button><button class="qi-btn prio-btn" data-prio="4">P4</button></div></div>
     <div class="detail-field"><label>标签</label><div class="det-tags" id="det-tags"></div><input type="text" id="det-tag-input" class="det-input" placeholder="添加标签" /></div>
-    <div class="detail-field"><label>截止日期</label><input type="date" id="det-due" class="det-input" /></div>
+    <div class="detail-field"><label>截止时间</label><input type="datetime-local" id="det-due" class="det-input" /></div>
     <div class="detail-field"><label>区域</label><select id="det-area" class="det-select"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option><option value="archive">📦 归档</option></select></div>
     <div class="detail-field"><label>项目</label><select id="det-project" class="det-select"><option value="">无项目</option></select></div>
     <div class="detail-field"><label>预估番茄</label><input type="number" id="det-estpomo" class="det-input det-num" min="0" max="20" value="0" /></div>
@@ -99,10 +99,29 @@
   <div class="detail-actions"><button class="btn-sm btn-danger" id="det-delete">🗑</button><button class="btn-sm btn-primary" id="det-save">💾 保存</button></div>
 </aside>
 <main class="view calendar-view" id="view-calendar">
-  <div class="cal-header"><button class="cal-nav" id="cal-prev">◀</button><h3 class="cal-month" id="cal-month"></h3><button class="cal-nav" id="cal-next">▶</button><button class="cal-nav" id="cal-today-btn">今天</button></div>
-  <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
-  <div class="cal-grid" id="cal-grid"></div>
-  <div class="cal-day-tasks" id="cal-day-tasks" hidden><h4 class="cal-day-title" id="cal-day-title"></h4><ul class="cal-task-list" id="cal-task-list"></ul></div>
+  <div class="cal-header">
+    <button class="cal-nav" id="cal-prev">◀</button>
+    <h3 class="cal-month" id="cal-month"></h3>
+    <button class="cal-nav" id="cal-next">▶</button>
+    <button class="cal-nav" id="cal-today-btn">今天</button>
+    <div class="cal-view-toggle">
+      <button class="cal-view-btn active" id="cal-view-month">📅 月</button>
+      <button class="cal-view-btn" id="cal-view-day">📋 日</button>
+    </div>
+  </div>
+  <div class="cal-grid-wrap" id="cal-grid-wrap">
+    <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-day-tasks" id="cal-day-tasks" hidden><h4 class="cal-day-title" id="cal-day-title"></h4><ul class="cal-task-list" id="cal-task-list"></ul></div>
+  </div>
+  <div class="cal-dayview" id="cal-dayview" style="display:none">
+    <div class="cal-dayview-header">
+      <button class="cal-nav" id="cal-day-prev">◀</button>
+      <span id="cal-day-date-label"></span>
+      <button class="cal-nav" id="cal-day-next">▶</button>
+    </div>
+    <div class="cal-dayview-timeline" id="cal-dayview-timeline"></div>
+  </div>
 </main>
 <main class="view stats-view" id="view-stats">
   <div class="stats-cards">
@@ -165,6 +184,6 @@
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=5"></script>
+<script src="./app.js?v=6"></script>
 </body>
 </html>

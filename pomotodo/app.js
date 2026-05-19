@@ -1,5 +1,6 @@
 /**
- * Pomotodo V3 — app.js (bug-fix release)
+ * Pomotodo V4 — app.js
+ * V4 changes: dueDate → dueDatetime (precise time), calendar day view
  * All DOM IDs aligned with index.html; duplicate functions removed;
  * undefined variables fixed; event bindings corrected.
  */
@@ -27,7 +28,29 @@ var currentArea = 'inbox';
 var currentCalMonth = new Date().getMonth();
 var currentCalYear = new Date().getFullYear();
 var selectedCalDate = null;
+var calViewMode = 'month'; // 'month' | 'day'
+var selectedCalDayDate = new Date().toISOString().slice(0, 10); // 日视图当前日期
 var detailTaskId = null;
+
+// Helper: extract date string (YYYY-MM-DD) from dueDatetime
+function getTaskDate(t) {
+  var d = t.dueDatetime || '';
+  return d.length >= 10 ? d.slice(0, 10) : '';
+}
+
+// Helper: extract time string (HH:mm) from dueDatetime
+function getTaskTime(t) {
+  var d = t.dueDatetime || '';
+  return d.length >= 16 ? d.slice(11, 16) : '';
+}
+
+// Helper: format dueDatetime for display
+function fmtDue(t) {
+  if (!t.dueDatetime) return '';
+  var date = getTaskDate(t);
+  var time = getTaskTime(t);
+  return time ? date.slice(5) + ' ' + time : date.slice(5);
+}
 var wakeLockSentinel = null;
 var currentFilter = 'all';
 var quickInputVisible = false;
@@ -69,12 +92,24 @@ function loadState() {
     var raw = localStorage.getItem(LS_KEY);
     if (raw) {
       var d = JSON.parse(raw);
-      return {
+      var state = {
         settings: Object.assign({}, DEFAULTS.settings, d.settings || {}),
         tasks: d.tasks || [],
         sessions: d.sessions || [],
         projects: d.projects || []
       };
+      // V3→V4 migration: dueDate → dueDatetime
+      state.tasks.forEach(function(t) {
+        if (t.dueDate && !t.dueDatetime) {
+          t.dueDatetime = t.dueDate + 'T09:00';
+          delete t.dueDate;
+        }
+        if (t.dueDate === '' || t.dueDate === undefined) {
+          t.dueDatetime = t.dueDatetime || '';
+          delete t.dueDate;
+        }
+      });
+      return state;
     }
   } catch (_) {}
   return JSON.parse(JSON.stringify(DEFAULTS));
@@ -93,7 +128,7 @@ function migrateFromV2() {
         pomodorosCompleted: t.pomodorosCompleted || 0, estimatedPomodoros: 0,
         createdAt: t.createdAt || new Date().toISOString(),
         area: t.completed ? 'archive' : (t.today ? 'next' : 'inbox'),
-        dueDate: '', projectId: '', notes: ''
+        dueDatetime: '', projectId: '', notes: ''
       };
     });
     S = {
@@ -323,7 +358,7 @@ function addTask(title, opts) {
     completed: false, pinned: false, pomodorosCompleted: 0,
     estimatedPomodoros: opts.estimatedPomodoros || 0,
     createdAt: new Date().toISOString(),
-    area: area, dueDate: opts.dueDate || '',
+    area: area, dueDatetime: opts.dueDatetime || '',
     projectId: opts.projectId || '', notes: opts.notes || ''
   };
   S.tasks.unshift(task); saveState(); renderTasks(); updateGtdCounts();
@@ -399,7 +434,7 @@ function getTasksForArea(area) {
 }
 function getOverdueTasks() {
   var today = new Date().toISOString().slice(0, 10);
-  return S.tasks.filter(function(t) { return !t.completed && t.dueDate && t.dueDate < today; });
+  return S.tasks.filter(function(t) { return !t.completed && getTaskDate(t) && getTaskDate(t) < today; });
 }
 
 function updateGtdCounts() {
@@ -424,7 +459,7 @@ function openDetail(taskId) {
   if (!t) return;
   detailTaskId = taskId;
   document.getElementById('det-title').value = t.title || '';
-  document.getElementById('det-due').value = t.dueDate || '';
+  document.getElementById('det-due').value = t.dueDatetime || '';
   document.getElementById('det-area').value = t.area || 'inbox';
   document.getElementById('det-notes').value = t.notes || '';
   document.getElementById('det-estpomo').value = t.estimatedPomodoros || 0;
@@ -458,14 +493,14 @@ function saveDetail() {
   var t = S.tasks.find(function(x) { return x.id === detailTaskId; });
   if (!t) return;
   t.title = document.getElementById('det-title').value.trim() || t.title;
-  t.dueDate = document.getElementById('det-due').value || '';
+  t.dueDatetime = document.getElementById('det-due').value || '';
   t.area = document.getElementById('det-area').value || 'inbox';
   t.projectId = document.getElementById('det-project').value || '';
   t.notes = document.getElementById('det-notes').value || '';
   t.estimatedPomodoros = parseInt(document.getElementById('det-estpomo').value) || 0;
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
   if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
-  if (t.dueDate && t.area === 'inbox') t.area = 'next';
+  if (t.dueDatetime && t.area === 'inbox') t.area = 'next';
   if (t.area === 'next') t.today = true;
   saveState(); renderTasks(); updateGtdCounts(); closeDetail();
   toast('任务已保存');
@@ -481,6 +516,26 @@ function renderDetailTags(tags) {
 
 // ==================== CALENDAR ====================
 function renderCalendar() {
+  if (calViewMode === 'day') {
+    renderCalDayView();
+  } else {
+    renderCalMonthView();
+  }
+  updateCalViewToggle();
+}
+
+function updateCalViewToggle() {
+  var monthBtn = document.getElementById('cal-view-month');
+  var dayBtn = document.getElementById('cal-view-day');
+  if (monthBtn) monthBtn.classList.toggle('active', calViewMode === 'month');
+  if (dayBtn) dayBtn.classList.toggle('active', calViewMode === 'day');
+  var gridWrap = document.getElementById('cal-grid-wrap');
+  var dayWrap = document.getElementById('cal-dayview');
+  if (gridWrap) gridWrap.style.display = calViewMode === 'month' ? '' : 'none';
+  if (dayWrap) dayWrap.style.display = calViewMode === 'day' ? '' : 'none';
+}
+
+function renderCalMonthView() {
   var y = currentCalYear, m = currentCalMonth;
   var titleEl = document.getElementById('cal-month');
   if (titleEl) titleEl.textContent = y + '年 ' + (m + 1) + '月';
@@ -489,8 +544,7 @@ function renderCalendar() {
   var daysInPrev = new Date(y, m, 0).getDate();
   var today = new Date().toISOString().slice(0, 10);
   var taskMap = {};
-  S.tasks.forEach(function(t) { if (t.dueDate) taskMap[t.dueDate] = (taskMap[t.dueDate] || 0) + 1; });
-
+  S.tasks.forEach(function(t) { var d = getTaskDate(t); if (d) taskMap[d] = (taskMap[d] || 0) + 1; });
   var html = '';
   for (var i = firstDay - 1; i >= 0; i--) html += '<div class="cal-day other-month">' + (daysInPrev - i) + '</div>';
   for (var day = 1; day <= daysInMonth; day++) {
@@ -504,10 +558,8 @@ function renderCalendar() {
   var totalCells = firstDay + daysInMonth;
   var rem = (7 - (totalCells % 7)) % 7;
   for (var j = 1; j <= rem; j++) html += '<div class="cal-day other-month">' + j + '</div>';
-
   var grid = document.getElementById('cal-grid');
   if (grid) grid.innerHTML = html;
-
   var dp = document.getElementById('cal-day-tasks');
   if (!dp) return;
   if (!selectedCalDate) { dp.setAttribute('hidden', ''); return; }
@@ -515,7 +567,7 @@ function renderCalendar() {
   var dayTitle = document.getElementById('cal-day-title');
   if (dayTitle) dayTitle.textContent = selectedCalDate.replace(/-/g, '/') + ' 的任务';
   var dayTasks = S.tasks.filter(function(t) {
-    return t.dueDate === selectedCalDate || (t.today && selectedCalDate === today && !t.completed);
+    return getTaskDate(t) === selectedCalDate || (t.today && selectedCalDate === today && !t.completed);
   });
   var le = document.getElementById('cal-task-list');
   if (!le) return;
@@ -525,13 +577,98 @@ function renderCalendar() {
     le.innerHTML = dayTasks.map(function(t) {
       var p = t.priority || 4;
       var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
-      return '<li class="cal-task-item" data-cal-task="' + t.id + '"><span style="width:8px;height:8px;border-radius:50%;background:' + pC[p] + ';flex-shrink:0"></span>' + (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</li>';
+      var timeStr = getTaskTime(t) ? '<span class="cal-task-time">' + esc(getTaskTime(t)) + '</span>' : '';
+      return '<li class="cal-task-item" data-cal-task="' + t.id + '">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + pC[p] + ';flex-shrink:0"></span>' +
+        timeStr +
+        (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</li>';
     }).join('');
   }
 }
 
+function renderCalDayView() {
+  var dateStr = selectedCalDayDate;
+  var titleEl = document.getElementById('cal-month');
+  if (titleEl) {
+    var parts = dateStr.split('-');
+    titleEl.textContent = parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
+  }
+  var today = new Date().toISOString().slice(0, 10);
+  var dayTasks = S.tasks.filter(function(t) {
+    return getTaskDate(t) === dateStr || (t.today && dateStr === today && !t.completed);
+  });
+  dayTasks.sort(function(a, b) {
+    var ta = getTaskTime(a) || '99:99';
+    var tb = getTaskTime(b) || '99:99';
+    return ta.localeCompare(tb);
+  });
+  var container = document.getElementById('cal-dayview-timeline');
+  if (!container) return;
+  if (dayTasks.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px 0;font-size:.85rem;color:var(--c-text2)">📋 该日无任务</div>';
+    return;
+  }
+  var slots = {};
+  for (var h = 6; h <= 23; h++) slots[String(h).padStart(2, '0')] = [];
+  var noTimeTasks = [];
+  dayTasks.forEach(function(t) {
+    var time = getTaskTime(t);
+    if (time && time >= '06:00' && time <= '23:59') {
+      var hour = time.slice(0, 2);
+      if (slots[hour]) slots[hour].push(t);
+    } else {
+      noTimeTasks.push(t);
+    }
+  });
+  var html = '';
+  for (var hr = 6; hr <= 23; hr++) {
+    var key = String(hr).padStart(2, '0');
+    var slotTasks = slots[key];
+    html += '<div class="day-slot">';
+    html += '<div class="day-slot-time">' + key + ':00</div>';
+    html += '<div class="day-slot-tasks">';
+    if (slotTasks.length === 0) {
+      html += '<div class="day-slot-empty"></div>';
+    } else {
+      slotTasks.forEach(function(t) {
+        var p = t.priority || 4;
+        var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
+        var time = getTaskTime(t) || '';
+        html += '<div class="day-task-card prio-border-' + p + '" data-cal-task="' + t.id + '">' +
+          '<span class="day-task-time">' + esc(time) + '</span>' +
+          '<span class="day-task-dot" style="background:' + pC[p] + '"></span>' +
+          '<span class="day-task-title' + (t.completed ? ' completed' : '') + '">' +
+          (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</span></div>';
+      });
+    }
+    html += '</div></div>';
+  }
+  if (noTimeTasks.length > 0) {
+    html += '<div class="day-slot"><div class="day-slot-time">⏰</div><div class="day-slot-tasks">';
+    noTimeTasks.forEach(function(t) {
+      var p = t.priority || 4;
+      var pC = {1:'var(--c-p1)',2:'var(--c-p2)',3:'var(--c-p3)',4:'var(--c-p4)'};
+      html += '<div class="day-task-card prio-border-' + p + '" data-cal-task="' + t.id + '">' +
+        '<span class="day-task-dot" style="background:' + pC[p] + '"></span>' +
+        '<span class="day-task-title' + (t.completed ? ' completed' : '') + '">' +
+        (t.completed ? '<s>' + esc(t.title) + '</s>' : esc(t.title)) + '</span></div>';
+    });
+    html += '</div></div>';
+  }
+  container.innerHTML = html;
+}
+
 function selectCalDate(dateStr) {
   selectedCalDate = (selectedCalDate === dateStr) ? '' : dateStr;
+  if (selectedCalDate) selectedCalDayDate = selectedCalDate;
+  renderCalendar();
+}
+
+function switchCalView(mode) {
+  calViewMode = mode;
+  if (mode === 'day' && selectedCalDate) {
+    selectedCalDayDate = selectedCalDate;
+  }
   renderCalendar();
 }
 
@@ -560,7 +697,7 @@ function addTaskFromInput() {
     priority: quickInputPrio,
     tags: quickInputTags.slice(),
     today: false,
-    dueDate: document.getElementById('qi-date').value || '',
+    dueDatetime: document.getElementById('qi-datetime').value || '',
     area: document.getElementById('qi-area').value || 'inbox',
     projectId: document.getElementById('qi-project').value || '',
     estimatedPomodoros: 0
@@ -574,7 +711,7 @@ function addTaskFromInput() {
     b.classList.toggle('active', parseInt(b.dataset.prio) === 4);
   });
   renderQITags();
-  var qiDate = document.getElementById('qi-date');
+  var qiDate = document.getElementById('qi-datetime');
   if (qiDate) qiDate.value = '';
   if (todayBtn) todayBtn.classList.remove('active');
   toast('土豆已添加');
@@ -650,9 +787,9 @@ function renderTasks() {
     var tagHtml = (t.tags || []).map(function(tag) { return '<span class="task-tag">#' + esc(tag) + '</span>'; }).join(' ');
     var todayBadge = t.today ? '<span class="task-today-badge">今日</span>' : '';
     var dueBadge = '';
-    if (t.dueDate) {
-      var isOverdue = t.dueDate < new Date().toISOString().slice(0, 10) && !t.completed;
-      dueBadge = '<span class="task-due-badge' + (isOverdue ? ' overdue' : '') + '">' + t.dueDate.slice(5) + '</span>';
+    if (t.dueDatetime) {
+      var isOverdue = getTaskDate(t) < new Date().toISOString().slice(0, 10) && !t.completed;
+      dueBadge = '<span class="task-due-badge' + (isOverdue ? ' overdue' : '') + '">' + fmtDue(t) + '</span>';
     }
     var projBadge = '';
     if (t.projectId) {
@@ -1074,6 +1211,27 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // ---- Calendar nav ----
+  // View toggle
+  var calMonthBtn = document.getElementById('cal-view-month');
+  if (calMonthBtn) calMonthBtn.addEventListener('click', function() { switchCalView('month'); });
+  var calDayBtn = document.getElementById('cal-view-day');
+  if (calDayBtn) calDayBtn.addEventListener('click', function() { switchCalView('day'); });
+  // Day view date navigation
+  var calDayPrev = document.getElementById('cal-day-prev');
+  if (calDayPrev) calDayPrev.addEventListener('click', function() {
+    var d = new Date(selectedCalDayDate + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    selectedCalDayDate = d.toISOString().slice(0, 10);
+    renderCalendar();
+  });
+  var calDayNext = document.getElementById('cal-day-next');
+  if (calDayNext) calDayNext.addEventListener('click', function() {
+    var d = new Date(selectedCalDayDate + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    selectedCalDayDate = d.toISOString().slice(0, 10);
+    renderCalendar();
+  });
+
   var calPrev = document.getElementById('cal-prev');
   if (calPrev) calPrev.addEventListener('click', function() {
     currentCalMonth--; if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
@@ -1101,6 +1259,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // ---- Calendar task click ----
   var calTaskList = document.getElementById('cal-task-list');
   if (calTaskList) calTaskList.addEventListener('click', function(e) {
+    var item = e.target.closest('[data-cal-task]');
+    if (item) openDetail(item.dataset.calTask);
+  });
+  // Day view task click
+  var dayTimeline = document.getElementById('cal-dayview-timeline');
+  if (dayTimeline) dayTimeline.addEventListener('click', function(e) {
     var item = e.target.closest('[data-cal-task]');
     if (item) openDetail(item.dataset.calTask);
   });
