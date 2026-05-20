@@ -368,6 +368,39 @@ function addTask(title, opts) {
   return task;
 }
 
+function getSubtasks(parentId) {
+  return S.tasks.filter(function(t) { return t.parentId === parentId; });
+}
+
+function hasSubtasks(task) {
+  return S.tasks.some(function(t) { return t.parentId === task.id; });
+}
+
+function addSubtask(parentId, title) {
+  var parentTask = S.tasks.find(function(t) { return t.id === parentId; });
+  if (!parentTask) return null;
+  var task = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title: title,
+    tags: [],
+    priority: parentTask.priority || 4,
+    today: parentTask.today || false,
+    completed: false,
+    pinned: false,
+    pomodorosCompleted: 0,
+    estimatedPomodoros: 0,
+    createdAt: new Date().toISOString(),
+    area: parentTask.area || 'next',
+    dueDatetime: '',
+    projectId: parentTask.projectId || '',
+    parentId: parentId,
+    notes: ''
+  };
+  S.tasks.unshift(task);
+  saveState();
+  return task;
+}
+
 function toggleTask(id) {
   var t = S.tasks.find(function(x) { return x.id === id; });
   if (!t) return; t.completed = !t.completed;
@@ -554,6 +587,7 @@ function saveDetail() {
   t.projectId = document.getElementById('det-project').value || '';
   t.notes = document.getElementById('det-notes').value || '';
   t.estimatedPomodoros = parseInt(document.getElementById('det-estpomo').value) || 0;
+  // Tags are saved inline when added/removed via tag chips, so they stay in sync
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
   if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
   if (t.dueDatetime && t.area === 'inbox') t.area = 'next';
