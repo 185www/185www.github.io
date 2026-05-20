@@ -1,4 +1,4 @@
-const CACHE = 'pomotodo-v6-datetime';
+const CACHE = 'pomotodo-v7-subtask';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './timer-worker.js', './manifest.json'];
 
 self.addEventListener('install', e => {

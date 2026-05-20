@@ -46,11 +46,11 @@
   </section>
   <section class="panel panel-tasks">
     <div class="gtd-tabs" id="gtd-tabs">
-      <button class="gtd-tab active" data-area="inbox">📥 收件箱</button>
-      <button class="gtd-tab" data-area="next">▶ 下一步</button>
-      <button class="gtd-tab" data-area="projects">📁 项目</button>
-      <button class="gtd-tab" data-area="someday">💭 将来/也许</button>
-      <button class="gtd-tab" data-area="archive">📦 归档</button>
+      <button class="gtd-tab active" data-area="inbox">📥 收件箱 <span class="gtd-cnt" id="cnt-inbox">0</span></button>
+      <button class="gtd-tab" data-area="next">▶ 下一步 <span class="gtd-cnt" id="cnt-next">0</span></button>
+      <button class="gtd-tab" data-area="projects">📁 项目 <span class="gtd-cnt" id="cnt-project">0</span></button>
+      <button class="gtd-tab" data-area="someday">💭 将来/也许 <span class="gtd-cnt" id="cnt-someday">0</span></button>
+      <button class="gtd-tab" data-area="archive">📦 归档 <span class="gtd-cnt" id="cnt-archive">0</span></button>
     </div>
     <div class="task-input-wrap">
       <input type="text" class="task-input" id="task-input" placeholder="添加土豆… #标签 !1紧急 @today" maxlength="200" />
@@ -91,6 +91,11 @@
     <div class="detail-field"><label>截止时间</label><input type="datetime-local" id="det-due" class="det-input" /></div>
     <div class="detail-field"><label>区域</label><select id="det-area" class="det-select"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option><option value="archive">📦 归档</option></select></div>
     <div class="detail-field"><label>项目</label><select id="det-project" class="det-select"><option value="">无项目</option></select></div>
+    <div class="detail-field" id="det-parent-section" style="display:none"><label>父任务</label><span id="det-parent-link" class="det-parent-link"></span></div>
+    <div class="detail-field" id="det-subtask-section"><label>子任务 <span id="det-subtask-count"></span></label>
+      <div class="det-subtask-list" id="det-subtask-list"></div>
+      <div class="det-subtask-add"><input type="text" id="det-subtask-input" class="det-input" placeholder="添加子任务…" maxlength="200" /><button class="btn-sm" id="det-subtask-add-btn">＋</button></div>
+    </div>
     <div class="detail-field"><label>预估番茄</label><input type="number" id="det-estpomo" class="det-input det-num" min="0" max="20" value="0" /></div>
     <div class="detail-field"><label>备注</label><textarea id="det-notes" class="det-textarea" rows="3"></textarea></div>
     <div class="detail-field"><label>完成番茄</label><span id="det-pomo-count" class="det-pomo-count">0</span></div>
@@ -184,6 +189,6 @@
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=6"></script>
+<script src="./app.js?v=7"></script>
 </body>
 </html>

@@ -1322,3 +1322,256 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
   background: var(--c-surface);
   color: var(--c-text);
 }
+
+/* ==================== V4: Project-Subtask Hierarchy ==================== */
+
+/* Project card in projects GTD tab */
+.project-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow1);
+}
+.project-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--c-border);
+}
+.project-card-header .project-color {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+}
+.project-card-name {
+  font-weight: 600;
+  font-size: .92rem;
+  flex: 1;
+}
+.project-card-stats {
+  font-size: .7rem;
+  color: var(--c-text2);
+  white-space: nowrap;
+}
+.project-card-empty {
+  font-size: .78rem;
+  color: var(--c-text2);
+  padding: 6px 0;
+}
+
+/* Project task row inside card */
+.project-task-row {
+  position: relative;
+}
+.project-task-row .task-item {
+  border: none;
+  border-radius: 6px;
+  margin-bottom: 2px;
+}
+
+/* Subtask indicator badge */
+.subtask-indicator {
+  display: inline-block;
+  font-size: .68rem;
+  color: var(--c-primary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(231,76,60,.08);
+  white-space: nowrap;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.subtask-indicator:hover {
+  background: rgba(231,76,60,.18);
+}
+
+/* Subtask drill-down header */
+.subtask-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--c-border);
+  margin-bottom: 10px;
+}
+.subtask-back {
+  font-size: .82rem;
+  color: var(--c-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(231,76,60,.08);
+}
+.subtask-back:hover {
+  background: rgba(231,76,60,.18);
+}
+.subtask-parent-title {
+  font-weight: 600;
+  font-size: .95rem;
+  flex: 1;
+}
+
+/* Subtask input row */
+.subtask-input-wrap {
+  display: flex;
+  gap: 6px;
+  padding: 0 0 10px;
+}
+.subtask-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  font-size: .82rem;
+  background: var(--c-surface);
+  color: var(--c-text);
+  outline: none;
+}
+.subtask-input:focus {
+  border-color: var(--c-primary);
+}
+.subtask-add-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: .9rem;
+  background: var(--c-primary);
+  color: #fff;
+  cursor: pointer;
+}
+.subtask-add-btn:hover {
+  background: var(--c-primary-d);
+}
+
+/* Task subtask badge (in task list) */
+.task-subtask-badge {
+  display: inline-block;
+  font-size: .65rem;
+  color: var(--c-text2);
+  background: var(--c-surface-h);
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 3px;
+}
+
+/* Task parent badge (for child tasks) */
+.task-parent-badge {
+  display: inline-block;
+  font-size: .65rem;
+  color: var(--c-primary);
+  background: rgba(231,76,60,.08);
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 3px;
+}
+
+/* Project count in settings */
+.project-count {
+  font-size: .68rem;
+  color: var(--c-text2);
+  background: var(--c-surface-h);
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+/* Detail panel: subtask section */
+.det-subtask-list {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+}
+.det-subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: .82rem;
+  border-bottom: 1px solid var(--c-border);
+}
+.det-subtask-item:last-child {
+  border-bottom: none;
+}
+.det-subtask-item.completed {
+  text-decoration: line-through;
+  color: var(--c-text2);
+}
+.det-subtask-check {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .78rem;
+  border-radius: 50%;
+  border: 1px solid var(--c-border);
+  color: var(--c-text2);
+}
+.det-subtask-check:hover {
+  border-color: var(--c-primary);
+}
+.det-subtask-item.completed .det-subtask-check {
+  background: var(--c-ok);
+  color: #fff;
+  border-color: var(--c-ok);
+}
+.det-subtask-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.det-subtask-del {
+  font-size: .7rem;
+  color: var(--c-text2);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.det-subtask-del:hover {
+  color: var(--c-danger);
+  background: rgba(214,48,49,.08);
+}
+.det-subtask-add {
+  display: flex;
+  gap: 6px;
+}
+.det-subtask-add .det-input {
+  flex: 1;
+  min-width: 0;
+}
+.det-subtask-add .btn-sm {
+  flex-shrink: 0;
+}
+
+/* Detail panel: parent link */
+.det-parent-link {
+  font-size: .85rem;
+}
+.det-parent-link:hover {
+  text-decoration: underline;
+}
+
+/* GTD tab count badges */
+.gtd-cnt {
+  display: inline-block;
+  font-size: .62rem;
+  min-width: 16px;
+  text-align: center;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: var(--c-surface-h);
+  color: var(--c-text2);
+  margin-left: 3px;
+  font-weight: 500;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+.gtd-tab.active .gtd-cnt {
+  background: rgba(231,76,60,.15);
+  color: var(--c-primary);
+}
