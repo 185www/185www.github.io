@@ -1,6 +1,7 @@
 /**
  * Pomotodo V4 — app.js
- * V4 changes: dueDate → dueDatetime (precise time), calendar day view
+ * V4 changes: dueDate → dueDatetime (precise time), calendar day view,
+ *   project-subtask hierarchy (parentId, project cards, subtask views)
  * All DOM IDs aligned with index.html; duplicate functions removed;
  * undefined variables fixed; event bindings corrected.
  */
@@ -31,6 +32,8 @@ var selectedCalDate = null;
 var calViewMode = 'month'; // 'month' | 'day'
 var selectedCalDayDate = new Date().toISOString().slice(0, 10); // 日视图当前日期
 var detailTaskId = null;
+var currentProjectView = null; // 当前展开的项目ID（GTD项目Tab中）
+var currentParentView = null; // 当前查看子任务的父任务ID
 
 // Helper: extract date string (YYYY-MM-DD) from dueDatetime
 function getTaskDate(t) {
@@ -472,10 +475,63 @@ function openDetail(taskId) {
   renderProjectSelects();
   var projSel = document.getElementById('det-project');
   if (projSel) projSel.value = t.projectId || '';
+
+  // 子任务区域
+  var subtaskSection = document.getElementById('det-subtask-section');
+  var parentSection = document.getElementById('det-parent-section');
+  var parentLink = document.getElementById('det-parent-link');
+
+  // 如果有父任务，显示父任务信息
+  if (parentSection && parentLink) {
+    if (t.parentId) {
+      var parent = S.tasks.find(function(pt) { return pt.id === t.parentId; });
+      if (parent) {
+        parentLink.textContent = parent.title;
+        parentLink.dataset.parentId = parent.id;
+        parentSection.style.display = '';
+      } else {
+        parentSection.style.display = 'none';
+      }
+    } else {
+      parentSection.style.display = 'none';
+    }
+  }
+
+  // 子任务列表
+  if (subtaskSection) {
+    if (t.parentId) {
+      // 子任务不显示子任务区域
+      subtaskSection.style.display = 'none';
+    } else {
+      subtaskSection.style.display = '';
+      renderDetailSubtasks(t.id);
+    }
+  }
+
   document.getElementById('detail-overlay').removeAttribute('hidden');
   var panel = document.getElementById('detail-panel');
   panel.removeAttribute('hidden');
   setTimeout(function() { panel.classList.add('open'); }, 10);
+}
+
+function renderDetailSubtasks(parentId) {
+  var listEl = document.getElementById('det-subtask-list');
+  var countEl = document.getElementById('det-subtask-count');
+  if (!listEl) return;
+  var children = getSubtasks(parentId);
+  var activeCount = children.filter(function(c) { return !c.completed; }).length;
+  if (countEl) countEl.textContent = children.length + ' 子任务（' + activeCount + ' 待办）';
+  if (children.length === 0) {
+    listEl.innerHTML = '<span style="font-size:.78rem;color:var(--c-text2)">暂无子任务</span>';
+    return;
+  }
+  listEl.innerHTML = children.map(function(c) {
+    return '<div class="det-subtask-item' + (c.completed ? ' completed' : '') + '" data-subtask-id="' + c.id + '">'
+      + '<span class="det-subtask-check" data-act="toggle" data-id="' + c.id + '">' + (c.completed ? '✓' : '○') + '</span>'
+      + '<span class="det-subtask-title">' + esc(c.title) + '</span>'
+      + '<span class="det-subtask-del" data-act="delete-subtask" data-id="' + c.id + '">✕</span>'
+      + '</div>';
+  }).join('');
 }
 
 function closeDetail() {
@@ -1176,6 +1232,44 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (act === 'prio') cyclePriority(id);
     else if (act === 'detail') openDetail(id);
     else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
+    else if (act === 'view-subtasks') {
+      currentParentView = id;
+      renderTasks();
+    }
+    else if (act === 'back-to-project') {
+      currentParentView = null;
+      renderTasks();
+    }
+  });
+
+  // ---- Subtask input (delegated) ----
+  $on('task-list', 'click', function(e) {
+    var addBtn = e.target.closest('#subtask-add-btn');
+    if (addBtn) {
+      var input = document.getElementById('subtask-input');
+      var parentId = addBtn.dataset.parentId;
+      if (input && input.value.trim() && parentId) {
+        addSubtask(parentId, input.value.trim());
+        input.value = '';
+        renderTasks();
+        updateGtdCounts();
+        // 也刷新详情面板（如果打开）
+        if (detailTaskId === parentId) renderDetailSubtasks(parentId);
+      }
+    }
+  });
+  $on('task-list', 'keydown', function(e) {
+    var input = e.target.closest('#subtask-input');
+    if (input && e.key === 'Enter') {
+      var parentId = input.dataset.parentId;
+      if (input.value.trim() && parentId) {
+        addSubtask(parentId, input.value.trim());
+        input.value = '';
+        renderTasks();
+        updateGtdCounts();
+        if (detailTaskId === parentId) renderDetailSubtasks(parentId);
+      }
+    }
   });
 
   // ---- Filter buttons ----
@@ -1310,6 +1404,54 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!t.tags) t.tags = [];
     if (t.tags.indexOf(val) === -1) { t.tags.push(val); saveState(); renderDetailTags(t.tags); }
     detTagInput.value = '';
+  });
+
+  // Detail subtask actions (toggle, delete, add)
+  $on('detail-panel', 'click', function(e) {
+    var subtaskAct = e.target.closest('[data-act]');
+    if (!subtaskAct || !detailTaskId) return;
+    var act = subtaskAct.dataset.act;
+    var id = subtaskAct.dataset.id;
+    if (act === 'delete-subtask' && id) {
+      if (confirm('删除此子任务？')) {
+        deleteTask(id);
+        renderDetailSubtasks(detailTaskId);
+        updateGtdCounts();
+      }
+    }
+  });
+  // Detail: add subtask from input
+  var detSubtaskInput = document.getElementById('det-subtask-input');
+  if (detSubtaskInput) detSubtaskInput.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' || !detailTaskId) return;
+    var val = detSubtaskInput.value.trim();
+    if (!val) return;
+    addSubtask(detailTaskId, val);
+    detSubtaskInput.value = '';
+    renderDetailSubtasks(detailTaskId);
+    renderTasks();
+    updateGtdCounts();
+  });
+  var detSubtaskAddBtn = document.getElementById('det-subtask-add-btn');
+  if (detSubtaskAddBtn) detSubtaskAddBtn.addEventListener('click', function() {
+    if (!detailTaskId) return;
+    var input = document.getElementById('det-subtask-input');
+    if (input && input.value.trim()) {
+      addSubtask(detailTaskId, input.value.trim());
+      input.value = '';
+      renderDetailSubtasks(detailTaskId);
+      renderTasks();
+      updateGtdCounts();
+    }
+  });
+  // Detail: click parent link to navigate
+  var parentLink = document.getElementById('det-parent-link');
+  if (parentLink) parentLink.addEventListener('click', function() {
+    var pid = parentLink.dataset.parentId;
+    if (pid) {
+      closeDetail();
+      setTimeout(function() { openDetail(pid); }, 350);
+    }
   });
 
   // ---- Time picker ----
