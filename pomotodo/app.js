@@ -1591,7 +1591,18 @@ document.addEventListener('DOMContentLoaded', function() {
     else if (act === 'select') selectTask(id);
     else if (act === 'prio') cyclePriority(id);
     else if (act === 'detail') openDetail(id);
-    else if (act === 'delete') { if (confirm('删除此土豆？')) deleteTask(id); }
+    else if (act === 'delete') { if (confirm('删除此土豆？')) {
+        deleteTask(id);
+        // 如果在子任务钻入视图中，且删除后无子任务了，返回项目列表
+        if (currentParentView) {
+          var remaining = getSubtasks(currentParentView);
+          var parent = S.tasks.find(function(x) { return x.id === currentParentView; });
+          if (!parent || remaining.length === 0) {
+            currentParentView = null;
+            renderTasks();
+          }
+        }
+      } }
     else if (act === 'view-subtasks') {
       currentParentView = id;
       renderTasks();
@@ -1775,6 +1786,16 @@ if (calGrid) calGrid.addEventListener('dblclick', function(e) {
   if (detailClose) detailClose.addEventListener('click', closeDetail);
   var detailSave = document.getElementById('det-save');
   if (detailSave) detailSave.addEventListener('click', saveDetail);
+// Detail: start timer for this task
+var detStartTimer = document.getElementById('det-start-timer');
+if (detStartTimer) detStartTimer.addEventListener('click', function() {
+  if (!detailTaskId) return;
+  timer.taskId = detailTaskId;
+  if (!timer.running) startTimer();
+  updateTimerUI();
+  toast('🍅 已开始专注此任务');
+});
+
   var detailDelete = document.getElementById('det-delete');
   if (detailDelete) detailDelete.addEventListener('click', function() {
     if (detailTaskId && confirm('删除此任务？')) { deleteTask(detailTaskId); closeDetail(); }

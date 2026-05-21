@@ -2102,3 +2102,58 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .subtask-progress-fill {
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ===== V4 Iter10: 最终打磨 ===== */
+/* 详情面板开始专注按钮 */
+#det-start-timer {
+  margin-right: 4px;
+  background: var(--c-accent, #e74c3c);
+  color: #fff;
+}
+#det-start-timer:hover {
+  filter: brightness(1.1);
+}
+/* 详情面板操作栏布局改善 */
+.detail-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+/* 完成所有子任务按钮hover效果 */
+.subtask-quick-actions .btn-sm:hover {
+  background: var(--c-success, #27ae60);
+  color: #fff;
+}
+/* 日历日期hover效果 */
+.cal-day {
+  transition: background 0.15s, transform 0.1s;
+  border-radius: 6px;
+}
+/* 番茄完成弹窗中的任务项 */
+.modal-task-item {
+  padding: 8px 12px;
+  margin: 4px 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-task-item .mt-check {
+  font-size: 1.1rem;
+  width: 24px;
+  text-align: center;
+}
+.modal-task-item.checked {
+  background: rgba(231,76,60,0.1);
+}
+.modal-task-item.checked .mt-check {
+  color: var(--c-accent, #e74c3c);
+  font-weight: bold;
+}
+/* 减少动效偏好支持 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
