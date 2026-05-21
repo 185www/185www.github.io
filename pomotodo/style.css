@@ -1957,3 +1957,56 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
   0% { background: rgba(39,174,96,0.2); }
   100% { background: transparent; }
 }
+
+/* ===== V4 Iter7: UX打磨 ===== */
+/* 完成任务的删除线效果更明显 */
+.task-item.completed .task-text {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+/* 子任务输入框聚焦样式增强 */
+.subtask-add-input:focus {
+  box-shadow: 0 0 0 2px rgba(231,76,60,0.15);
+}
+/* 项目卡片操作按钮hover增强 */
+.project-card-act:hover {
+  background: var(--c-surface2, #f0f0f0);
+  transform: scale(1.1);
+}
+/* 进度条完成态绿色 */
+.subtask-progress-fill[style*="width: 100%"] {
+  background: var(--c-success, #27ae60);
+}
+/* 归档区任务checkbox hover提示 */
+.task-btn[data-act="restore"]::after {
+  content: '';
+}
+/* 番茄完成弹窗改进 */
+.modal-task-item {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.modal-task-item:hover {
+  background: var(--c-surface2, #f5f5f5);
+}
+/* 空状态样式增强 */
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--c-text2, #999);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.empty-state small {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+/* GTD tab 计数徽章动画 */
+.gtd-cnt {
+  transition: transform 0.15s;
+}
+.gtd-tab:hover .gtd-cnt {
+  transform: scale(1.1);
+}
