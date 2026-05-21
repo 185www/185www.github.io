@@ -355,7 +355,6 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 
 /* ===== V3: Settings Projects ===== */
 .project-list { flex-direction:column; align-items:flex-start; gap:4px; }
-.project-item { display:flex; align-items:center; gap:6px; font-size:.82rem; padding:3px 0; width:100%; }
 .project-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
 .project-name { flex:1; }
 .project-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
@@ -551,10 +550,7 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 
 /* Project management in settings */
 .project-list { flex-direction:column; align-items:flex-start; gap:4px; }
-.project-item { display:flex; align-items:center; gap:6px; font-size:.82rem; padding:3px 0; width:100%; }
-.project-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
-.project-name { flex:1; }
-.project-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
+roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .project-del:hover { color:var(--c-danger); }
 .sett-select-sm { padding:4px 6px; border:1px solid var(--c-border); border-radius:var(--r-sm); font-size:.78rem; background:var(--c-surface); color:var(--c-text); }
 
@@ -652,11 +648,9 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 
 /* ===== Project Management ===== */
 .project-list { flex-direction:column; align-items:flex-start; gap:4px; }
-.project-item { display:flex; align-items:center; gap:6px; font-size:.82rem; padding:3px 0; width:100%; }
 .project-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
 .project-name { flex:1; }
-.project-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
-.project-del:hover { color:var(--c-danger); }
+.pdanger); }
 .sett-select-sm { padding:4px 6px; border:1px solid var(--c-border); border-radius:var(--r-sm); font-size:.78rem; background:var(--c-surface); color:var(--c-text); }
 
 /* ===== Mobile Responsive ===== */
@@ -763,12 +757,10 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 
 /* Settings project management */
 .project-list { flex-direction:column; align-items:flex-start; gap:4px; }
-.project-item { display:flex; align-items:center; gap:6px; font-size:.82rem; padding:3px 0; width:100%; }
 .project-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
 .project-name { flex:1; }
 .project-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
-.project-del:hover { color:var(--c-danger); }
-.sett-select-sm { padding:4px 6px; border:1px solid var(--c-border); border-radius:var(--r-sm); font-size:.78rem; background:var(--c-surface); color:var(--c-text); }
+.project-del:hover { color:var(--c- font-size:.78rem; background:var(--c-surface); color:var(--c-text); }
 
 /* Mobile responsive for V3 */
 @media (max-width:720px) {
@@ -839,16 +831,13 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 .detail-actions { display:flex; gap:8px; padding:16px 20px; border-top:1px solid var(--c-border); justify-content:space-between; }
 .sett-select-sm { padding:4px 6px; border:1px solid var(--c-border); border-radius:var(--r-sm); font-size:.78rem; background:var(--c-surface); color:var(--c-text); }
 .project-list { flex-direction:column; align-items:flex-start; gap:4px; }
-.project-item { display:flex; align-items:center; gap:6px; font-size:.82rem; padding:3px 0; width:100%; }
 .project-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
 .project-name { flex:1; }
 .project-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .project-del:hover { color:var(--c-danger); }
 
 /* Calendar View */
-.calendar-view { flex:1; flex-direction:column; padding:20px; gap:12px; overflow-y:auto; }
-.cal-header { display:flex; align-items:center; gap:12px; }
-.cal-month { font-size:1.1rem; font-weight:600; flex:1; text-align:center; }
+.calendar-view { flex:1; flex-direction:column; padding:20px; gap:12px; ov; font-weight:600; flex:1; text-align:center; }
 .cal-nav { padding:4px 10px; border-radius:var(--r-sm); border:1px solid var(--c-border); font-size:.85rem; color:var(--c-text2); transition:all var(--ease); }
 .cal-nav:hover { background:var(--c-surface-h); }
 .cal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:.72rem; color:var(--c-text2); font-weight:600; padding:8px 0; }
@@ -969,7 +958,6 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 
 /* ===== V3: Project Management ===== */
 .project-list { flex-direction:column; align-items:flex-start; gap:4px; }
-.project-item { display:flex; align-items:center; gap:6px; font-size:.82rem; padding:3px 0; width:100%; }
 .project-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
 .project-name { flex:1; }
 .project-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
@@ -977,9 +965,7 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 .sett-select-sm { padding:4px 6px; border:1px solid var(--c-border); border-radius:var(--r-sm); font-size:.78rem; background:var(--c-surface); color:var(--c-text); }
 
 /* ===== V3: Responsive ===== */
-@media (max-width:720px) {
-  .detail-panel { width:100%; }
-  .stats-cards { grid-template-columns:repeat(2,1fr) !important; }
+@1fr) !important; }
 }
 
 
@@ -1083,11 +1069,7 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 /* ===== V3: Responsive ===== */
 @media (max-width: 720px) {
   .detail-panel { width: 100%; }
-  .stats-cards { grid-template-columns: repeat(2, 1fr) !important; }
-}
-
-/* ===== V3: GTD Tabs ===== */
-.gtd-tabs { display:flex; gap:2px; margin-bottom:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .stats-cards { grid-tem margin-bottom:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
 .gtd-tabs::-webkit-scrollbar { display:none; }
 .gtd-tab { padding:4px 10px; border-radius:20px; font-size:.7rem; font-weight:600; color:var(--c-text2); white-space:nowrap; transition:all var(--ease); flex-shrink:0; }
 .gtd-tab:hover { background:var(--c-surface); }
@@ -1169,15 +1151,6 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 .cal-task-list { list-style:none; display:flex; flex-direction:column; gap:6px; }
 .cal-task-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; background:var(--c-bg); font-size:.82rem; cursor:pointer; }
 .cal-task-item:hover { background:var(--c-surface-h); }
-
-/* ===== V3: Project settings ===== */
-.project-list { flex-direction:column; align-items:flex-start; gap:4px; }
-.project-item { display:flex; align-items:center; gap:6px; font-size:.82rem; padding:3px 0; width:100%; }
-.project-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
-.project-name { flex:1; }
-.project-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
-.project-del:hover { color:var(--c-danger); }
-.sett-select-sm { padding:4px 6px; border:1px solid var(--c-border); border-radius:6px; font-size:.78rem; background:var(--c-surface); color:var(--c-text); }
 
 /* ===== V3: 4 stat cards ===== */
 .stats-cards { grid-template-columns:repeat(4,1fr); }
@@ -1913,4 +1886,74 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 }
 .archive-group-list .task-item .task-check:hover {
   opacity: 1;
+}
+
+/* ===== V4 Iter5: 卡片快速操作 & 子任务进度条 & UX打磨 ===== */
+.project-card-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.project-card:hover .project-card-actions {
+  opacity: 1;
+}
+.project-card-act {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s, background 0.15s;
+}
+.project-card-act:hover {
+  opacity: 1;
+  background: var(--c-surface2, #f0f0f0);
+}
+.subtask-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 4px;
+}
+.subtask-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--c-border, #e0e0e0);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.subtask-progress-fill {
+  height: 100%;
+  background: var(--c-success, #27ae60);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.subtask-progress-pct {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--c-text, #333);
+  min-width: 32px;
+  text-align: right;
+}
+.subtask-parent-stats {
+  font-size: 0.78rem;
+  color: var(--c-text2, #888);
+  white-space: nowrap;
+}
+/* Improve detail panel promote button */
+#det-promote-project:hover {
+  filter: brightness(0.95);
+}
+/* Smooth archive restore transition */
+.task-item.restoring {
+  animation: restoreFlash 0.5s ease;
+}
+@keyframes restoreFlash {
+  0% { background: rgba(39,174,96,0.2); }
+  100% { background: transparent; }
 }
