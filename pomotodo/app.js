@@ -805,6 +805,14 @@ function selectCalDate(dateStr) {
   renderCalendar();
 }
 
+// 双击日历日期 → 切换到日视图
+function selectCalDateAndSwitch(dateStr) {
+  selectedCalDate = dateStr;
+  selectedCalDayDate = dateStr;
+  calViewMode = 'day';
+  renderCalendar();
+}
+
 function switchCalView(mode) {
   calViewMode = mode;
   if (mode === 'day' && selectedCalDate) {
@@ -1011,6 +1019,12 @@ function renderSubtaskView(listEl, parentTask) {
     + '<span class="subtask-parent-stats">✅' + doneKids + ' / 📋' + kids.length + '</span>'
     + '</div>'
     + '</div>';
+  // 快速操作栏：完成所有子任务
+  if (activeKids > 0) {
+    html += '<div class="subtask-quick-actions">'
+      + '<button class="btn-sm" data-act="complete-all-subtasks" data-id="' + parentTask.id + '" title="完成所有待办子任务">✅ 完成所有子任务</button>'
+      + '</div>';
+  }
   // 子任务添加输入框
   html += '<div class="subtask-add-row">'
     + '<input type="text" id="subtask-input" class="subtask-add-input" placeholder="添加子任务..." data-parent-id="' + parentTask.id + '" />'
@@ -1595,6 +1609,30 @@ $on('task-list', 'dblclick', function(e) {
   }
 });
 
+// ---- Subtask bulk actions (delegated) ----
+$on('task-list', 'click', function(e) {
+  var bulkBtn = e.target.closest('[data-act="complete-all-subtasks"]');
+  if (bulkBtn) {
+    var parentId = bulkBtn.dataset.id;
+    if (!parentId) return;
+    var kids = getSubtasks(parentId);
+    var changed = false;
+    kids.forEach(function(k) {
+      if (!k.completed) {
+        k.completed = true;
+        changed = true;
+      }
+    });
+    if (changed) {
+      saveState();
+      renderTasks();
+      updateGtdCounts();
+      toast('🎉 所有子任务已完成！');
+    }
+    return;
+  }
+});
+
   // ---- Subtask input (delegated) ----
   $on('task-list', 'click', function(e) {
     var addBtn = e.target.closest('#subtask-add-btn');
@@ -1713,6 +1751,11 @@ renderTasks();
     if (!cell || cell.classList.contains('other-month')) return;
     if (cell.dataset.date) selectCalDate(cell.dataset.date);
   });
+if (calGrid) calGrid.addEventListener('dblclick', function(e) {
+  var cell = e.target.closest('.cal-day');
+  if (!cell || cell.classList.contains('other-month')) return;
+  if (cell.dataset.date) selectCalDateAndSwitch(cell.dataset.date);
+});
 
   // ---- Calendar task click ----
   var calTaskList = document.getElementById('cal-task-list');
