@@ -1151,6 +1151,11 @@ function renderTasks() {
     var parentTask = S.tasks.find(function(t) { return t.id === currentParentView; });
     if (parentTask) {
       renderSubtaskView(list, parentTask);
+      // 自动聚焦子任务输入框，方便快速添加
+      setTimeout(function() {
+        var si = document.getElementById('subtask-input');
+        if (si) si.focus();
+      }, 50);
     } else {
       currentParentView = null;
       renderProjectCards(list, tasks);
@@ -1631,6 +1636,11 @@ document.addEventListener('DOMContentLoaded', function() {
     currentParentView = null;
     document.querySelectorAll('.gtd-tab').forEach(function(t) { t.classList.remove('active'); });
     tab.classList.add('active');     // 同步 quick-input 的 area select
+  // 切换GTD区域时重置过滤器为'全部'
+  currentFilter = 'all';
+  document.querySelectorAll('.filter-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.filter === 'all');
+  });
     var qiArea = document.getElementById('qi-area');
     if (qiArea && currentArea && currentArea !== 'archive' && currentArea !== 'all') {
       qiArea.value = currentArea;
@@ -1905,6 +1915,12 @@ renderTasks();
   // ---- Keyboard shortcuts ----
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { if (detailTaskId) { closeDetail(); return; } if (quickInputVisible) { toggleQuickInput(); return; } }
+  // Ctrl+Enter 保存详情面板
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && detailTaskId) {
+    e.preventDefault();
+    saveDetail();
+    return;
+  }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space') { e.preventDefault(); timer.running ? pauseTimer() : startTimer(); }
     if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) resetTimer();
