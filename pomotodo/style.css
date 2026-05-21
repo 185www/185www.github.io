@@ -2059,3 +2059,46 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .stat-card {
   transition: transform 0.2s, box-shadow 0.2s;
 }
+
+/* ===== V4 Iter9: 功能增强样式 ===== */
+/* 固定/置顶任务更醒目 */
+.task-item .task-btn[data-act="pin"] {
+  transition: transform 0.15s;
+}
+.task-item .task-btn[data-act="pin"]:hover {
+  transform: scale(1.2);
+}
+/* 子任务快速操作栏 */
+.subtask-quick-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+.subtask-quick-actions .btn-sm {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.subtask-quick-actions .btn-sm:hover {
+  opacity: 1;
+}
+/* 日历日期双击提示 */
+.cal-day.has-tasks {
+  cursor: pointer;
+}
+.cal-day.has-tasks:hover {
+  background: var(--c-accent, #e74c3c);
+  color: #fff;
+  transform: scale(1.05);
+  transition: transform 0.15s, background 0.15s;
+}
+/* 已选中任务更醒目 */
+.task-item.active-task {
+  border-left: 3px solid var(--c-accent, #e74c3c);
+  background: rgba(231,76,60,0.05);
+}
+/* 进度条动画 */
+.subtask-progress-fill {
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
