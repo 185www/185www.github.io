@@ -1,4 +1,4 @@
-const CACHE = 'pomotodo-v11-iter3-fix';
+const CACHE = 'pomotodo-v12-iter4-fix';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './timer-worker.js', './manifest.json'];
 
 self.addEventListener('install', e => {
