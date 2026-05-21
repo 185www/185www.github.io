@@ -1208,6 +1208,11 @@ function renderTasks() {
       var activeKids = kids.filter(function(k) { return !k.completed; }).length;
       subtaskBadge = '<span class="task-subtask-badge">📋' + activeKids + '/' + kids.length + '</span>';
     }
+    var parentBadge = '';
+    if (t.parentId) {
+      var parent = S.tasks.find(function(pt) { return pt.id === t.parentId; });
+      if (parent) parentBadge = '<span class="task-parent-badge">📁 ' + esc(parent.title) + '</span>';
+    }
     var isOverdueItem = dueBadge.indexOf('overdue') > -1;
     return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + (isOverdueItem ? ' overdue' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
