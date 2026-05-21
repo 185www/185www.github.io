@@ -2010,3 +2010,52 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .gtd-tab:hover .gtd-cnt {
   transform: scale(1.1);
 }
+
+/* ===== V4 Iter8: 交互增强 ===== */
+/* 双击任务项打开详情的hover提示 */
+.task-item:hover {
+  cursor: pointer;
+}
+/* 逾期badge在子任务视图中更醒目 */
+.subtask-parent-info .task-due-badge.overdue {
+  animation: overduePulse 2s infinite;
+  font-weight: 700;
+}
+@keyframes overduePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+/* 任务项完成动画 */
+.task-item.completed {
+  transition: opacity 0.3s;
+}
+/* GTD Tab 活跃态更醒目 */
+.gtd-tab.active {
+  position: relative;
+}
+.gtd-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  background: var(--c-accent, #e74c3c);
+  border-radius: 1px;
+}
+/* 详情面板保存按钮快捷键提示 */
+#det-save::after {
+  content: ' (Ctrl+Enter)';
+  font-size: 0.65rem;
+  opacity: 0.5;
+  margin-left: 4px;
+}
+/* 统计卡片hover效果 */
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}

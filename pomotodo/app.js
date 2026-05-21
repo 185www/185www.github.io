@@ -1003,7 +1003,7 @@ function renderSubtaskView(listEl, parentTask) {
     + '<div class="subtask-parent-info">'
     + '<span class="task-prio-badge p' + p + '">' + prioLabels[p] + '</span>'
     + '<span class="subtask-parent-title">' + esc(parentTask.title) + '</span>'
-    + (dueStr ? '<span class="task-due-badge">' + dueStr + '</span>' : '')
+    + (dueStr ? '<span class="task-due-badge' + (parentTask.dueDatetime && getTaskDate(parentTask) < new Date().toISOString().slice(0, 10) ? ' overdue' : '') + '">' + dueStr + '</span>' : '')
     + '</div>'
     + '<div class="subtask-progress-row">'
     + '<div class="subtask-progress-bar"><div class="subtask-progress-fill" style="width:' + progressPct + '%"></div></div>'
@@ -1587,6 +1587,13 @@ document.addEventListener('DOMContentLoaded', function() {
       renderTasks();
     }
   });
+// 双击任务项打开详情
+$on('task-list', 'dblclick', function(e) {
+  var item = e.target.closest('.task-item');
+  if (item && item.dataset.id) {
+    openDetail(item.dataset.id);
+  }
+});
 
   // ---- Subtask input (delegated) ----
   $on('task-list', 'click', function(e) {
