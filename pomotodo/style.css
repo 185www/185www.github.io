@@ -1857,3 +1857,11 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
   padding: 0;
   margin: 0;
 }
+
+/* ===== V4 Iter2: 项目分区 & 子任务分隔 ===== */
+.project-cards-section { margin-bottom: 16px; }
+.project-cards-label { font-size: 0.78rem; font-weight: 600; color: var(--c-text2, #888); margin-bottom: 8px; padding-left: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+.project-simple-section { margin-top: 8px; }
+.project-simple-section .task-item { list-style: none; }
+.subtask-divider { font-size: 0.78rem; color: var(--c-text2, #999); padding: 8px 4px 4px; margin-top: 8px; border-top: 1px dashed var(--c-border, #eee); }
+#det-promote-project { width: 100%; margin-top: 4px; font-size: 0.85rem; }
