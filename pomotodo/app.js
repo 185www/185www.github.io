@@ -110,9 +110,10 @@ function loadState() {
         if (t.dueDate === '' || t.dueDate === undefined) {
           t.dueDatetime = t.dueDatetime || '';
           delete t.dueDate;
-        }
-      });
-      return state;
+ }
+ if (!t.parentId) t.parentId = '';
+ });
+ return state;
     }
   } catch (_) {}
   return JSON.parse(JSON.stringify(DEFAULTS));
@@ -597,6 +598,7 @@ function saveDetail() {
   t.projectId = document.getElementById('det-project').value || '';
   t.notes = document.getElementById('det-notes').value || '';
   t.estimatedPomodoros = parseInt(document.getElementById('det-estpomo').value) || 0;
+  // parentId is not editable in detail panel (it's set via addSubtask or promote)
   // Tags are saved inline when added/removed via tag chips, so they stay in sync
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
   if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
@@ -1013,6 +1015,58 @@ function renderSubtaskItem(t) {
     + '</div></li>';
 }
 
+// ==================== ARCHIVE GROUPED VIEW ====================
+function renderArchiveView(listEl, tasks) {
+    // 按完成日期分组，最新在前
+    var today = new Date().toISOString().slice(0, 10);
+    var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    var groups = {};
+    tasks.forEach(function(t) {
+        var dateKey = t.completed ? (t.createdAt || '').slice(0, 10) || '未知日期' : (t.createdAt || '').slice(0, 10) || '未知日期';
+        // 尝试从sessions中找到完成时间
+        var sess = S.sessions.filter(function(s) { return s.taskId === t.id && s.type === 'work'; });
+        if (sess.length > 0) {
+            dateKey = sess[sess.length - 1].start.slice(0, 10) || dateKey;
+        }
+        if (!groups[dateKey]) groups[dateKey] = [];
+        groups[dateKey].push(t);
+    });
+    var sortedKeys = Object.keys(groups).sort().reverse();
+    var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
+    var html = '';
+    sortedKeys.forEach(function(dk) {
+        var label = dk;
+        if (dk === today) label = '📅 今天';
+        else if (dk === yesterday) label = '📅 昨天';
+        else label = '📅 ' + dk;
+        html += '<div class="archive-group"><div class="archive-group-label">' + esc(label) + '</div><ul class="archive-group-list">';
+        groups[dk].forEach(function(t) {
+            var p = t.priority || 4;
+            var tagHtml = (t.tags || []).map(function(tag) { return '<span class="task-tag">#' + esc(tag) + '</span>'; }).join(' ');
+            var projBadge = '';
+            if (t.projectId) {
+                var proj = S.projects.find(function(pr) { return pr.id === t.projectId; });
+                if (proj) projBadge = '<span class="task-area-badge">' + esc(proj.name) + '</span>';
+            }
+            var parentBadge = '';
+            if (t.parentId) {
+                var parent = S.tasks.find(function(pt) { return pt.id === t.parentId; });
+                if (parent) parentBadge = '<span class="task-parent-badge">📁 ' + esc(parent.title) + '</span>';
+            }
+            html += '<li class="task-item prio-' + p + ' completed" data-id="' + t.id + '">' +
+                '<div class="task-check" data-act="toggle" data-id="' + t.id + '">✓</div>' +
+                '<span class="task-prio-badge p' + p + '">' + prioLabels[p] + '</span>' +
+                '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + projBadge + parentBadge + '</span>' +
+                '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + '</span>' +
+                '<div class="task-btns">' +
+                '<button class="task-btn del" data-act="delete" data-id="' + t.id + '">✕</button>' +
+                '</div></li>';
+        });
+        html += '</ul></div>';
+    });
+    listEl.innerHTML = html || '<div class="empty-state">📭 归档为空<br><small>完成的任务会自动归档到这里</small></div>';
+}
+
 function renderTasks() {
   var filter = currentFilter;
   var tasks = S.tasks.slice();
@@ -1057,6 +1111,11 @@ function renderTasks() {
     return;
   }
 
+  // 归档区：按完成时间分组
+  if (currentArea === 'archive' && tasks.length > 0) {
+    renderArchiveView(list, tasks);
+    return;
+  }
   if (tasks.length === 0) {
     list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>最佳的土豆是一周内可完成的小任务</small></div>';
     return;
@@ -1087,7 +1146,7 @@ function renderTasks() {
     return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + (isOverdueItem ? ' overdue' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
       '<span class="task-prio-badge p' + p + '" data-act="prio" data-id="' + t.id + '" title="切换优先级">' + prioLabels[p] + '</span>' +
-      '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + subtaskBadge + '</span>' +
+      '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + parentBadge + subtaskBadge + '</span>' +
       '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + (t.pomodorosCompleted > 5 ? '+' + t.pomodorosCompleted : '') + '</span>' +
       '<div class="task-btns">' +
       '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' +
@@ -1649,7 +1708,11 @@ renderTasks();
     if (!subtaskAct || !detailTaskId) return;
     var act = subtaskAct.dataset.act;
     var id = subtaskAct.dataset.id;
-    if (act === 'delete-subtask' && id) {
+    if (act === 'toggle' && id) {
+      // 子任务toggle：完成后不归档，刷新详情面板子任务列表
+      toggleTask(id);
+      renderDetailSubtasks(detailTaskId);
+    } else if (act === 'delete-subtask' && id) {
       if (confirm('删除此子任务？')) {
         deleteTask(id);
         renderDetailSubtasks(detailTaskId);
