@@ -404,17 +404,24 @@ function addSubtask(parentId, title) {
 }
 
 function toggleTask(id) {
- var t = S.tasks.find(function(x) { return x.id === id; });
- if (!t) return;
- t.completed = !t.completed;
- if (t.completed) {
-  if (!t.parentId) t.area = 'archive';
- } else {
-  if (!t.parentId && t.area === 'archive') {
-   t.area = t.today ? 'next' : 'inbox';
+  var t = S.tasks.find(function(x) { return x.id === id; });
+  if (!t) return;
+  var wasCompleted = t.completed;
+  var wasArchive = t.area === 'archive';
+  t.completed = !t.completed;
+  if (t.completed) {
+    if (!t.parentId) t.area = 'archive';
+  } else {
+    if (!t.parentId && t.area === 'archive') {
+      t.area = t.today ? 'next' : 'inbox';
+    }
   }
- }
- saveState(); renderTasks(); updateGtdCounts();
+  saveState(); renderTasks(); updateGtdCounts();
+  // 恢复任务时给出明确的toast反馈
+  if (wasCompleted && wasArchive && !t.completed) {
+    var areaNames = {inbox:'📥 收件箱', next:'▶ 下一步', projects:'📁 项目', someday:'💭 将来/也许'};
+    toast('已恢复到 ' + (areaNames[t.area] || t.area));
+  }
 }
 function pinTask(id) {
   var t = S.tasks.find(function(x) { return x.id === id; });
@@ -607,7 +614,20 @@ function saveDetail() {
   t.notes = document.getElementById('det-notes').value || '';
   t.estimatedPomodoros = parseInt(document.getElementById('det-estpomo').value) || 0;
   // parentId is not editable in detail panel (it's set via addSubtask or promote)
-  // Tags are saved inline when added/removed via tag chips, so they stay in sync
+  // Sync tags: read current tag chips from detail panel to ensure consistency
+  var tagChips = document.querySelectorAll('#det-tags .det-tag-chip');
+  if (tagChips.length > 0 || t.tags.length > 0) {
+    // Only sync if there are visible chips or existing tags (avoid overwriting on partial render)
+    var currentTags = [];
+    tagChips.forEach(function(chip) {
+      var removeAttr = chip.getAttribute('data-remove-tag');
+      if (removeAttr) currentTags.push(removeAttr);
+    });
+    // If chips are present, use them; otherwise keep existing tags
+    if (currentTags.length > 0 || tagChips.length === 0) {
+      t.tags = currentTags.length > 0 ? currentTags : t.tags;
+    }
+  }
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
   if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
   if (t.dueDatetime && t.area === 'inbox') t.area = 'next';
@@ -905,7 +925,7 @@ function renderProjectCards(listEl, tasks) {
         + '<span class="project-card-prio p' + p + '">P' + p + '</span>'
         + '<span class="project-card-title">' + esc(t.title) + '</span>'
         + (projName ? '<span class="project-card-proj" style="color:' + projColor + '">● ' + projName + '</span>' : '')
-        + '</div>'
+        + '<div class="project-card-actions">' + '<button class="project-card-act" data-act="detail" data-id="' + t.id + '" title="详情">📝</button>' + '<button class="project-card-act" data-act="delete" data-id="' + t.id + '" title="删除">🗑</button>' + '</div>' + '</div>'
         + (tagHtml || dueStr ? '<div class="project-card-meta">' + tagHtml + (dueStr ? '<span class="task-due-badge">' + dueStr + '</span>' : '') + '</div>' : '')
         + '<div class="project-card-stats">'
         + '<span class="project-card-stat">📋 ' + kids.length + ' 子任务</span>'
@@ -945,7 +965,7 @@ function renderProjectCards(listEl, tasks) {
   }
   
   if (parentTasks.length === 0) {
-    listEl.innerHTML = '<div class="empty-state">📁 还没有项目<br><small>在项目区域创建任务，然后添加子任务来规划项目</small></div>';
+    listEl.innerHTML = '<div class="empty-state">📁 还没有项目<br><small>在上方输入框添加项目任务，然后在详情面板中添加子任务来规划项目</small></div>';
     return;
   }
   
@@ -965,11 +985,18 @@ function renderSubtaskView(listEl, parentTask) {
   var doneKids = kids.length - activeKids;
   var p = parentTask.priority || 4;
   var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
+  var progressPct = kids.length > 0 ? Math.round((doneKids / kids.length) * 100) : 0;
+  var dueStr = parentTask.dueDatetime ? fmtDue(parentTask) : '';
   var html = '<div class="subtask-view-header">'
     + '<button class="subtask-back-btn" data-act="back-to-project">← 返回项目列表</button>'
     + '<div class="subtask-parent-info">'
     + '<span class="task-prio-badge p' + p + '">' + prioLabels[p] + '</span>'
     + '<span class="subtask-parent-title">' + esc(parentTask.title) + '</span>'
+    + (dueStr ? '<span class="task-due-badge">' + dueStr + '</span>' : '')
+    + '</div>'
+    + '<div class="subtask-progress-row">'
+    + '<div class="subtask-progress-bar"><div class="subtask-progress-fill" style="width:' + progressPct + '%"></div></div>'
+    + '<span class="subtask-progress-pct">' + progressPct + '%</span>'
     + '<span class="subtask-parent-stats">✅' + doneKids + ' / 📋' + kids.length + '</span>'
     + '</div>'
     + '</div>';
@@ -1073,7 +1100,7 @@ function renderArchiveView(listEl, tasks) {
         });
         html += '</ul></div>';
     });
-    listEl.innerHTML = html || '<div class="empty-state">📭 归档为空<br><small>完成的任务会自动归档到这里</small></div>';
+    listEl.innerHTML = html || '<div class="empty-state">📭 归档为空<br><small>完成后的任务会自动归档到这里，可点击 ↩ 恢复</small></div>';
 }
 
 function renderTasks() {
@@ -1126,7 +1153,7 @@ function renderTasks() {
     return;
   }
   if (tasks.length === 0) {
-    list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>最佳的土豆是一周内可完成的小任务</small></div>';
+    list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>在上方输入框添加任务，支持 #标签 !1优先级 @today 快捷语法</small></div>';
     return;
   }
   var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
