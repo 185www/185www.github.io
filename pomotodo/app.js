@@ -422,6 +422,17 @@ function toggleTask(id) {
     var areaNames = {inbox:'📥 收件箱', next:'▶ 下一步', projects:'📁 项目', someday:'💭 将来/也许'};
     toast('已恢复到 ' + (areaNames[t.area] || t.area));
   }
+  // 子任务完成时：检查是否所有同级子任务都已完成，提示完成父任务
+  if (t.completed && t.parentId) {
+    var parent = S.tasks.find(function(x) { return x.id === t.parentId; });
+    if (parent && !parent.completed) {
+      var siblings = getSubtasks(t.parentId);
+      var allDone = siblings.every(function(s) { return s.completed; });
+      if (allDone && siblings.length > 0) {
+        toast('🎉 所有子任务已完成！考虑完成父任务「' + parent.title + '」');
+      }
+    }
+  }
 }
 function pinTask(id) {
   var t = S.tasks.find(function(x) { return x.id === id; });
@@ -908,7 +919,7 @@ function renderProjectCards(listEl, tasks) {
   // 项目卡片区域
   if (projectItems.length > 0) {
     html += '<div class="project-cards-section">';
-    html += '<div class="project-cards-label">📁 项目</div>';
+    html += '<div class="project-cards-label">📁 项目（点击卡片查看子任务）</div>';
     html += projectItems.map(function(t) {
       var p = t.priority || 4;
       var kids = getSubtasks(t.id);
@@ -941,7 +952,7 @@ function renderProjectCards(listEl, tasks) {
   // 普通任务列表区域
   if (simpleItems.length > 0) {
     html += '<div class="project-simple-section">';
-    html += '<div class="project-cards-label">📝 待规划任务</div>';
+    html += '<div class="project-cards-label">📝 待规划任务（可在详情面板添加子任务升级为项目）</div>';
     var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
     html += simpleItems.map(function(t) {
       var p = t.priority || 4;
@@ -1552,6 +1563,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var btn = e.target.closest('[data-act]');
     if (!btn) return;
     var id = btn.dataset.id, act = btn.dataset.act;
+  // 阻止项目卡片内部按钮的点击冒泡到卡片本身
+  if (btn.classList.contains('project-card-act')) {
+    e.stopPropagation();
+  }
     if (act === 'toggle') toggleTask(id);
     else if (act === 'pin') pinTask(id);
     else if (act === 'select') selectTask(id);
