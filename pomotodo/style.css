@@ -1575,3 +1575,285 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
   background: rgba(231,76,60,.15);
   color: var(--c-primary);
 }
+
+/* ==================== V4 项目卡片 + 子任务视图 ==================== */
+.task-subtask-badge {
+  font-size: .68rem;
+  background: rgba(231,76,60,.1);
+  color: var(--c-primary);
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.project-card {
+  background: var(--c-surface-h);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  border: 1px solid var(--c-border);
+}
+.project-card:hover {
+  background: var(--c-surface);
+  border-color: var(--c-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.project-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.project-card-prio {
+  font-size: .65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.project-card-prio.p1 { background: rgba(231,76,60,.15); color: #e74c3c; }
+.project-card-prio.p2 { background: rgba(230,126,34,.15); color: #e67e22; }
+.project-card-prio.p3 { background: rgba(241,196,15,.15); color: #f39c12; }
+.project-card-prio.p4 { background: rgba(149,165,166,.15); color: var(--c-text2); }
+.project-card-title {
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--c-text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-card-proj {
+  font-size: .72rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.project-card-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.project-card-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.project-card-stat {
+  font-size: .72rem;
+  color: var(--c-text2);
+}
+.project-card-progress {
+  height: 4px;
+  background: var(--c-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.project-card-progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s;
+}
+
+/* 子任务钻入视图 */
+.subtask-view-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--c-border);
+}
+.subtask-back-btn {
+  background: none;
+  border: none;
+  color: var(--c-primary);
+  font-size: .85rem;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 6px;
+  display: block;
+}
+.subtask-back-btn:hover {
+  text-decoration: underline;
+}
+.subtask-parent-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.subtask-parent-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.subtask-parent-stats {
+  font-size: .78rem;
+  color: var(--c-text2);
+  margin-left: auto;
+}
+.subtask-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.subtask-add-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: .85rem;
+}
+.subtask-add-input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+.subtask-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ===== V4 Iter1: Project Cards & Subtask View ===== */
+.task-subtask-badge {
+  font-size: 0.7rem;
+  background: var(--c-surface2, #f0f0f0);
+  border-radius: 8px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  color: var(--c-text2, #888);
+}
+.project-card {
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--c-border, #e0e0e0);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.project-card:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+.project-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.project-card-prio {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.project-card-prio.p1 { background: #e74c3c; }
+.project-card-prio.p2 { background: #e67e22; }
+.project-card-prio.p3 { background: #f1c40f; color: #333; }
+.project-card-prio.p4 { background: #95a5a6; }
+.project-card-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--c-text, #333);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-card-proj {
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.project-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.project-card-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: var(--c-text2, #888);
+  margin-bottom: 6px;
+}
+.project-card-stat {
+  white-space: nowrap;
+}
+.project-card-progress {
+  height: 4px;
+  background: var(--c-border, #e0e0e0);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.project-card-progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+.subtask-view-header {
+  margin-bottom: 12px;
+}
+.subtask-back-btn {
+  background: var(--c-surface2, #f5f5f5);
+  border: 1px solid var(--c-border, #ddd);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+  color: var(--c-text2, #888);
+}
+.subtask-back-btn:hover {
+  background: var(--c-accent, #e74c3c);
+  color: #fff;
+}
+.subtask-parent-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border, #eee);
+  margin-bottom: 10px;
+}
+.subtask-parent-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--c-text, #333);
+  flex: 1;
+}
+.subtask-parent-stats {
+  font-size: 0.8rem;
+  color: var(--c-text2, #888);
+}
+.subtask-add-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.subtask-add-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--c-border, #ddd);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: var(--c-surface, #fff);
+  color: var(--c-text, #333);
+}
+.subtask-add-input:focus {
+  outline: none;
+  border-color: var(--c-accent, #e74c3c);
+}
+.subtask-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}

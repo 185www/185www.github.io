@@ -412,6 +412,8 @@ function pinTask(id) {
   if (!t) return; t.pinned = !t.pinned; saveState(); renderTasks();
 }
 function deleteTask(id) {
+  var childIds = S.tasks.filter(function(x) { return x.parentId === id; }).map(function(x) { return x.id; });
+  childIds.forEach(function(cid) { deleteTask(cid); });
   S.tasks = S.tasks.filter(function(x) { return x.id !== id; }); saveState(); renderTasks(); updateGtdCounts();
 }
 function selectTask(id) {
@@ -479,7 +481,7 @@ function updateGtdCounts() {
     if (t.completed || t.area === 'archive') c.archive++;
     else if (t.area === 'inbox') c.inbox++;
     else if (t.area === 'next' || t.today) c.next++;
-    else if (t.projectId) c.projects++;
+    else if (t.area === 'projects') c.projects++;
     else if (t.area === 'someday') c.someday++;
     else c.inbox++;
   });
@@ -839,6 +841,100 @@ function updateTimerUI() {
   document.title = timer.running ? fmtTime(timer.remaining) + ' - Pomotodo' : 'Pomotodo';
 }
 
+// ==================== PROJECT CARD VIEW ====================
+function renderProjectCards(listEl, tasks) {
+  // 找出所有作为父任务的项目（area=projects且无parentId的任务）
+  var parentTasks = tasks.filter(function(t) { return !t.parentId; });
+  // 也包含有子任务标记的项目
+  if (parentTasks.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">📁 还没有项目<br><small>在项目区域创建任务，然后添加子任务来规划项目</small></div>';
+    return;
+  }
+  listEl.innerHTML = parentTasks.map(function(t) {
+    var p = t.priority || 4;
+    var kids = getSubtasks(t.id);
+    var activeKids = kids.filter(function(k) { return !k.completed; }).length;
+    var doneKids = kids.length - activeKids;
+    var progress = kids.length > 0 ? Math.round((doneKids / kids.length) * 100) : 0;
+    var proj = t.projectId ? S.projects.find(function(pr) { return pr.id === t.projectId; }) : null;
+    var projColor = proj ? proj.color : 'var(--c-accent)';
+    var projName = proj ? esc(proj.name) : '';
+    var tagHtml = (t.tags || []).map(function(tag) { return '<span class="task-tag">#' + esc(tag) + '</span>'; }).join(' ');
+    var dueStr = t.dueDatetime ? fmtDue(t) : '';
+    return '<div class="project-card" data-act="view-subtasks" data-id="' + t.id + '">' +
+      '<div class="project-card-header">' +
+        '<span class="project-card-prio p' + p + '">P' + p + '</span>' +
+        '<span class="project-card-title">' + esc(t.title) + '</span>' +
+        (projName ? '<span class="project-card-proj" style="color:' + projColor + '">● ' + projName + '</span>' : '') +
+      '</div>' +
+      (tagHtml || dueStr ? '<div class="project-card-meta">' + tagHtml + (dueStr ? '<span class="task-due-badge">' + dueStr + '</span>' : '') + '</div>' : '') +
+      '<div class="project-card-stats">' +
+        '<span class="project-card-stat">📋 ' + kids.length + ' 子任务</span>' +
+        '<span class="project-card-stat">✅ ' + doneKids + ' 完成</span>' +
+        '<span class="project-card-stat">▶ ' + activeKids + ' 待办</span>' +
+      '</div>' +
+      (kids.length > 0 ? '<div class="project-card-progress"><div class="project-card-progress-bar" style="width:' + progress + '%;background:' + projColor + '"></div></div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+// ==================== SUBTASK DRILL-DOWN VIEW ====================
+function renderSubtaskView(listEl, parentTask) {
+  if (!parentTask) {
+    currentParentView = null;
+    renderTasks();
+    return;
+  }
+  var kids = getSubtasks(parentTask.id);
+  var activeKids = kids.filter(function(k) { return !k.completed; }).length;
+  var doneKids = kids.length - activeKids;
+  var p = parentTask.priority || 4;
+  var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
+
+  var html = '<div class="subtask-view-header">' +
+    '<button class="subtask-back-btn" data-act="back-projects">← 返回项目列表</button>' +
+    '<div class="subtask-parent-info">' +
+      '<span class="task-prio-badge p' + p + '">' + prioLabels[p] + '</span>' +
+      '<span class="subtask-parent-title">' + esc(parentTask.title) + '</span>' +
+      '<span class="subtask-parent-stats">✅' + doneKids + ' / 📋' + kids.length + '</span>' +
+    '</div>' +
+  '</div>';
+
+  // 子任务添加输入框
+  html += '<div class="subtask-add-row">' +
+    '<input type="text" id="subtask-input" class="subtask-add-input" placeholder="添加子任务..." data-parent-id="' + parentTask.id + '" />' +
+    '<button id="subtask-add-btn" class="btn-sm btn-primary" data-parent-id="' + parentTask.id + '">＋</button>' +
+  '</div>';
+
+  // 子任务列表
+  html += '<ul class="subtask-list">';
+  if (kids.length === 0) {
+    html += '<li class="empty-state" style="padding:1rem">📋 暂无子任务<br><small>子任务是项目下的可执行步骤</small></li>';
+  } else {
+    kids.forEach(function(t) {
+      var isActive = timer.taskId === t.id;
+      var tp = t.priority || 4;
+      var tagHtml = (t.tags || []).map(function(tag) { return '<span class="task-tag">#' + esc(tag) + '</span>'; }).join(' ');
+      var dueBadge = '';
+      if (t.dueDatetime) {
+        var isOverdue = getTaskDate(t) < new Date().toISOString().slice(0, 10) && !t.completed;
+        dueBadge = '<span class="task-due-badge' + (isOverdue ? ' overdue' : '') + '">' + fmtDue(t) + '</span>';
+      }
+      html += '<li class="task-item prio-' + tp + (t.completed ? ' completed' : '') + (isActive ? ' active-task' : '') + '" data-id="' + t.id + '">' +
+        '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
+        '<span class="task-prio-badge p' + tp + '" data-act="prio" data-id="' + t.id + '">' + prioLabels[tp] + '</span>' +
+        '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + dueBadge + '</span>' +
+        '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + '</span>' +
+        '<div class="task-btns">' +
+          '<button class="task-btn" data-act="select" data-id="' + t.id + '">' + (isActive ? '🍅' : '○') + '</button>' +
+          '<button class="task-btn del" data-act="delete" data-id="' + t.id + '">✕</button>' +
+        '</div></li>';
+    });
+  }
+  html += '</ul>';
+  listEl.innerHTML = html;
+}
+
 function renderTasks() {
   var filter = currentFilter;
   var tasks = S.tasks.slice();
@@ -847,7 +943,7 @@ function renderTasks() {
   if (currentArea && currentArea !== 'all') {
     tasks = tasks.filter(function(t) {
       if (currentArea === 'next') return t.area === 'next' || t.today;
-      if (currentArea === 'projects') return !!t.projectId && !t.completed && t.area !== 'archive';
+      if (currentArea === 'projects') return t.area === 'projects' && !t.completed;
       return t.area === currentArea;
     });
   }
@@ -866,6 +962,18 @@ function renderTasks() {
 
   var list = document.getElementById('task-list');
   if (!list) return;
+
+  // ---- 项目Tab: 卡片视图 + 子任务钻入 ----
+  if (currentArea === 'projects' && !currentParentView) {
+    renderProjectCards(list, tasks);
+    return;
+  }
+  if (currentArea === 'projects' && currentParentView) {
+    var parentTask = S.tasks.find(function(t) { return t.id === currentParentView; });
+    renderSubtaskView(list, parentTask);
+    return;
+  }
+
   if (tasks.length === 0) {
     list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>最佳的土豆是一周内可完成的小任务</small></div>';
     return;
@@ -886,11 +994,17 @@ function renderTasks() {
       var proj = S.projects.find(function(pr) { return pr.id === t.projectId; });
       if (proj) projBadge = '<span class="task-area-badge">' + esc(proj.name) + '</span>';
     }
+    var subtaskBadge = '';
+    if (!t.parentId && hasSubtasks(t)) {
+      var kids = getSubtasks(t.id);
+      var activeKids = kids.filter(function(k) { return !k.completed; }).length;
+      subtaskBadge = '<span class="task-subtask-badge">📋' + activeKids + '/' + kids.length + '</span>';
+    }
     var isOverdueItem = dueBadge.indexOf('overdue') > -1;
     return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + (isOverdueItem ? ' overdue' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
       '<span class="task-prio-badge p' + p + '" data-act="prio" data-id="' + t.id + '" title="切换优先级">' + prioLabels[p] + '</span>' +
-      '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + '</span>' +
+      '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + subtaskBadge + '</span>' +
       '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + (t.pomodorosCompleted > 5 ? '+' + t.pomodorosCompleted : '') + '</span>' +
       '<div class="task-btns">' +
       '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' +
@@ -1321,6 +1435,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var tab = e.target.closest('.gtd-tab');
     if (!tab) return;
     currentArea = tab.dataset.area;
+    currentParentView = null;
     document.querySelectorAll('.gtd-tab').forEach(function(t) { t.classList.remove('active'); });
     tab.classList.add('active'); renderTasks();
   });
