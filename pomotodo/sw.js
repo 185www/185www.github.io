@@ -1,4 +1,4 @@
-const CACHE = 'pomotodo-v18-iter10';
+const CACHE = 'pomotodo-v19-parentBadge-fix';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './timer-worker.js', './manifest.json'];
 
 self.addEventListener('install', e => {
