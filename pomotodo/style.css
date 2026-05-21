@@ -1896,3 +1896,21 @@ kbd { background:var(--c-surface-h); border:1px solid var(--c-border); border-ra
 .archive-group-list .task-item:hover {
   opacity: 1;
 }
+
+
+/* ===== V4 Iter4: 恢复按钮 & 改进 ===== */
+.task-btn[data-act="restore"] {
+  color: var(--c-accent, #3498db);
+  font-size: 0.85rem;
+}
+.task-btn[data-act="restore"]:hover {
+  color: var(--c-success, #27ae60);
+  transform: scale(1.15);
+}
+.archive-group-list .task-item .task-check {
+  cursor: pointer;
+  opacity: 0.6;
+}
+.archive-group-list .task-item .task-check:hover {
+  opacity: 1;
+}

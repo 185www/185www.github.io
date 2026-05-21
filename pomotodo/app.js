@@ -363,7 +363,8 @@ function addTask(title, opts) {
     estimatedPomodoros: opts.estimatedPomodoros || 0,
     createdAt: new Date().toISOString(),
     area: area, dueDatetime: opts.dueDatetime || '',
-    projectId: opts.projectId || '', notes: opts.notes || ''
+    projectId: opts.projectId || '', 
+  parentId: opts.parentId || '',notes: opts.notes || ''
   };
   S.tasks.unshift(task); saveState(); renderTasks(); updateGtdCounts();
   return task;
@@ -403,10 +404,17 @@ function addSubtask(parentId, title) {
 }
 
 function toggleTask(id) {
-  var t = S.tasks.find(function(x) { return x.id === id; });
-  if (!t) return; t.completed = !t.completed;
-  if (t.completed && !t.parentId) t.area = 'archive';  // 子任务完成时不归档
-  saveState(); renderTasks(); updateGtdCounts();
+ var t = S.tasks.find(function(x) { return x.id === id; });
+ if (!t) return;
+ t.completed = !t.completed;
+ if (t.completed) {
+  if (!t.parentId) t.area = 'archive';
+ } else {
+  if (!t.parentId && t.area === 'archive') {
+   t.area = t.today ? 'next' : 'inbox';
+  }
+ }
+ saveState(); renderTasks(); updateGtdCounts();
 }
 function pinTask(id) {
   var t = S.tasks.find(function(x) { return x.id === id; });
@@ -1059,6 +1067,7 @@ function renderArchiveView(listEl, tasks) {
                 '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + projBadge + parentBadge + '</span>' +
                 '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + '</span>' +
                 '<div class="task-btns">' +
+                '<button class="task-btn" data-act="restore" data-id="' + t.id + '" title="恢复到待办">↩</button>' +
                 '<button class="task-btn del" data-act="delete" data-id="' + t.id + '">✕</button>' +
                 '</div></li>';
         });
@@ -1526,7 +1535,7 @@ document.addEventListener('DOMContentLoaded', function() {
       currentParentView = id;
       renderTasks();
     }
-    else if (act === 'back-to-project') {
+    else if (act === 'restore') { toggleTask(id); } else if (act === 'back-to-project') {
       currentParentView = null;
       renderTasks();
     }
@@ -1853,7 +1862,8 @@ renderTasks();
 
   // ---- Keyboard shortcuts ----
   document.addEventListener('keydown', function(e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'Escape') { if (detailTaskId) { closeDetail(); return; } if (quickInputVisible) { toggleQuickInput(); return; } }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space') { e.preventDefault(); timer.running ? pauseTimer() : startTimer(); }
     if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) resetTimer();
     if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey) { var w = document.querySelector('[data-view="work"]'); if (w) w.click(); }
