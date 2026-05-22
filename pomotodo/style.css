@@ -2261,3 +2261,70 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 /* --- P-04: Abandon Confirm Modal tweaks --- */
 #modal-abandon-confirm .modal-box p:first-of-type { font-size: 18px; margin: 12px 0 4px; }
 #modal-abandon-confirm .modal-box p:first-of-type strong { color: var(--accent); font-size: 24px; }
+
+/* ============================================================
+   V5 Phase 1 additions — P-04 / P-05 / P-07
+   ============================================================ */
+
+/* P-04: 5分钟快速启动按钮 */
+.quick-start-btn {
+  background: var(--c-primary) !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+  font-size: 0.7rem !important;
+  padding: 2px 6px !important;
+  animation: pulse-quick 2s ease-in-out infinite;
+}
+@keyframes pulse-quick {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.08); }
+}
+
+/* P-04: 逾期任务的视觉强调 */
+.task-item.overdue {
+  border-left: 3px solid var(--c-primary);
+}
+
+/* P-04: 快速启动完成弹窗按钮 */
+#quick-continue, #quick-mark-active {
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  border: none;
+}
+#quick-continue {
+  background: var(--c-primary);
+  color: #fff;
+}
+#quick-continue:hover {
+  background: var(--c-primary-d);
+}
+#quick-mark-active {
+  background: var(--c-break);
+  color: #fff;
+}
+#quick-mark-active:hover {
+  opacity: 0.9;
+}
+
+/* P-07: 收件箱积压提示横幅 */
+.inbox-nudge {
+  background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+  color: #2d3436;
+  padding: 8px 14px;
+  border-radius: 8px;
+  margin: 8px 0;
+  font-size: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+.inbox-nudge:hover {
+  opacity: 0.9;
+}
+[data-theme="dark"] .inbox-nudge {
+  background: linear-gradient(135deg, #2d3436, #636e72);
+  color: #ffeaa7;
+}
