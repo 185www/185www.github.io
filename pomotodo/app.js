@@ -1459,6 +1459,231 @@ function importData(file) {
   reader.readAsText(file);
 }
 
+// ==================== V5 FEATURES ====================
+
+// --- P-02: Rest Guide ---
+function showRestGuide() {
+ if (!S.settings.restGuideEnabled) return;
+ document.getElementById('rest-guide-overlay').hidden = false;
+ document.getElementById('rest-options').hidden = false;
+ document.getElementById('rest-timer-display').hidden = true;
+}
+function selectRestOption(type) {
+ var instructions = {
+  breathe: '闭上眼睛，缓慢深呼吸…\n吸气4秒 → 屏息4秒 → 呼气6秒\n重复3-5次，感受呼吸的节奏',
+  stretch: '站起来，做简单伸展：\n① 颈部缓缓旋转 ×5\n② 肩部上下耸放 ×5\n③ 手腕旋转 ×5\n④ 站立体前屈 ×3',
+  nature: '看看窗外的绿色植物\n或远处的天空和建筑\n让目光在远处停留至少30秒',
+  free: '自由休息中…\n记得离开屏幕，让眼睛休息'
+ };
+ var instEl = document.getElementById('rest-instruction');
+ if (instEl) instEl.textContent = instructions[type] || instructions.free;
+ document.getElementById('rest-options').hidden = true;
+ document.getElementById('rest-timer-display').hidden = false;
+}
+
+// --- P-05: Daily Focus (Top 3) ---
+function renderDailyFocus() {
+ var focusTasks = S.tasks.filter(function(t) { return t.dailyFocus && !t.completed; });
+ var section = document.getElementById('daily-focus-section');
+ var list = document.getElementById('df-list');
+ if (!section || !list) return;
+ if (focusTasks.length === 0) { section.hidden = true; return; }
+ section.hidden = false;
+ var countEl = document.getElementById('df-count');
+ if (countEl) countEl.textContent = focusTasks.length + '/3';
+ list.innerHTML = '';
+ focusTasks.forEach(function(t) {
+  var li = document.createElement('li');
+  li.className = 'df-item' + (timer.taskId === t.id ? ' df-active' : '');
+  li.innerHTML = '<span class="df-prio prio-' + t.priority + '"></span>' +
+   '<span class="df-title">' + escHtml(t.title) + '</span>' +
+   '<button class="df-start-btn" data-task-id="' + t.id + '" title="开始番茄钟">🍅</button>' +
+   '<button class="df-remove-btn" data-task-id="' + t.id + '" title="移出焦点">✕</button>';
+  list.appendChild(li);
+ });
+ if (focusTasks.length > 5) toast('💡 聚焦3件事效率最高，建议精简');
+}
+function toggleDailyFocus(id) {
+ var t = S.tasks.find(function(x) { return x.id === id; });
+ if (!t) return;
+ t.dailyFocus = !t.dailyFocus;
+ saveState(); renderTasks(); renderDailyFocus();
+}
+function updateFocusProgress(done, total) {
+ var bar = document.getElementById('focus-progress');
+ var fill = document.getElementById('focus-progress-fill');
+ var text = document.getElementById('focus-progress-text');
+ if (!bar) return;
+ if (total === 0) { bar.hidden = true; return; }
+ bar.hidden = false;
+ if (fill) fill.style.width = Math.round(done / total * 100) + '%';
+ if (text) text.textContent = done + '/' + total;
+}
+
+// --- P-06: Habit Streak ---
+function updateHabitStreak() {
+ var today = new Date().toISOString().slice(0, 10);
+ var cal = S.habitStreak.calendarData || {};
+ var todayWork = S.sessions.filter(function(s) {
+  return s.type === 'work' && s.start && s.start.slice(0, 10) === today;
+ }).length;
+ cal[today] = todayWork;
+ S.habitStreak.calendarData = cal;
+ var streak = 0;
+ var d = new Date();
+ while (true) {
+  var key = d.toISOString().slice(0, 10);
+  if (cal[key] && cal[key] > 0) { streak++; d.setDate(d.getDate() - 1); }
+  else break;
+ }
+ S.habitStreak.currentStreak = streak;
+ if (streak > S.habitStreak.longestStreak) S.habitStreak.longestStreak = streak;
+ S.habitStreak.lastActiveDate = today;
+ saveState();
+ var badge = document.getElementById('streak-badge');
+ var num = document.getElementById('streak-num');
+ if (badge && streak > 0) { badge.hidden = false; if (num) num.textContent = streak; }
+ else if (badge) { badge.hidden = true; }
+}
+function renderHabitStreak() {
+ var el = function(id) { return document.getElementById(id); };
+ if (el('h-current')) el('h-current').textContent = S.habitStreak.currentStreak;
+ if (el('h-longest')) el('h-longest').textContent = S.habitStreak.longestStreak;
+ var pct = Math.min(100, Math.round(S.habitStreak.currentStreak / 66 * 100));
+ if (el('h-goal-fill')) el('h-goal-fill').style.width = pct + '%';
+ if (el('h-goal-text')) el('h-goal-text').textContent = S.habitStreak.currentStreak + '/66';
+ var heatmap = el('habit-heatmap');
+ if (!heatmap) return;
+ heatmap.innerHTML = '';
+ for (var i = 29; i >= 0; i--) {
+  var d = new Date(Date.now() - i * 86400000);
+  var key = d.toISOString().slice(0, 10);
+  var count = (S.habitStreak.calendarData || {})[key] || 0;
+  var cell = document.createElement('span');
+  cell.className = 'hm-cell' + (count > 0 ? ' hm-active hm-lv' + Math.min(count, 4) : '');
+  cell.title = key + ': ' + count + '个番茄';
+  heatmap.appendChild(cell);
+ }
+}
+
+// --- P-01: Daily Launch Ritual ---
+function checkDailyLaunch() {
+ var today = new Date().toISOString().slice(0, 10);
+ if (S.settings.lastLaunchDate === today) return;
+ renderDailyLaunch();
+}
+function renderDailyLaunch() {
+ var today = new Date().toISOString().slice(0, 10);
+ var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+ var ySess = S.sessions.filter(function(s) {
+  return s.type === 'work' && s.start && s.start.slice(0, 10) === yesterday;
+ });
+ var el = function(id) { return document.getElementById(id); };
+ if (el('dl-y-pomo')) el('dl-y-pomo').textContent = ySess.length;
+ var todayTasks = S.tasks.filter(function(t) { return t.today && !t.completed && !t.parentId; });
+ var list = el('dl-focus-list');
+ if (list) {
+  list.innerHTML = '';
+  todayTasks.forEach(function(t) {
+   var li = document.createElement('li');
+   li.className = 'dl-focus-item';
+   li.innerHTML = '<label><input type="checkbox" data-task-id="' + t.id + '" /> ' +
+    '<span class="dl-prio prio-' + t.priority + '"></span> ' + escHtml(t.title) + '</label>';
+   list.appendChild(li);
+  });
+  (S.settings.dailyFocusIds || []).forEach(function(fid) {
+   var cb = list.querySelector('[data-task-id="' + fid + '"]');
+   if (cb) cb.checked = true;
+  });
+ }
+ var inboxCount = S.tasks.filter(function(t) { return t.area === 'inbox' && !t.completed; }).length;
+ var inboxHint = el('dl-inbox-hint');
+ if (inboxHint) {
+  if (inboxCount > 3) {
+   inboxHint.hidden = false;
+   var ic = el('dl-inbox-count');
+   if (ic) ic.textContent = inboxCount;
+  } else { inboxHint.hidden = true; }
+ }
+ el('daily-launch-overlay').hidden = false;
+}
+function confirmDailyLaunch() {
+ var checks = document.querySelectorAll('#dl-focus-list input[type=checkbox]:checked');
+ var ids = [];
+ checks.forEach(function(cb) { ids.push(cb.dataset.taskId); });
+ S.settings.dailyFocusIds = ids;
+ S.tasks.forEach(function(t) { t.dailyFocus = ids.indexOf(t.id) >= 0; });
+ S.settings.lastLaunchDate = new Date().toISOString().slice(0, 10);
+ saveState();
+ document.getElementById('daily-launch-overlay').hidden = true;
+ renderDailyFocus();
+ if (ids.length > 0) { timer.taskId = ids[0]; updateTimerUI(); }
+}
+
+// --- P-07: Daily Review ---
+function checkDailyReview() {
+ var today = new Date().toISOString().slice(0, 10);
+ if (S.settings.lastReviewDate === today) return;
+ var hour = new Date().getHours();
+ var todayPomo = S.sessions.filter(function(s) {
+  return s.type === 'work' && s.start && s.start.slice(0, 10) === today;
+ }).length;
+ if (todayPomo < 1 || hour < 17) return;
+ renderDailyReview();
+}
+function renderDailyReview() {
+ var today = new Date().toISOString().slice(0, 10);
+ var todaySess = S.sessions.filter(function(s) {
+  return s.type === 'work' && s.start && s.start.slice(0, 10) === today;
+ });
+ var todayMins = todaySess.reduce(function(sum, s) { return sum + (s.duration || 0); }, 0) / 60;
+ var el = function(id) { return document.getElementById(id); };
+ if (el('dr-pomo')) el('dr-pomo').textContent = todaySess.length;
+ if (el('dr-mins')) el('dr-mins').textContent = Math.round(todayMins);
+ var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+ var yPomo = S.sessions.filter(function(s) {
+  return s.type === 'work' && s.start && s.start.slice(0, 10) === yesterday;
+ }).length;
+ var diff = todaySess.length - yPomo;
+ var diffEl = el('dr-diff-pomo');
+ if (diffEl) diffEl.textContent = (diff > 0 ? '+' : '') + diff;
+ var overdue = S.tasks.filter(function(t) {
+  return !t.completed && t.dueDatetime && t.dueDatetime.slice(0, 10) < today;
+ }).length;
+ var sugEl = el('dr-suggestion');
+ if (sugEl) sugEl.textContent = overdue > 0 ?
+  '你有 ' + overdue + ' 个逾期任务，明天优先处理？' : '今天表现不错，明天继续保持！';
+ document.getElementById('daily-review-overlay').hidden = false;
+}
+function saveDailyReview() {
+ var today = new Date().toISOString().slice(0, 10);
+ S.settings.lastReviewDate = today;
+ S.dailyReviews.push({ date: today, pomodoros: 0, tasksCompleted: 0 });
+ var cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+ S.dailyReviews = S.dailyReviews.filter(function(r) { return r.date >= cutoff; });
+ saveState();
+ document.getElementById('daily-review-overlay').hidden = true;
+}
+
+// --- V5 Init ---
+function initV5Features() {
+ renderDailyFocus();
+ renderHabitStreak();
+ var badge = document.getElementById('streak-badge');
+ if (badge && S.habitStreak.currentStreak > 0) {
+  badge.hidden = false;
+  var num = document.getElementById('streak-num');
+  if (num) num.textContent = S.habitStreak.currentStreak;
+ }
+ var focusIds = S.settings.dailyFocusIds || [];
+ var focusDone = focusIds.filter(function(fid) {
+  var ft = S.tasks.find(function(x) { return x.id === fid; });
+  return ft && ft.completed;
+ }).length;
+ updateFocusProgress(focusDone, focusIds.length);
+ setTimeout(checkDailyLaunch, 500);
+}
+
 // ==================== ONBOARDING ====================
 var onboardSteps = [
   { emoji: '🍅', title: '欢迎使用 Pomotodo', text: '番茄钟 + GTD 时间管理工具，帮你专注工作、高效完成任务。' },
@@ -1507,7 +1732,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Safe event binding helper — never crashes on missing element
   function $on(id, evt, fn) { var e = document.getElementById(id); if (e) e.addEventListener(evt, fn); }
 
-  migrateFromV2(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); renderCalendar();
+  migrateFromV2(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); renderCalendar(); initV5Features();
   recoverTimer();
 
   document.addEventListener('visibilitychange', function() {
