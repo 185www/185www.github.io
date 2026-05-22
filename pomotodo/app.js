@@ -1813,6 +1813,7 @@ function initV5Features() {
   return ft && ft.completed;
  }).length;
  updateFocusProgress(focusDone, focusIds.length);
+  setTimeout(checkTaskResumption, 800);
  setTimeout(checkDailyLaunch, 500);
 }
 
