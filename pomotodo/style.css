@@ -2262,69 +2262,116 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 #modal-abandon-confirm .modal-box p:first-of-type { font-size: 18px; margin: 12px 0 4px; }
 #modal-abandon-confirm .modal-box p:first-of-type strong { color: var(--accent); font-size: 24px; }
 
-/* ============================================================
-   V5 Phase 1 additions — P-04 / P-05 / P-07
-   ============================================================ */
-
-/* P-04: 5分钟快速启动按钮 */
+/* --- P-08: Quick Start Button --- */
 .quick-start-btn {
-  background: var(--c-primary) !important;
+  background: linear-gradient(135deg, #f39c12, #e67e22) !important;
   color: #fff !important;
-  border-radius: 12px !important;
-  font-size: 0.7rem !important;
+  border-radius: 4px;
   padding: 2px 6px !important;
-  animation: pulse-quick 2s ease-in-out infinite;
+  font-size: 12px !important;
+  animation: quickStartPulse 2s ease-in-out infinite;
 }
-@keyframes pulse-quick {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.08); }
+.quick-start-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(243,156,18,0.4);
+}
+@keyframes quickStartPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.task-item.overdue .task-due-badge.overdue {
+  background: rgba(230,126,34,0.15) !important;
+  color: #e67e22 !important;
 }
 
-/* P-04: 逾期任务的视觉强调 */
-.task-item.overdue {
-  border-left: 3px solid var(--c-primary);
+/* --- P-08: Quick Start Continue Modal --- */
+#modal-quickstart-continue .modal-box h3 {
+  color: #f39c12;
+  margin-bottom: 8px;
+}
+#modal-quickstart-continue .modal-box p:first-of-type strong {
+  color: var(--c-primary);
 }
 
-/* P-04: 快速启动完成弹窗按钮 */
-#quick-continue, #quick-mark-active {
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  border: none;
-}
-#quick-continue {
-  background: var(--c-primary);
+/* --- P-09: Task Resumption Bar --- */
+.resumption-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
   color: #fff;
-}
-#quick-continue:hover {
-  background: var(--c-primary-d);
-}
-#quick-mark-active {
-  background: var(--c-break);
-  color: #fff;
-}
-#quick-mark-active:hover {
-  opacity: 0.9;
-}
-
-/* P-07: 收件箱积压提示横幅 */
-.inbox-nudge {
-  background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
-  color: #2d3436;
-  padding: 8px 14px;
-  border-radius: 8px;
-  margin: 8px 0;
-  font-size: 0.8rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  box-shadow: 0 2px 12px rgba(108,92,231,0.3);
+  animation: resumptionSlideIn 0.3s ease-out;
+}
+@keyframes resumptionSlideIn {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+.resumption-icon { font-size: 18px; font-weight: bold; }
+.resumption-text { flex: 1; }
+.resumption-text strong { color: #ffeaa7; }
+.resumption-resume-btn {
+  background: #fff !important;
+  color: #6c5ce7 !important;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
-.inbox-nudge:hover {
-  opacity: 0.9;
+.resumption-resume-btn:hover { background: #ffeaa7 !important; }
+.resumption-dismiss-btn {
+  background: transparent !important;
+  color: rgba(255,255,255,0.7) !important;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
 }
-[data-theme="dark"] .inbox-nudge {
-  background: linear-gradient(135deg, #2d3436, #636e72);
-  color: #ffeaa7;
+.resumption-dismiss-btn:hover { color: #fff !important; }
+
+/* Adjust header when resumption bar is visible */
+body:has(.resumption-bar:not([hidden])) .app-header {
+  margin-top: 42px;
+}
+
+/* --- P-12: Light Focus Mode --- */
+.focus-collapsed {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  overflow: hidden;
+  max-width: 0;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.focus-expanded {
+  flex: 1;
+  max-width: 100%;
+  transition: all 0.4s ease;
+}
+.focus-mode-active .panel-timer .timer-ring-wrap svg {
+  width: 240px;
+  height: 240px;
+}
+.focus-mode-active .panel-timer .timer-digits {
+  font-size: 48px;
+}
+.focus-mode-active .panel-timer .timer-active-task {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+.focus-mode-active .panel-timer .timer-center {
+  transform: scale(1.2);
+  transition: transform 0.4s ease;
 }
