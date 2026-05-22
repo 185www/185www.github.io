@@ -187,9 +187,96 @@
     <div class="onboarding-actions"><button class="btn-sm" id="onboarding-skip">跳过</button><button class="btn-sm btn-primary" id="onboarding-next">下一步</button></div>
   </div>
 </div>
+<!-- V5: P-04 Abandon Confirm Modal -->
+<div class="modal-overlay" id="modal-abandon-confirm" hidden>
+ <div class="modal-box">
+ <h3>⚠️ 确认放弃？</h3>
+ <p>你已经专注了 <strong id="abandon-minutes">0</strong> 分钟</p>
+ <p class="modal-sub">放弃这个番茄将不会记录本次专注</p>
+ <div class="modal-actions">
+  <button class="btn-sm btn-primary" id="abandon-continue">继续专注</button>
+  <button class="btn-sm btn-danger" id="abandon-confirm">放弃</button>
+ </div>
+ </div>
+</div>
+<!-- V5: P-02 Rest Guide Overlay -->
+<div class="rest-guide-overlay" id="rest-guide-overlay" hidden>
+ <div class="rest-guide-card">
+ <h3>☕ 休息时间</h3>
+ <p class="rest-phone-hint">📵 放下手机，让眼睛离开屏幕</p>
+ <div class="rest-options" id="rest-options">
+  <button class="rest-opt-btn" data-rest="breathe">
+   <span class="rest-opt-icon">🧘</span>
+   <span class="rest-opt-title">闭眼深呼吸</span>
+   <span class="rest-opt-desc">1分钟引导 + 自由休息</span>
+  </button>
+  <button class="rest-opt-btn" data-rest="stretch">
+   <span class="rest-opt-icon">🤸</span>
+   <span class="rest-opt-title">站立伸展</span>
+   <span class="rest-opt-desc">2分钟简单动作 + 自由休息</span>
+  </button>
+  <button class="rest-opt-btn" data-rest="nature">
+   <span class="rest-opt-icon">🌿</span>
+   <span class="rest-opt-title">远眺放松</span>
+   <span class="rest-opt-desc">看窗外或自然图片</span>
+  </button>
+  <button class="rest-opt-btn rest-free-btn" data-rest="free">
+   <span class="rest-opt-title">自由休息</span>
+  </button>
+ </div>
+ <div class="rest-timer-display" id="rest-timer-display" hidden>
+  <pre class="rest-instruction" id="rest-instruction"></pre>
+ </div>
+ </div>
+</div>
+<!-- V5: P-01 Daily Launch Overlay -->
+<div class="daily-launch-overlay" id="daily-launch-overlay" hidden>
+ <div class="daily-launch-card">
+ <h3>☀️ 今日启动</h3>
+ <div class="dl-yesterday" id="dl-yesterday">
+  <p>昨日完成 <strong id="dl-y-pomo">0</strong> 个番茄</p>
+ </div>
+ <div class="dl-focus-section">
+  <h4>🎯 选择今日三件事</h4>
+  <ul class="dl-focus-list" id="dl-focus-list"></ul>
+  <div class="dl-quick-add">
+   <input type="text" id="dl-quick-input" placeholder="快速添加今日焦点…" maxlength="200" />
+   <button id="dl-quick-add-btn">＋</button>
+  </div>
+ </div>
+ <div class="dl-inbox-hint" id="dl-inbox-hint" hidden>
+  <p>📥 收件箱有 <strong id="dl-inbox-count">0</strong> 条待处理</p>
+ </div>
+ <div class="dl-actions">
+  <button class="btn-sm" id="dl-skip">跳过</button>
+  <button class="btn-sm btn-primary" id="dl-start">开始今天 →</button>
+ </div>
+ </div>
+</div>
+<!-- V5: P-07 Daily Review Overlay -->
+<div class="daily-review-overlay" id="daily-review-overlay" hidden>
+ <div class="daily-review-card">
+ <h3>🌙 今日回顾</h3>
+ <div class="dr-stats">
+  <div class="dr-stat"><span id="dr-pomo">0</span><span>个番茄</span></div>
+  <div class="dr-stat"><span id="dr-mins">0</span><span>分钟专注</span></div>
+ </div>
+ <div class="dr-compare" id="dr-compare">
+  <p>📊 比昨日 <span id="dr-diff-pomo">0</span> 个番茄</p>
+ </div>
+ <div class="dr-tomorrow">
+  <h4>💡 明日建议</h4>
+  <p id="dr-suggestion"></p>
+ </div>
+ <div class="dr-actions">
+  <button class="btn-sm" id="dr-skip">跳过</button>
+  <button class="btn-sm btn-primary" id="dr-done">好的，晚安</button>
+ </div>
+ </div>
+</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=19"></script>
+<script src="./app.js?v=20"></script>
 </body>
 </html>
