@@ -19,7 +19,9 @@ var DEFAULTS = {
     soundEnabled: true, soundVolume: 0.7, notificationsEnabled: false,
     wakeLockEnabled: false, theme: 'light'
   },
-  tasks: [], sessions: [], projects: []
+ tasks: [], sessions: [], projects: [],
+ habitStreak: { currentStreak: 0, longestStreak: 0, lastActiveDate: '', calendarData: {} },
+ dailyReviews: []
 };
 
 // ==================== STATE ====================
@@ -99,7 +101,9 @@ function loadState() {
         settings: Object.assign({}, DEFAULTS.settings, d.settings || {}),
         tasks: d.tasks || [],
         sessions: d.sessions || [],
-        projects: d.projects || []
+ projects: d.projects || [],
+ habitStreak: Object.assign({}, DEFAULTS.habitStreak, d.habitStreak || {}),
+ dailyReviews: d.dailyReviews || []
       };
       // V3→V4 migration: dueDate → dueDatetime
       state.tasks.forEach(function(t) {
@@ -1853,6 +1857,7 @@ function fmtTime(sec) {
 function esc(str) {
   var d = document.createElement('div'); d.textContent = str; return d.innerHTML;
 }
+var escHtml = esc;
 function toast(msg) {
   var wrap = document.getElementById('toast-wrap');
   if (!wrap) return;
@@ -2381,4 +2386,49 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
     if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey) { var w = document.querySelector('[data-view="work"]'); if (w) w.click(); }
     if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) { var s = document.querySelector('[data-view="settings"]'); if (s) s.click(); }
   });
+
+ // ---- V5: Daily Launch Overlay ----
+ $on('dl-start', 'click', confirmDailyLaunch);
+ $on('dl-skip', 'click', function() {
+ document.getElementById('daily-launch-overlay').hidden = true;
+ });
+ $on('dl-quick-add-btn', 'click', function() {
+ var input = document.getElementById('dl-quick-input');
+ if (input && input.value.trim()) {
+ addTask(input.value.trim());
+ input.value = '';
+ renderDailyLaunch();
+ }
+ });
+ var dlQuickInput = document.getElementById('dl-quick-input');
+ if (dlQuickInput) dlQuickInput.addEventListener('keydown', function(e) {
+ if (e.key === 'Enter') document.getElementById('dl-quick-add-btn').click();
+ });
+
+ // ---- V5: Abandon Confirm Modal ----
+ $on('abandon-continue', 'click', function() {
+ document.getElementById('modal-abandon-confirm').hidden = true;
+ });
+ $on('abandon-confirm', 'click', function() {
+ document.getElementById('modal-abandon-confirm').hidden = true;
+ timer.running = false;
+ timer.remaining = getModeDuration(timer.mode) * 60;
+ timer.startedAt = null;
+ timer.startedRemaining = null;
+ clearTimerState();
+ updateTimerUI();
+ });
+
+ // ---- V5: Rest Guide Overlay ----
+ document.querySelectorAll('.rest-opt-btn').forEach(function(btn) {
+ btn.addEventListener('click', function() {
+ selectRestOption(btn.dataset.rest);
+ });
+ });
+
+ // ---- V5: Daily Review Overlay ----
+ $on('dr-done', 'click', saveDailyReview);
+ $on('dr-skip', 'click', function() {
+ document.getElementById('daily-review-overlay').hidden = true;
+ });
 });
