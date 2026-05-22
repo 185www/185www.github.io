@@ -2157,3 +2157,107 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==================== V5 STYLES (append to end, override older defs) ==================== */
+
+/* --- P-03: Task Complete Animation --- */
+.task-complete-anim { animation: taskPop 1.5s ease-out; }
+@keyframes taskPop {
+ 0% { transform: scale(1); }
+ 20% { transform: scale(1.15); background: var(--success, #2ecc71); }
+ 100% { transform: scale(1); opacity: 0.7; }
+}
+
+/* --- P-05: Focus Progress Bar --- */
+.focus-progress { display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 13px; color: var(--text-secondary); }
+.focus-progress-bar { height: 6px; background: var(--border); border-radius: 3px; flex: 1; max-width: 120px; }
+.focus-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.5s ease; }
+
+/* --- P-05: Daily Focus Section --- */
+.daily-focus-section { padding: 0 16px 8px; }
+.df-heading { font-size: 14px; margin: 0 0 8px; color: var(--text-primary); }
+.df-count { color: var(--accent); font-weight: 600; }
+.df-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.df-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); font-size: 14px; }
+.df-item.df-active { border-color: var(--accent); background: var(--accent-bg, rgba(231,76,60,0.05)); }
+.df-prio { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.df-prio.prio-1 { background: #e74c3c; } .df-prio.prio-2 { background: #e67e22; }
+.df-prio.prio-3 { background: #f1c40f; } .df-prio.prio-4 { background: #bdc3c7; }
+.df-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.df-start-btn, .df-remove-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+.df-start-btn:hover { background: var(--accent-bg, rgba(231,76,60,0.1)); }
+.df-remove-btn { color: var(--text-muted); font-size: 12px; }
+.df-remove-btn:hover { color: var(--danger); }
+
+/* --- P-06: Streak Badge --- */
+.streak-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 14px; padding: 2px 8px; background: var(--card); border-radius: 12px; border: 1px solid var(--border); color: var(--accent); }
+
+/* --- P-06: Habit Section --- */
+.habit-section { padding: 16px; }
+.habit-section h3 { margin: 0 0 12px; font-size: 16px; }
+.habit-stats { display: flex; gap: 24px; margin-bottom: 12px; }
+.habit-stat { text-align: center; }
+.habit-val { display: block; font-size: 28px; font-weight: 700; color: var(--accent); }
+.habit-lbl { font-size: 12px; color: var(--text-secondary); }
+.habit-goal { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.habit-goal-lbl { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+.habit-goal-bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; }
+.habit-goal-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.5s; }
+.habit-goal-text { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.habit-heatmap { display: flex; flex-wrap: wrap; gap: 3px; }
+.hm-cell { width: 14px; height: 14px; border-radius: 2px; background: var(--border); }
+.hm-cell.hm-active { background: var(--accent); opacity: 0.3; }
+.hm-cell.hm-lv1 { opacity: 0.3; } .hm-cell.hm-lv2 { opacity: 0.5; }
+.hm-cell.hm-lv3 { opacity: 0.75; } .hm-cell.hm-lv4 { opacity: 1; }
+
+/* --- P-02: Rest Guide Overlay --- */
+.rest-guide-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.rest-guide-card { background: #f0f7e6; color: #2d5016; border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; text-align: center; }
+[data-theme="dark"] .rest-guide-card { background: #1a2e0a; color: #b8e986; }
+.rest-phone-hint { font-size: 14px; margin: 8px 0 16px; opacity: 0.8; }
+.rest-options { display: flex; flex-direction: column; gap: 10px; }
+.rest-opt-btn { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid rgba(45,80,22,0.15); border-radius: 12px; background: rgba(255,255,255,0.6); cursor: pointer; text-align: left; transition: all 0.2s; }
+.rest-opt-btn:hover { border-color: var(--accent); background: rgba(255,255,255,0.9); }
+[data-theme="dark"] .rest-opt-btn { background: rgba(255,255,255,0.05); border-color: rgba(184,233,134,0.15); }
+.rest-opt-icon { font-size: 24px; }
+.rest-opt-title { font-weight: 600; font-size: 15px; display: block; }
+.rest-opt-desc { font-size: 12px; opacity: 0.7; display: block; }
+.rest-free-btn { justify-content: center; padding: 10px; border-style: dashed; }
+.rest-timer-display { padding: 16px; }
+.rest-instruction { white-space: pre-line; font-size: 15px; line-height: 1.8; text-align: center; font-family: inherit; margin: 0; }
+
+/* --- P-01: Daily Launch Overlay --- */
+.daily-launch-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1001; display: flex; align-items: center; justify-content: center; }
+.daily-launch-card { background: var(--card); color: var(--text-primary); border-radius: 16px; padding: 24px; max-width: 420px; width: 90%; }
+.daily-launch-card h3 { margin: 0 0 16px; font-size: 20px; text-align: center; }
+.dl-yesterday { text-align: center; margin-bottom: 16px; font-size: 14px; color: var(--text-secondary); }
+.dl-focus-section h4 { margin: 0 0 8px; font-size: 15px; }
+.dl-focus-list { list-style: none; padding: 0; margin: 0 0 12px; max-height: 200px; overflow-y: auto; }
+.dl-focus-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.dl-focus-item label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+.dl-focus-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+.dl-prio { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.dl-prio.prio-1 { background: #e74c3c; } .dl-prio.prio-2 { background: #e67e22; }
+.dl-prio.prio-3 { background: #f1c40f; } .dl-prio.prio-4 { background: #bdc3c7; }
+.dl-quick-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.dl-quick-add input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text-primary); }
+.dl-quick-add button { padding: 8px 12px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer; font-size: 16px; }
+.dl-inbox-hint { text-align: center; padding: 8px; background: rgba(231,76,60,0.08); border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
+.dl-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* --- P-07: Daily Review Overlay --- */
+.daily-review-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1002; display: flex; align-items: center; justify-content: center; }
+.daily-review-card { background: var(--card); color: var(--text-primary); border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; text-align: center; }
+.daily-review-card h3 { margin: 0 0 16px; font-size: 20px; }
+.dr-stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; }
+.dr-stat span:first-child { display: block; font-size: 28px; font-weight: 700; color: var(--accent); }
+.dr-stat span:last-child { font-size: 12px; color: var(--text-secondary); }
+.dr-compare { margin-bottom: 12px; font-size: 14px; }
+.dr-tomorrow { text-align: left; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 16px; }
+.dr-tomorrow h4 { margin: 0 0 4px; font-size: 14px; }
+.dr-tomorrow p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+.dr-actions { display: flex; gap: 8px; justify-content: center; }
+
+/* --- P-04: Abandon Confirm Modal tweaks --- */
+#modal-abandon-confirm .modal-box p:first-of-type { font-size: 18px; margin: 12px 0 4px; }
+#modal-abandon-confirm .modal-box p:first-of-type strong { color: var(--accent); font-size: 24px; }
