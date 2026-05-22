@@ -1,11 +1,11 @@
 /**
- * Pomotodo V4 — app.js
- * V4 changes: dueDate → dueDatetime (precise time), calendar day view,
- *   project-subtask hierarchy (parentId, project cards, subtask views)
+ * Pomotodo V5 — app.js
+ * V5 changes: P0 features (daily launch, rest guide, celebration, abandon confirm,
+ * daily focus, habit streak, daily review) + P1 features (5-min quick start,
+ * task resumption prompt, light focus mode)
  * All DOM IDs aligned with index.html; duplicate functions removed;
  * undefined variables fixed; event bindings corrected.
  */
-
 // ==================== CONSTANTS ====================
 var LS_KEY = 'pomotodo_v3';
 var LS_KEY_V2 = 'pomotodo_v2';
@@ -55,9 +55,9 @@ function fmtDue(t) {
   return time ? date.slice(5) + ' ' + time : date.slice(5);
 }
 var wakeLockSentinel = null;
-var currentFilter = 'today'; // P-07: 默认过滤改为"今日"减少选择悖论
+var currentFilter = 'all';
 var quickInputVisible = false;
-var quickInputPrio = 3; // P-07: 默认P3
+var quickInputPrio = 4;
 var quickInputTags = [];
 
 var timer = {
@@ -268,34 +268,15 @@ function pauseTimer() {
   if (timerWorker) timerWorker.postMessage({ type: 'pause' });
   updateTimerUI();
 }
+
 function resetTimer() {
- // P-05: 损失框架确认 — 专注进行中重置时显示损失提醒
- if (timer.mode === 'work' && timer.running) {
-  var total = getModeDuration(timer.mode) * 60;
-  var elapsed = total - timer.remaining;
-  var elapsedMin = Math.floor(elapsed / 60);
-  var remainingMin = Math.ceil(timer.remaining / 60);
-  var pct = elapsed / total;
-  var msg = '你已经专注了 ' + elapsedMin + ' 分钟，放弃则这 ' + elapsedMin + ' 分钟不计入今日完成 ⚠️';
-  if (pct >= 0.5) {
-   msg += '\n\n还剩 ' + remainingMin + ' 分钟就能完成一个番茄！';
-  }
-  if (!confirm(msg)) return; // 用户选择"继续专注"
- } else if (timer.mode === 'work' && timer.startedAt && !timer.running) {
-  var total2 = getModeDuration(timer.mode) * 60;
-  var elapsed2 = total2 - timer.remaining;
-  var elapsedMin2 = Math.floor(elapsed2 / 60);
-  if (elapsedMin2 >= 1) {
-   if (!confirm('你已经投入了 ' + elapsedMin2 + ' 分钟，放弃则不计入今日完成 ⚠️')) return;
-  }
- }
- click(S.settings.soundVolume);
- timer.running = false; clearInterval(timer.intervalId); timer.intervalId = null;
- timer.remaining = getModeDuration(timer.mode) * 60;
- timer.startedAt = null; timer.startedRemaining = null;
- clearTimerState();
- if (timerWorker) timerWorker.postMessage({ type: 'stop' });
- updateTimerUI();
+  click(S.settings.soundVolume);
+  timer.running = false; clearInterval(timer.intervalId); timer.intervalId = null;
+  timer.remaining = getModeDuration(timer.mode) * 60;
+  timer.startedAt = null; timer.startedRemaining = null;
+  clearTimerState();
+  if (timerWorker) timerWorker.postMessage({ type: 'stop' });
+  updateTimerUI();
 }
 
 function onTimerComplete() {
@@ -364,7 +345,7 @@ function skipTimer() {
 function addTask(title, opts) {
   opts = opts || {};
   var tags = opts.tags ? opts.tags.slice() : [];
-  var priority = opts.priority || 3; // P-07: 默认优先级从P4改为P3
+  var priority = opts.priority || 4;
   var isToday = opts.today || false;
 
   // Parse inline syntax from title
@@ -379,7 +360,7 @@ function addTask(title, opts) {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title: title, tags: tags, priority: priority, today: isToday,
     completed: false, pinned: false, pomodorosCompleted: 0,
-    estimatedPomodoros: opts.estimatedPomodoros || 1, // P-07: 默认预估番茄从0改为1
+    estimatedPomodoros: opts.estimatedPomodoros || 0,
     createdAt: new Date().toISOString(),
     area: area, dueDatetime: opts.dueDatetime || '',
     projectId: opts.projectId || '', 
@@ -519,86 +500,6 @@ function getTasksForArea(area) {
 function getOverdueTasks() {
   var today = new Date().toISOString().slice(0, 10);
   return S.tasks.filter(function(t) { return !t.completed && getTaskDate(t) && getTaskDate(t) < today; });
-}
-
-// P-04: 判断任务是否逾期/拖延（显示5分钟启动按钮）
-function isTaskProcrastinated(task) {
-  if (task.completed) return false;
-  var today = new Date().toISOString().slice(0, 10);
-  // 逾期任务
-  if (getTaskDate(task) && getTaskDate(task) < today) return true;
-  // 收件箱中超过3天未处理的任务
-  if (task.area === 'inbox' && task.createdAt) {
-    var created = task.createdAt.slice(0, 10);
-    var daysDiff = Math.floor((new Date(today) - new Date(created)) / 86400000);
-    if (daysDiff >= 3) return true;
-  }
-  return false;
-}
-
-// P-04: 5分钟快速启动番茄
-function startQuickPomodoro(taskId) {
-  if (timer.running) {
-    toast('请先完成或重置当前番茄');
-    return;
-  }
-  timer.mode = 'work';
-  timer.remaining = 5 * 60; // 5分钟
-  timer.taskId = taskId;
-  timer._isQuickStart = true; // 标记为快速启动
-  // 切换到工作台视图
-  switchView('work');
-  startTimer();
-  toast('🚀 5分钟启动！先开始再说');
-}
-
-// P-04: 快速番茄完成后的选择
-function onQuickPomodoroComplete() {
-  var overlay = document.getElementById('modal-complete');
-  var taskId = timer.taskId;
-  var task = S.tasks.find(function(t) { return t.id === taskId; });
-  document.getElementById('modal-sub').textContent = 
-    '5分钟快速启动完成！' + (task ? '「' + task.title + '」' : '');
-  var tasksDiv = document.getElementById('modal-tasks');
-  tasksDiv.innerHTML = 
-    '<div style="text-align:center;padding:12px 0;">' +
-    '<p style="margin-bottom:12px;">要继续专注吗？</p>' +
-    '<button class="btn-sm btn-primary" id="quick-continue" style="margin:4px;">🔥 继续20分钟</button>' +
-    '<button class="btn-sm" id="quick-mark-active" style="margin:4px;">✅ 标记进行中</button>' +
-    '</div>';
-  document.getElementById('modal-confirm').style.display = 'none';
-  document.getElementById('modal-skip').style.display = 'none';
-  
-  document.getElementById('quick-continue').onclick = function() {
-    overlay.setAttribute('hidden', '');
-    document.getElementById('modal-confirm').style.display = '';
-    document.getElementById('modal-skip').style.display = '';
-    // 启动标准20分钟番茄
-    timer.mode = 'work';
-    timer.remaining = 20 * 60;
-    timer.taskId = taskId;
-    timer._isQuickStart = false;
-    startTimer();
-    toast('🔥 继续专注20分钟！');
-  };
-  document.getElementById('quick-mark-active').onclick = function() {
-    overlay.setAttribute('hidden', '');
-    document.getElementById('modal-confirm').style.display = '';
-    document.getElementById('modal-skip').style.display = '';
-    // 标记任务移到下一步
-    if (task && task.area === 'inbox') {
-      task.area = 'next';
-      saveState();
-    }
-    timer._isQuickStart = false;
-    timer.mode = 'work';
-    timer.remaining = S.settings.workDuration * 60;
-    timer.taskId = null;
-    updateTimerUI();
-    renderTasks();
-    toast('✅ 已标记为进行中，继续加油！');
-  };
-  overlay.removeAttribute('hidden');
 }
 
 function updateGtdCounts() {
@@ -952,13 +853,13 @@ function addTaskFromInput() {
     defaultArea = currentArea;
   }
   var opts = {
-    priority: quickInputPrio || 3, // P-07: 智能默认值
+    priority: quickInputPrio,
     tags: quickInputTags.slice(),
     today: false,
     dueDatetime: document.getElementById('qi-datetime').value || '',
     area: qiArea ? (qiArea.value || defaultArea) : defaultArea,
     projectId: document.getElementById('qi-project').value || '',
-    estimatedPomodoros: 1 // P-07: 默认1个预估番茄
+    estimatedPomodoros: 0
   };
   // 如果在项目Tab且area不是projects，自动设为projects
   if (currentArea === 'projects' && opts.area !== 'projects') {
@@ -968,10 +869,10 @@ function addTaskFromInput() {
   if (todayBtn && todayBtn.classList.contains('active')) opts.today = true;
   addTask(title, opts);
   input.value = '';
-  quickInputPrio = 3; // P-07: 默认优先级P3
+  quickInputPrio = 4;
   quickInputTags = [];
   document.querySelectorAll('#quick-input-bar .prio-btn').forEach(function(b) {
-    b.classList.toggle('active', parseInt(b.dataset.prio) === 3);
+    b.classList.toggle('active', parseInt(b.dataset.prio) === 4);
   });
   renderQITags();
   var qiDate = document.getElementById('qi-datetime');
@@ -1218,7 +1119,6 @@ function renderArchiveView(listEl, tasks) {
                 '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + projBadge + parentBadge + '</span>' +
                 '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + '</span>' +
                 '<div class="task-btns">' +
- quickStartBtn +
                 '<button class="task-btn" data-act="restore" data-id="' + t.id + '" title="恢复到待办">↩</button>' +
                 '<button class="task-btn del" data-act="delete" data-id="' + t.id + '">✕</button>' +
                 '</div></li>';
@@ -1286,14 +1186,8 @@ function renderTasks() {
     list.innerHTML = '<div class="empty-state">🥔 还没有土豆<br><small>在上方输入框添加任务，支持 #标签 !1优先级 @today 快捷语法</small></div>';
     return;
   }
-  // P-07: 收件箱积压提示
-  var inboxCount = S.tasks.filter(function(t) { return t.area === 'inbox' && !t.completed; }).length;
-  var nudgeHtml = '';
-  if (currentArea === 'inbox' && inboxCount > 5) {
-    nudgeHtml = '<div class="inbox-nudge" onclick="currentFilter=\'all\';renderTasks();">🧹 收件箱有 ' + inboxCount + ' 项待处理，花2分钟清理？<span>→</span></div>';
-  }
   var prioLabels = {1:'P1',2:'P2',3:'P3',4:'P4'};
-  list.innerHTML = nudgeHtml + tasks.map(function(t) {
+  list.innerHTML = tasks.map(function(t) {
     var isActive = timer.taskId === t.id;
     var p = t.priority || 4;
     var tagHtml = (t.tags || []).map(function(tag) { return '<span class="task-tag">#' + esc(tag) + '</span>'; }).join(' ');
@@ -1320,8 +1214,6 @@ function renderTasks() {
       if (parent) parentBadge = '<span class="task-parent-badge">📁 ' + esc(parent.title) + '</span>';
     }
     var isOverdueItem = dueBadge.indexOf('overdue') > -1;
- var procrastinated = isTaskProcrastinated(t);
- var quickStartBtn = procrastinated ? '<button class="task-btn quick-start-btn" data-act="quickstart" data-id="' + t.id + '" title="5分钟快速启动">🚀</button>' : '';
     return '<li class="task-item prio-' + p + (t.completed ? ' completed' : '') + (t.pinned ? ' pinned' : '') + (isActive ? ' active-task' : '') + (isOverdueItem ? ' overdue' : '') + '" data-id="' + t.id + '">' +
       '<div class="task-check" data-act="toggle" data-id="' + t.id + '">' + (t.completed ? '✓' : '') + '</div>' +
       '<span class="task-prio-badge p' + p + '" data-act="prio" data-id="' + t.id + '" title="切换优先级">' + prioLabels[p] + '</span>' +
@@ -1773,6 +1665,138 @@ function saveDailyReview() {
  document.getElementById('daily-review-overlay').hidden = true;
 }
 
+// --- P-08: 5-Minute Quick Start for Overdue ---
+function quickStartOverdue(taskId) {
+  var t = S.tasks.find(function(x) { return x.id === taskId; });
+  if (!t) return;
+  timer.taskId = taskId;
+  timer.mode = 'work';
+  timer.remaining = 5 * 60; // 5 minutes
+  timer.startedAt = null;
+  timer.startedRemaining = null;
+  timer.running = false;
+  // Set up callback: after 5min, prompt to continue with full pomodoro
+  S.settings._quickStartTaskId = taskId;
+  saveState();
+  startTimer();
+  updateTimerUI();
+  toast('⚡ 5分钟启动！先做起来再说');
+}
+
+// Handle 5-min quick start completion → prompt to continue
+function onQuickStartComplete(taskId) {
+  var t = S.tasks.find(function(x) { return x.id === taskId; });
+  if (!t) return;
+  var overlay = document.getElementById('modal-quickstart-continue');
+  if (overlay) {
+    var nameEl = document.getElementById('qs-task-name');
+    if (nameEl) nameEl.textContent = t.title;
+    overlay.hidden = false;
+  }
+}
+
+function confirmQuickStartContinue() {
+  var overlay = document.getElementById('modal-quickstart-continue');
+  if (overlay) overlay.hidden = true;
+  // Switch to full 25-min pomodoro
+  timer.mode = 'work';
+  timer.remaining = S.settings.workDuration * 60;
+  timer.startedAt = null;
+  timer.startedRemaining = null;
+  delete S.settings._quickStartTaskId;
+  saveState();
+  startTimer();
+  updateTimerUI();
+  toast('🍅 进入完整专注！你已经在状态了');
+}
+
+function declineQuickStartContinue() {
+  var overlay = document.getElementById('modal-quickstart-continue');
+  if (overlay) overlay.hidden = true;
+  // Record the 5-min session and go to break
+  delete S.settings._quickStartTaskId;
+  saveState();
+  toast('👍 5分钟也很好，积少成多！');
+}
+
+// --- P-09: Task Resumption Prompt ---
+function checkTaskResumption() {
+  // Check if there was an interrupted work session
+  var today = new Date().toISOString().slice(0, 10);
+  var recentWork = S.sessions.filter(function(s) {
+    return s.type === 'work' && s.start && s.start.slice(0, 10) === today;
+  });
+  // Find last worked-on task that is still incomplete
+  var lastTaskId = null;
+  for (var i = recentWork.length - 1; i >= 0; i--) {
+    if (recentWork[i].taskId) {
+      var t = S.tasks.find(function(x) { return x.id === recentWork[i].taskId; });
+      if (t && !t.completed) {
+        lastTaskId = recentWork[i].taskId;
+        break;
+      }
+    }
+  }
+  // Also check if timer was previously associated with a task
+  if (!lastTaskId && timer.taskId) {
+    var tt = S.tasks.find(function(x) { return x.id === timer.taskId; });
+    if (tt && !tt.completed) lastTaskId = timer.taskId;
+  }
+  if (!lastTaskId) return;
+  var task = S.tasks.find(function(x) { return x.id === lastTaskId; });
+  if (!task) return;
+  // Don't show if timer is already running
+  if (timer.running) return;
+  // Don't show if already shown today
+  if (S.settings._lastResumptionDate === today && S.settings._lastResumptionTask === lastTaskId) return;
+  var bar = document.getElementById('resumption-bar');
+  var nameEl = document.getElementById('resumption-task-name');
+  if (bar && nameEl) {
+    nameEl.textContent = task.title;
+    bar.hidden = false;
+    bar.dataset.taskId = lastTaskId;
+    S.settings._lastResumptionDate = today;
+    S.settings._lastResumptionTask = lastTaskId;
+    saveState();
+  }
+}
+
+function resumeLastTask(taskId) {
+  var bar = document.getElementById('resumption-bar');
+  if (bar) bar.hidden = true;
+  timer.taskId = taskId;
+  timer.mode = 'work';
+  timer.remaining = S.settings.workDuration * 60;
+  timer.startedAt = null;
+  timer.startedRemaining = null;
+  startTimer();
+  updateTimerUI();
+  var t = S.tasks.find(function(x) { return x.id === taskId; });
+  toast('↩ 继续专注：' + (t ? t.title : ''));
+}
+
+function dismissResumption() {
+  var bar = document.getElementById('resumption-bar');
+  if (bar) bar.hidden = true;
+}
+
+// --- P-12: Light Focus Mode ---
+function enterFocusMode() {
+  var panel = document.querySelector('.panel-tasks');
+  var timerPanel = document.querySelector('.panel-timer');
+  if (panel) panel.classList.add('focus-collapsed');
+  if (timerPanel) timerPanel.classList.add('focus-expanded');
+  document.body.classList.add('focus-mode-active');
+}
+
+function exitFocusMode() {
+  var panel = document.querySelector('.panel-tasks');
+  var timerPanel = document.querySelector('.panel-timer');
+  if (panel) panel.classList.remove('focus-collapsed');
+  if (timerPanel) timerPanel.classList.remove('focus-expanded');
+  document.body.classList.remove('focus-mode-active');
+}
+
 // --- V5 Init ---
 function initV5Features() {
  renderDailyFocus();
@@ -1927,7 +1951,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (act === 'toggle') toggleTask(id);
     else if (act === 'pin') pinTask(id);
     else if (act === 'select') selectTask(id);
- else if (act === 'quickstart') startQuickPomodoro(id);
     else if (act === 'prio') cyclePriority(id);
     else if (act === 'detail') openDetail(id);
     else if (act === 'delete') { if (confirm('删除此土豆？')) {
@@ -2031,10 +2054,10 @@ $on('task-list', 'click', function(e) {
     currentParentView = null;
     document.querySelectorAll('.gtd-tab').forEach(function(t) { t.classList.remove('active'); });
     tab.classList.add('active');     // 同步 quick-input 的 area select
-  // 切换GTD区域时重置过滤器
-  currentFilter = 'today'; // P-07: 默认"今日"视图
+  // 切换GTD区域时重置过滤器为'全部'
+  currentFilter = 'all';
   document.querySelectorAll('.filter-btn').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.filter === 'today');
+    b.classList.toggle('active', b.dataset.filter === 'all');
   });
     var qiArea = document.getElementById('qi-area');
     if (qiArea && currentArea && currentArea !== 'archive' && currentArea !== 'all') {
@@ -2323,6 +2346,26 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
   });
 
   // ---- Keyboard shortcuts ----
+  // P-08: Quick start continue modal buttons
+  $on('qs-continue', 'click', confirmQuickStartContinue);
+  $on('qs-stop', 'click', declineQuickStartContinue);
+  // P-09: Task resumption bar
+  $on('resumption-resume', 'click', function() {
+    var bar = document.getElementById('resumption-bar');
+    if (bar && bar.dataset.taskId) resumeLastTask(bar.dataset.taskId);
+  });
+  $on('resumption-dismiss', 'click', dismissResumption);
+  // P-12: Focus mode — auto enter/exit on timer start/pause
+  var origStartTimer = startTimer;
+  // We wrap timer start/pause to toggle focus mode
+  document.addEventListener('timer-focus-toggle', function() {
+    if (timer.running) {
+      if (S.settings.focusModeEnabled !== false) enterFocusMode();
+    } else {
+      exitFocusMode();
+    }
+  });
+
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { if (detailTaskId) { closeDetail(); return; } if (quickInputVisible) { toggleQuickInput(); return; } }
   // Ctrl+Enter 保存详情面板
