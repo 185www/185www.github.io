@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>新生 - 健康管理工具</title>
+<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+<div id="app">
+  <header id="app-header">
+    <h1>新生</h1>
+    <p class="subtitle">你的健康管理助手</p>
+  </header>
+
+  <!-- Page: Calculator -->
+  <div id="page-calculator" class="page active">
+    <div class="card">
+      <h2>算一算你的身体真实年龄</h2>
+      <p class="card-desc">输入几个数字，看看你的生活习惯对身体的影响</p>
+      <form id="calc-form">
+        <div class="form-group">
+          <label>你的性别</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="gender" value="male" checked> 男</label>
+            <label class="radio-label"><input type="radio" name="gender" value="female"> 女</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>你的年龄</label>
+          <input type="number" id="calc-age" min="30" max="90" value="55" class="input-lg">
+        </div>
+        <div class="form-group">
+          <label>每天吸烟量（支）</label>
+          <input type="number" id="calc-smoke" min="0" max="60" value="0" class="input-lg">
+        </div>
+        <div class="form-group">
+          <label>每次喝酒量（标准杯，1杯=啤酒1罐/白酒1两）</label>
+          <input type="number" id="calc-alcohol" min="0" max="30" value="0" class="input-lg">
+        </div>
+        <div class="form-group">
+          <label>每天刷短视频（小时）</label>
+          <input type="number" id="calc-shortvideo" min="0" max="16" value="0" class="input-lg">
+        </div>
+        <button type="submit" class="btn-primary btn-lg">开始计算</button>
+        <button type="button" id="btn-calc-later" class="btn-link">再看看</button>
+      </form>
+    </div>
+
+    <div id="calc-result" class="card hidden">
+      <h2>你的结果</h2>
+      <div id="result-body-age" class="result-item">
+        <span class="result-label">身体年龄</span>
+        <span class="result-value" id="body-age-value">—</span>
+      </div>
+      <div id="result-cost" class="result-item">
+        <span class="result-label">在烟酒上已花费</span>
+        <span class="result-value" id="cost-value">—</span>
+      </div>
+      <div id="result-time" class="result-item">
+        <span class="result-label">去年刷短视频相当于</span>
+        <span class="result-value" id="time-value">—</span>
+      </div>
+      <div id="result-risk" class="result-item">
+        <span class="result-label">主要健康风险</span>
+        <span class="result-value" id="risk-value">—</span>
+      </div>
+      <button id="btn-to-dashboard" class="btn-primary btn-lg">看看我的进度</button>
+      <button id="btn-to-science" class="btn-secondary btn-lg">了解更多科学真相</button>
+    </div>
+  </div>
+
+  <!-- Page: Dashboard -->
+  <div id="page-dashboard" class="page hidden">
+    <div class="card">
+      <h2>我的进度</h2>
+      <p class="card-desc">记录每一天的进步</p>
+
+      <div id="checkin-section">
+        <p class="checkin-question">今天你做到了吗？</p>
+        <div class="checkin-options">
+          <label class="checkin-item" data-behavior="smoke">
+            <span class="checkin-icon">🚬</span>
+            <span class="checkin-text">今天没抽烟</span>
+            <input type="checkbox" class="checkin-input">
+          </label>
+          <label class="checkin-item" data-behavior="alcohol">
+            <span class="checkin-icon">🍺</span>
+            <span class="checkin-text">今天没喝酒</span>
+            <input type="checkbox" class="checkin-input">
+          </label>
+          <label class="checkin-item" data-behavior="video">
+            <span class="checkin-icon">📱</span>
+            <span class="checkin-text">今天刷了不到1小时短视频</span>
+            <input type="checkbox" class="checkin-input">
+          </label>
+          <label class="checkin-item" data-behavior="alternative">
+            <span class="checkin-icon">💪</span>
+            <span class="checkin-text">今天做了替代活动</span>
+            <input type="checkbox" class="checkin-input">
+          </label>
+        </div>
+        <button id="btn-save-checkin" class="btn-primary btn-lg">记录今天</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>连续打卡</h3>
+      <div id="streak-display">
+        <div class="streak-item">
+          <span class="streak-label">戒烟</span>
+          <span class="streak-count" id="streak-smoke">0</span>
+          <span class="streak-unit">天</span>
+        </div>
+        <div class="streak-item">
+          <span class="streak-label">戒酒</span>
+          <span class="streak-count" id="streak-alcohol">0</span>
+          <span class="streak-unit">天</span>
+        </div>
+        <div class="streak-item">
+          <span class="streak-label">少刷短视频</span>
+          <span class="streak-count" id="streak-video">0</span>
+          <span class="streak-unit">天</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>累计省下</h3>
+      <div id="savings-display">
+        <div class="saving-item">
+          <span class="saving-label">省钱</span>
+          <span class="saving-value" id="saving-money">¥0</span>
+        </div>
+        <div class="saving-item">
+          <span class="saving-label">省时间（短视频）</span>
+          <span class="saving-value" id="saving-time">0小时</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="identity-section" class="card hidden">
+      <h3>🏆 你的健康身份</h3>
+      <p class="identity-statement" id="identity-text">你是一个在乎自己的人</p>
+    </div>
+
+    <button id="btn-to-calculator" class="btn-link">回到计算器</button>
+  </div>
+
+  <!-- Page: Science Cards -->
+  <div id="page-science" class="page hidden">
+    <div class="card">
+      <h2>科学真相</h2>
+      <p class="card-desc">民间说法 vs 科学证据</p>
+    </div>
+    <div id="science-cards-container">
+      <div class="science-card" data-index="0">
+        <div class="myth">❌ "每天一杯酒活血化瘀"</div>
+        <div class="fact">✅ 酒精暂时扩张血管，但长期导致高血压和心脏损伤。酒精是一级致癌物，与7种癌症直接相关。</div>
+        <div class="source">来源：WHO 2023, IARC 2024</div>
+      </div>
+      <div class="science-card" data-index="1">
+        <div class="myth">❌ "少抽点烟没事"</div>
+        <div class="fact">✅ 每天仅1支烟，心血管疾病风险增加50%。不存在安全的吸烟量。</div>
+        <div class="source">来源：NEJM, BMJ 2018</div>
+      </div>
+      <div class="science-card" data-index="2">
+        <div class="myth">❌ "刷短视频就是放松"</div>
+        <div class="fact">✅ 短视频激活多巴胺奖赏系统的方式与赌博高度相似。每天刷得越多，注意力和自控力下降越明显。</div>
+        <div class="source">来源：APA Psychological Bulletin 2025（71项研究，98,299人）</div>
+      </div>
+      <div class="science-card" data-index="3">
+        <div class="myth">❌ "老年人刷手机不伤脑"</div>
+        <div class="fact">✅ 短视频对认知的负面影响不分年龄。中老年人同样出现注意力下降、抑制控制受损。</div>
+        <div class="source">来源：APA Psychological Bulletin 2025</div>
+      </div>
+      <div class="science-card" data-index="4">
+        <div class="myth">❌ "喝酒能睡得好"</div>
+        <div class="fact">✅ 酒精破坏深度睡眠（慢波睡眠）和REM睡眠周期。酒后睡眠质量显著下降，即使入睡更快。</div>
+        <div class="source">来源：Sleep Medicine Review, 2023</div>
+      </div>
+      <div class="science-card" data-index="5">
+        <div class="myth">❌ "刷完感觉什么都没记住"</div>
+        <div class="fact">✅ 随机短视频切换导致大脑"过度分割"惯性，损害记忆编码能力。不是内容的问题，是切换模式的问题。</div>
+        <div class="source">来源：npj Science of Learning 2025</div>
+      </div>
+    </div>
+    <div class="card-nav">
+      <button id="btn-science-prev" class="btn-secondary">上一张</button>
+      <span id="science-counter">1/6</span>
+      <button id="btn-science-next" class="btn-secondary">下一张</button>
+    </div>
+    <button id="btn-science-back" class="btn-link">返回</button>
+  </div>
+
+  <!-- Page: Alternatives -->
+  <div id="page-alternatives" class="page hidden">
+    <div class="card">
+      <h2>替代活动库</h2>
+      <p class="card-desc">想抽烟/喝酒/刷手机时，试试这些</p>
+    </div>
+    <div id="alt-groups">
+      <div class="alt-group">
+        <h3>👋 手口替代（针对抽烟习惯）</h3>
+        <ul>
+          <li>嚼无糖口香糖（益达/炫迈）</li>
+          <li>嗑瓜子/剥花生</li>
+          <li>盘手串</li>
+          <li>含一颗薄荷糖</li>
+        </ul>
+      </div>
+      <div class="alt-group">
+        <h3>🍵 仪式替代（针对喝酒习惯）</h3>
+        <ul>
+          <li>以茶代酒（绿茶/乌龙茶）</li>
+          <li>气泡水+柠檬片</li>
+          <li>无酒精啤酒</li>
+          <li>"我开车来的" / "医生不让喝了"</li>
+        </ul>
+      </div>
+      <div class="alt-group">
+        <h3>🚶 活动替代（针对刷手机）</h3>
+        <ul>
+          <li>出去走5分钟</li>
+          <li>给家人打个电话</li>
+          <li>闭眼深呼吸1分钟</li>
+          <li>看纸质书/听音频书</li>
+          <li>泡脚</li>
+        </ul>
+      </div>
+    </div>
+    <button id="btn-alt-back" class="btn-link">返回</button>
+  </div>
+
+  <!-- Page: Family Wall -->
+  <div id="page-family" class="page hidden">
+    <div class="card">
+      <h2>家人寄语</h2>
+      <p class="card-desc">家人想对你说的话</p>
+    </div>
+    <div id="family-messages">
+      <p class="placeholder-text">还没有留言。让家人给你写一段话吧。</p>
+    </div>
+    <div class="card">
+      <h3>添加寄语</h3>
+      <textarea id="family-input" placeholder="写一段话..." rows="3" class="input-lg"></textarea>
+      <div class="form-group">
+        <label>署名</label>
+        <input type="text" id="family-author" placeholder="如：儿子" class="input-lg">
+      </div>
+      <button id="btn-family-save" class="btn-primary btn-lg">保存寄语</button>
+    </div>
+    <button id="btn-family-back" class="btn-link">返回</button>
+  </div>
+
+  <!-- Bottom navigation -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-page="page-calculator">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">计算</span>
+    </button>
+    <button class="nav-btn" data-page="page-dashboard">
+      <span class="nav-icon">✅</span>
+      <span class="nav-label">进度</span>
+    </button>
+    <button class="nav-btn" data-page="page-science">
+      <span class="nav-icon">🔬</span>
+      <span class="nav-label">科学</span>
+    </button>
+    <button class="nav-btn" data-page="page-alternatives">
+      <span class="nav-icon">💡</span>
+      <span class="nav-label">替代</span>
+    </button>
+    <button class="nav-btn" data-page="page-family">
+      <span class="nav-icon">❤️</span>
+      <span class="nav-label">家人</span>
+    </button>
+  </nav>
+</div>
+
+<script src="assets/js/storage.js"></script>
+<script src="assets/js/calculator.js"></script>
+</body>
+</html>
