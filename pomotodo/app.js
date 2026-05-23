@@ -398,7 +398,8 @@ function addTask(title, opts) {
     area: area, dueDatetime: opts.dueDatetime || '',
     projectId: opts.projectId || '', 
   parentId: opts.parentId || '',notes: opts.notes || ''
-  };
+  ,
+        dailyFocus: false};
   S.tasks.unshift(task); saveState(); renderTasks(); updateGtdCounts();
   return task;
 }
@@ -664,12 +665,12 @@ function saveDetail() {
     // Only sync if there are visible chips or existing tags (avoid overwriting on partial render)
     var currentTags = [];
     tagChips.forEach(function(chip) {
-      var removeAttr = chip.getAttribute('data-remove-tag');
-      if (removeAttr) currentTags.push(removeAttr);
+      var tagText = chip.getAttribute('data-remove-tag');
+      if (tagText) currentTags.push(tagText);
     });
     // If chips are present, use them; otherwise keep existing tags
     if (currentTags.length > 0 || tagChips.length === 0) {
-      t.tags = currentTags.length > 0 ? currentTags : t.tags;
+      t.tags = currentTags;
     }
   }
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
@@ -1253,7 +1254,8 @@ function renderTasks() {
       '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + parentBadge + subtaskBadge + '</span>' +
       '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + (t.pomodorosCompleted > 5 ? '+' + t.pomodorosCompleted : '') + '</span>' +
       '<div class="task-btns">' +
-      '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' +
+      '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' + +
+              (isOverdueItem ? '<button class="task-btn quickstart-btn" data-act="quickstart" data-id="' + t.id + '" title="5\u5206\u949f\u5feb\u901f\u542f\u52a8">\u26a1</button>' : '')
       '<button class="task-btn" data-act="select" data-id="' + t.id + '">' + (isActive ? '🍅' : '○') + '</button>' +
       '<button class="task-btn del" data-act="delete" data-id="' + t.id + '">✕</button>' +
       '</div></li>';
@@ -2038,7 +2040,9 @@ document.addEventListener('DOMContentLoaded', function() {
       currentParentView = id;
       renderTasks();
     }
-    else if (act === 'restore') { toggleTask(id); } else if (act === 'back-to-project') {
+    else if (act === 'restore') { toggleTask(id); } else if (act === 'quickstart') {
+        quickStartOverdue(id);
+    } else if (act === 'back-to-project') {
       currentParentView = null;
       renderTasks();
     }
