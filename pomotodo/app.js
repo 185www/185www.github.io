@@ -2567,10 +2567,10 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
  btn.addEventListener('click', function() {
  selectRestOption(btn.dataset.rest);
  });
+ });
  // Rest guide close buttons
  $on('rest-start-btn', 'click', closeRestGuide);
  $on('rest-skip-btn', 'click', closeRestGuide);
- });
 
  // ---- V5: Daily Review Overlay ----
  $on('dr-done', 'click', saveDailyReview);
