@@ -17,7 +17,15 @@ var DEFAULTS = {
     workDuration: 25, shortBreakDuration: 5, longBreakDuration: 15,
     longBreakInterval: 4, autoStartBreak: true, autoStartWork: false,
     soundEnabled: true, soundVolume: 0.7, notificationsEnabled: false,
-    wakeLockEnabled: false, theme: 'light'
+    wakeLockEnabled: false, theme: 'light',
+        // V5 settings
+        restGuideEnabled: true,
+        focusModeEnabled: true,
+        celebrationEnabled: true,
+        interruptionConfirm: true,
+        lastLaunchDate: '',
+        lastReviewDate: '',
+        dailyFocusIds: []
   },
  tasks: [], sessions: [], projects: [],
  habitStreak: { currentStreak: 0, longestStreak: 0, lastActiveDate: '', calendarData: {} },
@@ -58,6 +66,10 @@ function fmtDue(t) {
 }
 var wakeLockSentinel = null;
 var currentFilter = 'all';
+// V5 runtime state (NOT persisted in S.settings)
+var _quickStartTaskId = null;
+var _lastResumptionDate = '';
+var _lastResumptionTask = '';
 var quickInputVisible = false;
 var quickInputPrio = 4;
 var quickInputTags = [];
@@ -257,6 +269,8 @@ function startTimer() {
   startInterval();
   if (timerWorker) timerWorker.postMessage({ type: 'start', startTime: Date.now(), duration: timer.remaining });
   updateTimerUI(); acquireWakeLock();
+    // V5 P-12: Dispatch focus mode toggle
+    document.dispatchEvent(new CustomEvent('timer-focus-toggle'));
 }
 
 function pauseTimer() {
@@ -271,9 +285,19 @@ function pauseTimer() {
   saveTimerState();
   if (timerWorker) timerWorker.postMessage({ type: 'pause' });
   updateTimerUI();
+    // V5 P-12: Dispatch focus mode toggle
+    document.dispatchEvent(new CustomEvent('timer-focus-toggle'));
 }
 
 function resetTimer() {
+ // V5 P-04: If timer is running, show abandon confirm modal instead
+ if (timer.running && S.settings.interruptionConfirm !== false) {
+  var mins = Math.floor((getModeDuration(timer.mode) * 60 - timer.remaining) / 60);
+  var minsEl = document.getElementById('abandon-minutes');
+  if (minsEl) minsEl.textContent = Math.max(mins, 1);
+  document.getElementById('modal-abandon-confirm').hidden = false;
+  return;
+ }
   click(S.settings.soundVolume);
   timer.running = false; clearInterval(timer.intervalId); timer.intervalId = null;
   timer.remaining = getModeDuration(timer.mode) * 60;
@@ -297,7 +321,12 @@ function onTimerComplete() {
   }
   clearTimerState(); releaseWakeLock();
   if (timer.mode === 'work') {
-    timer.cycleCount++; S.sessions.push(session); saveState(); showCompleteModal(session);
+    timer.cycleCount++; S.sessions.push(session); saveState();
+    // V5 P-06: Update habit streak on work completion
+    updateHabitStreak();
+    showCompleteModal(session);
+    // V5 P-02: Show rest guide when transitioning to break
+    showRestGuide();
   } else {
     S.sessions.push(session); saveState();
     timer.mode = 'work'; timer.remaining = S.settings.workDuration * 60;
@@ -1346,6 +1375,7 @@ function renderWeeklyChart() {
       labels: labels,
       datasets: [{
         label: '番茄数',
+                data: counts,
         backgroundColor: 'rgba(231,76,60,0.7)',
         borderRadius: 4,
         maxBarThickness: 28
@@ -1484,6 +1514,37 @@ function selectRestOption(type) {
  document.getElementById('rest-options').hidden = true;
  document.getElementById('rest-timer-display').hidden = false;
 }
+
+// --- P-03: Celebration on Task Completion ---
+function showCelebration() {
+    if (!S.settings.celebrationEnabled) return;
+    var overlay = document.getElementById('celebration-overlay');
+    if (!overlay) return;
+    overlay.hidden = false;
+    // Create confetti particles
+    var container = overlay.querySelector('.confetti-container');
+    if (container) {
+        container.innerHTML = '';
+        for (var i = 0; i < 30; i++) {
+            var particle = document.createElement('span');
+            particle.className = 'confetti-particle';
+            var colors = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63','#ff6b6b'];
+            particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 0.5 + 's';
+            particle.style.animationDuration = (1 + Math.random() * 1.5) + 's';
+            var size = 6 + Math.random() * 8;
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
+            container.appendChild(particle);
+        }
+    }
+    // Auto-hide after 2.5 seconds
+    setTimeout(function() {
+        overlay.hidden = true;
+    }, 2500);
+}
+
 
 // --- P-05: Daily Focus (Top 3) ---
 function renderDailyFocus() {
@@ -1680,7 +1741,7 @@ function quickStartOverdue(taskId) {
   timer.startedRemaining = null;
   timer.running = false;
   // Set up callback: after 5min, prompt to continue with full pomodoro
-  S.settings._quickStartTaskId = taskId;
+  _quickStartTaskId = taskId;
   saveState();
   startTimer();
   updateTimerUI();
@@ -1707,7 +1768,7 @@ function confirmQuickStartContinue() {
   timer.remaining = S.settings.workDuration * 60;
   timer.startedAt = null;
   timer.startedRemaining = null;
-  delete S.settings._quickStartTaskId;
+  _quickStartTaskId = null;
   saveState();
   startTimer();
   updateTimerUI();
@@ -1718,7 +1779,7 @@ function declineQuickStartContinue() {
   var overlay = document.getElementById('modal-quickstart-continue');
   if (overlay) overlay.hidden = true;
   // Record the 5-min session and go to break
-  delete S.settings._quickStartTaskId;
+  _quickStartTaskId = null;
   saveState();
   toast('👍 5分钟也很好，积少成多！');
 }
@@ -1752,7 +1813,7 @@ function checkTaskResumption() {
   // Don't show if timer is already running
   if (timer.running) return;
   // Don't show if already shown today
-  if (S.settings._lastResumptionDate === today && S.settings._lastResumptionTask === lastTaskId) return;
+  if (_lastResumptionDate === today && _lastResumptionTask === lastTaskId) return;
   var bar = document.getElementById('resumption-bar');
   var nameEl = document.getElementById('resumption-task-name');
   if (bar && nameEl) {
@@ -1805,6 +1866,8 @@ function exitFocusMode() {
 function initV5Features() {
  renderDailyFocus();
  renderHabitStreak();
+ // V5 P-07: Check daily review at app startup
+ checkDailyReview();
  var badge = document.getElementById('streak-badge');
  if (badge && S.habitStreak.currentStreak > 0) {
   badge.hidden = false;
