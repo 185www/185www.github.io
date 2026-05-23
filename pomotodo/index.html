@@ -137,7 +137,26 @@
     <div class="stat-card"><div class="stat-val" id="s-total-count">0</div><div class="stat-lbl">累计番茄</div></div>
   </div>
   <div class="stats-chart-box"><h3>最近 7 天</h3><canvas id="chart-weekly"></canvas></div>
-  <div class="stats-tags-box"><h3>标签分布</h3><div class="tag-bars" id="tag-bars"></div></div>
+  <!-- V5: P-05 Daily Focus Section -->
+<div class="daily-focus-section" id="daily-focus-section" hidden>
+<h4>🎯 今日焦点 <span class="df-count" id="df-count">0/3</span></h4>
+<ul class="df-list" id="df-list"></ul>
+<div class="focus-progress" id="focus-progress" hidden>
+<div class="focus-progress-bar"><div class="focus-progress-fill" id="focus-progress-fill" style="width:0%"></div></div>
+<span class="focus-progress-text" id="focus-progress-text">0/0</span>
+</div>
+</div>
+<!-- V5: P-06 Habit Streak Section -->
+<div class="habit-section">
+<h4>🔥 习惯连续 <span class="streak-badge" id="streak-badge" hidden>🔥<span id="streak-num">0</span>天</span></h4>
+<div class="habit-stats-row">
+<div class="habit-stat"><span class="habit-stat-val" id="h-current">0</span><span class="habit-stat-lbl">当前连续</span></div>
+<div class="habit-stat"><span class="habit-stat-val" id="h-longest">0</span><span class="habit-stat-lbl">最长连续</span></div>
+</div>
+<div class="habit-goal"><span class="habit-goal-lbl">66天目标</span><div class="habit-goal-bar"><div class="habit-goal-fill" id="h-goal-fill" style="width:0%"></div></div><span class="habit-goal-text" id="h-goal-text">0/66</span></div>
+<div class="habit-heatmap" id="habit-heatmap"></div>
+</div>
+<div class="stats-tags-box"><h3>标签分布</h3><div class="tag-bars" id="tag-bars"></div></div>
   <div class="stats-io"><button class="btn-sm" id="btn-export">📥 导出数据</button><label class="btn-sm label-btn">📤 导入数据<input type="file" id="btn-import" accept=".json" hidden /></label></div>
 </main>
 <main class="view settings-view" id="view-settings">
@@ -295,9 +314,14 @@
   <button class="btn-sm resumption-dismiss-btn" id="resumption-dismiss">✕</button>
 </div>
 
+<!-- V5: P-03 Celebration Overlay -->
+<div class="celebration-overlay" id="celebration-overlay" hidden>
+<div class="confetti-container"></div>
+<div class="celebration-text">🎉 太棒了！</div>
+</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=22"></script>
+<script src="./app.js?v=23"></script>
 </body>
 </html>
