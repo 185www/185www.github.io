@@ -70,6 +70,34 @@ var currentFilter = 'all';
 var _quickStartTaskId = null;
 var _lastResumptionDate = '';
 var _lastResumptionTask = '';
+// ==================== MODAL QUEUE SYSTEM ====================
+var _modalQueue = [];
+var _activeModal = null;
+function queueModal(id, showFn, priority) {
+  priority = priority || 50;
+  if (_activeModal === id) return;
+  for (var i = 0; i < _modalQueue.length; i++) {
+    if (_modalQueue[i].id === id) return;
+  }
+  _modalQueue.push({ id: id, show: showFn, priority: priority });
+  _modalQueue.sort(function(a, b) { return a.priority - b.priority; });
+  _processModalQueue();
+}
+function _processModalQueue() {
+  if (_activeModal) return;
+  if (_modalQueue.length === 0) { _showPendingResumption(); return; }
+  var next = _modalQueue.shift();
+  _activeModal = next.id;
+  next.show();
+}
+function closeActiveModal() {
+  _activeModal = null;
+  _processModalQueue();
+}
+var _pendingResumption = null;
+function _showPendingResumption() {
+  if (_pendingResumption) { _pendingResumption(); _pendingResumption = null; }
+}
 var quickInputVisible = false;
 var quickInputPrio = 4;
 var quickInputTags = [];
@@ -296,6 +324,7 @@ function resetTimer() {
   var minsEl = document.getElementById('abandon-minutes');
   if (minsEl) minsEl.textContent = Math.max(mins, 1);
   document.getElementById('modal-abandon-confirm').hidden = false;
+  _activeModal = 'abandon-confirm';
   return;
  }
   click(S.settings.soundVolume);
@@ -331,6 +360,7 @@ function onTimerComplete() {
     timer.cycleCount++; S.sessions.push(session); saveState();
     // V5 P-06: Update habit streak on work completion
     updateHabitStreak();
+ showCelebration();
     showCompleteModal(session);
     // V5 P-02: Show rest guide when transitioning to break
     showRestGuide();
@@ -1287,32 +1317,35 @@ function updateDoneList() {
 
 // ==================== COMPLETE MODAL ====================
 function showCompleteModal(session) {
-  var overlay = document.getElementById('modal-complete');
-  overlay.removeAttribute('hidden');
-  document.getElementById('modal-sub').textContent = '刚刚完成了 ' + S.settings.workDuration + ' 分钟专注';
-  var tasksDiv = document.getElementById('modal-tasks');
-  var activeTasks = S.tasks.filter(function(t) { return !t.completed; });
-  if (activeTasks.length === 0) {
-    tasksDiv.innerHTML = '<p style="font-size:.8rem;color:var(--c-text2)">暂无待办土豆</p>';
-  } else {
-    tasksDiv.innerHTML = activeTasks.slice(0, 8).map(function(t) {
-      return '<div class="modal-task-item" data-id="' + t.id + '"><div class="mt-check">○</div>' + esc(t.title) + '</div>';
-    }).join('');
-    tasksDiv.querySelectorAll('.modal-task-item').forEach(function(el) {
-      el.addEventListener('click', function() {
-        el.classList.toggle('checked');
-        el.querySelector('.mt-check').textContent = el.classList.contains('checked') ? '✓' : '○';
+  queueModal('modal-complete', function() {
+    var overlay = document.getElementById('modal-complete');
+    overlay.removeAttribute('hidden');
+    _activeModal = 'modal-complete';
+    document.getElementById('modal-sub').textContent = '刚刚完成了 ' + S.settings.workDuration + ' 分钟专注';
+    var tasksDiv = document.getElementById('modal-tasks');
+    var activeTasks = S.tasks.filter(function(t) { return !t.completed; });
+    if (activeTasks.length === 0) {
+      tasksDiv.innerHTML = '<p style="font-size:.8rem;color:var(--c-text2)">暂无待办土豆</p>';
+    } else {
+      tasksDiv.innerHTML = activeTasks.slice(0, 8).map(function(t) {
+        return '<div class="modal-task-item" data-id="' + t.id + '"><div class="mt-check">○</div>' + esc(t.title) + '</div>';
+      }).join('');
+      tasksDiv.querySelectorAll('.modal-task-item').forEach(function(el) {
+        el.addEventListener('click', function() {
+          el.classList.toggle('checked');
+          el.querySelector('.mt-check').textContent = el.classList.contains('checked') ? '✓' : '○';
+        });
       });
-    });
-  }
-  document.getElementById('modal-confirm').onclick = function() {
-    var checked = tasksDiv.querySelectorAll('.modal-task-item.checked');
-    var taskId = checked.length > 0 ? checked[0].dataset.id : null;
-    overlay.setAttribute('hidden', ''); advanceAfterComplete(taskId);
-  };
-  document.getElementById('modal-skip').onclick = function() {
-    overlay.setAttribute('hidden', ''); advanceAfterComplete(null);
-  };
+    }
+    document.getElementById('modal-confirm').onclick = function() {
+      var checked = tasksDiv.querySelectorAll('.modal-task-item.checked');
+      var taskId = checked.length > 0 ? checked[0].dataset.id : null;
+      overlay.setAttribute('hidden', ''); closeActiveModal(); advanceAfterComplete(taskId);
+    };
+    document.getElementById('modal-skip').onclick = function() {
+      overlay.setAttribute('hidden', ''); closeActiveModal(); advanceAfterComplete(null);
+    };
+  }, 40);
 }
 
 // ==================== TIME PICKER ====================
@@ -1506,11 +1539,24 @@ function importData(file) {
 
 // --- P-02: Rest Guide ---
 function showRestGuide() {
+  if (!S.settings.restGuideEnabled) return;
+  queueModal('rest-guide', function() {
+    document.getElementById('rest-guide-overlay').hidden = false;
+    document.getElementById('rest-options').hidden = false;
+    document.getElementById('rest-timer-display').hidden = true;
+    _activeModal = 'rest-guide';
+  }, 50);
+}nction showRestGuide() {
  if (!S.settings.restGuideEnabled) return;
  document.getElementById('rest-guide-overlay').hidden = false;
  document.getElementById('rest-options').hidden = false;
  document.getElementById('rest-timer-display').hidden = true;
 }
+function closeRestGuide() {
+  document.getElementById('rest-guide-overlay').hidden = true;
+  closeActiveModal();
+}
+
 function selectRestOption(type) {
  var instructions = {
   breathe: '闭上眼睛，缓慢深呼吸…\n吸气4秒 → 屏息4秒 → 呼气6秒\n重复3-5次，感受呼吸的节奏',
@@ -1644,7 +1690,7 @@ function renderHabitStreak() {
 function checkDailyLaunch() {
  var today = new Date().toISOString().slice(0, 10);
  if (S.settings.lastLaunchDate === today) return;
- renderDailyLaunch();
+ queueModal('daily-launch', function() { renderDailyLaunch(); }, 10);
 }
 function renderDailyLaunch() {
  var today = new Date().toISOString().slice(0, 10);
@@ -1680,6 +1726,7 @@ function renderDailyLaunch() {
   } else { inboxHint.hidden = true; }
  }
  el('daily-launch-overlay').hidden = false;
+  _activeModal = 'daily-launch';
 }
 function confirmDailyLaunch() {
  var checks = document.querySelectorAll('#dl-focus-list input[type=checkbox]:checked');
@@ -1690,6 +1737,7 @@ function confirmDailyLaunch() {
  S.settings.lastLaunchDate = new Date().toISOString().slice(0, 10);
  saveState();
  document.getElementById('daily-launch-overlay').hidden = true;
+  closeActiveModal();
  renderDailyFocus();
  if (ids.length > 0) { timer.taskId = ids[0]; updateTimerUI(); }
 }
@@ -1703,7 +1751,7 @@ function checkDailyReview() {
   return s.type === 'work' && s.start && s.start.slice(0, 10) === today;
  }).length;
  if (todayPomo < 1 || hour < 17) return;
- renderDailyReview();
+ queueModal('daily-review', function() { renderDailyReview(); }, 30);
 }
 function renderDailyReview() {
  var today = new Date().toISOString().slice(0, 10);
@@ -1728,6 +1776,7 @@ function renderDailyReview() {
  if (sugEl) sugEl.textContent = overdue > 0 ?
   '你有 ' + overdue + ' 个逾期任务，明天优先处理？' : '今天表现不错，明天继续保持！';
  document.getElementById('daily-review-overlay').hidden = false;
+  _activeModal = 'daily-review';
 }
 function saveDailyReview() {
  var today = new Date().toISOString().slice(0, 10);
@@ -1737,6 +1786,7 @@ function saveDailyReview() {
  S.dailyReviews = S.dailyReviews.filter(function(r) { return r.date >= cutoff; });
  saveState();
  document.getElementById('daily-review-overlay').hidden = true;
+  closeActiveModal();
 }
 
 // --- P-08: 5-Minute Quick Start for Overdue ---
@@ -1759,6 +1809,18 @@ function quickStartOverdue(taskId) {
 
 // Handle 5-min quick start completion → prompt to continue
 function onQuickStartComplete(taskId) {
+  var t = S.tasks.find(function(x) { return x.id === taskId; });
+  if (!t) return;
+  queueModal('quickstart-continue', function() {
+    var overlay = document.getElementById('modal-quickstart-continue');
+    if (overlay) {
+      var nameEl = document.getElementById('qs-task-name');
+      if (nameEl) nameEl.textContent = t.title;
+      overlay.hidden = false;
+      _activeModal = 'quickstart-continue';
+    }
+  }, 60);
+}nction onQuickStartComplete(taskId) {
   var t = S.tasks.find(function(x) { return x.id === taskId; });
   if (!t) return;
   var overlay = document.getElementById('modal-quickstart-continue');
@@ -1823,15 +1885,19 @@ function checkTaskResumption() {
   if (timer.running) return;
   // Don't show if already shown today
   if (_lastResumptionDate === today && _lastResumptionTask === lastTaskId) return;
-  var bar = document.getElementById('resumption-bar');
-  var nameEl = document.getElementById('resumption-task-name');
-  if (bar && nameEl) {
-    nameEl.textContent = task.title;
-    bar.hidden = false;
-    bar.dataset.taskId = lastTaskId;
-    S.settings._lastResumptionDate = today;
-    S.settings._lastResumptionTask = lastTaskId;
-    saveState();
+  var _showResumptionBar = function() {
+    var bar = document.getElementById('resumption-bar');
+    var nameEl = document.getElementById('resumption-task-name');
+    if (bar && nameEl) {
+      nameEl.textContent = task.title;
+      bar.hidden = false;
+      bar.dataset.taskId = lastTaskId;
+    }
+  };
+  if (_activeModal) {
+    _pendingResumption = _showResumptionBar;
+  } else {
+    _showResumptionBar();
   }
 }
 
@@ -1890,7 +1956,7 @@ function initV5Features() {
  }).length;
  updateFocusProgress(focusDone, focusIds.length);
   setTimeout(checkTaskResumption, 800);
- setTimeout(checkDailyLaunch, 500);
+ setTimeout(checkDailyLaunch, 300);
 }
 
 // ==================== ONBOARDING ====================
@@ -2465,6 +2531,7 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
  $on('dl-start', 'click', confirmDailyLaunch);
  $on('dl-skip', 'click', function() {
  document.getElementById('daily-launch-overlay').hidden = true;
+  closeActiveModal();
  });
  $on('dl-quick-add-btn', 'click', function() {
  var input = document.getElementById('dl-quick-input');
@@ -2482,9 +2549,11 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
  // ---- V5: Abandon Confirm Modal ----
  $on('abandon-continue', 'click', function() {
  document.getElementById('modal-abandon-confirm').hidden = true;
+  closeActiveModal();
  });
  $on('abandon-confirm', 'click', function() {
  document.getElementById('modal-abandon-confirm').hidden = true;
+  closeActiveModal();
  timer.running = false;
  timer.remaining = getModeDuration(timer.mode) * 60;
  timer.startedAt = null;
@@ -2498,11 +2567,15 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
  btn.addEventListener('click', function() {
  selectRestOption(btn.dataset.rest);
  });
+ // Rest guide close buttons
+ $on('rest-start-btn', 'click', closeRestGuide);
+ $on('rest-skip-btn', 'click', closeRestGuide);
  });
 
  // ---- V5: Daily Review Overlay ----
  $on('dr-done', 'click', saveDailyReview);
  $on('dr-skip', 'click', function() {
  document.getElementById('daily-review-overlay').hidden = true;
+  closeActiveModal();
  });
 });
