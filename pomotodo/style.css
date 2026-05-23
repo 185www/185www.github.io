@@ -2211,7 +2211,7 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .hm-cell.hm-lv3 { opacity: 0.75; } .hm-cell.hm-lv4 { opacity: 1; }
 
 /* --- P-02: Rest Guide Overlay --- */
-.rest-guide-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.rest-guide-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; }
 .rest-guide-card { background: #f0f7e6; color: #2d5016; border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; text-align: center; }
 [data-theme="dark"] .rest-guide-card { background: #1a2e0a; color: #b8e986; }
 .rest-phone-hint { font-size: 14px; margin: 8px 0 16px; opacity: 0.8; }
@@ -2226,8 +2226,20 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .rest-timer-display { padding: 16px; }
 .rest-instruction { white-space: pre-line; font-size: 15px; line-height: 1.8; text-align: center; font-family: inherit; margin: 0; }
 
+
+/* Rest guide action buttons */
+.rest-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+.rest-actions .btn-sm { min-width: 100px; padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+#rest-skip-btn { background: rgba(45,80,22,0.1); color: #2d5016; }
+#rest-skip-btn:hover { background: rgba(45,80,22,0.2); }
+#rest-start-btn { background: #2d5016; color: #fff; }
+#rest-start-btn:hover { background: #3a6b1e; }
+[data-theme="dark"] #rest-skip-btn { background: rgba(184,233,134,0.1); color: #b8e986; }
+[data-theme="dark"] #rest-skip-btn:hover { background: rgba(184,233,134,0.2); }
+[data-theme="dark"] #rest-start-btn { background: #4a8c2a; color: #fff; }
+[data-theme="dark"] #rest-start-btn:hover { background: #5ca036; }
 /* --- P-01: Daily Launch Overlay --- */
-.daily-launch-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1001; display: flex; align-items: center; justify-content: center; }
+.daily-launch-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
 .daily-launch-card { background: var(--card); color: var(--text-primary); border-radius: 16px; padding: 24px; max-width: 420px; width: 90%; }
 .daily-launch-card h3 { margin: 0 0 16px; font-size: 20px; text-align: center; }
 .dl-yesterday { text-align: center; margin-bottom: 16px; font-size: 14px; color: var(--text-secondary); }
@@ -2246,7 +2258,7 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
 .dl-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 /* --- P-07: Daily Review Overlay --- */
-.daily-review-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1002; display: flex; align-items: center; justify-content: center; }
+.daily-review-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
 .daily-review-card { background: var(--card); color: var(--text-primary); border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; text-align: center; }
 .daily-review-card h3 { margin: 0 0 16px; font-size: 20px; }
 .dr-stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; }
@@ -2299,7 +2311,7 @@ roject-del { font-size:.72rem; color:var(--c-text2); cursor:pointer; }
   top: 0;
   left: 0;
   right: 0;
-  z-index: 999;
+  z-index: 200;
   background: linear-gradient(135deg, #6c5ce7, #a29bfe);
   color: #fff;
   display: flex;
@@ -2382,7 +2394,7 @@ body:has(.resumption-bar:not([hidden])) .app-header {
 .celebration-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 9999;
+  z-index: 90;
   display: flex;
   align-items: center;
   justify-content: center;

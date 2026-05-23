@@ -1,4 +1,4 @@
-const CACHE = 'pomotodo-v23-fix-all-15bugs';
+const CACHE = 'pomotodo-v24-modal-queue';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './timer-worker.js', './manifest.json'];
 
 self.addEventListener('install', e => {
