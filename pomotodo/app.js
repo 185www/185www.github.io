@@ -308,6 +308,13 @@ function resetTimer() {
 }
 
 function onTimerComplete() {
+ // V5 P-08: Handle quick start 5-min completion
+ if (_quickStartTaskId && timer.mode === 'work') {
+  var qId = _quickStartTaskId;
+  _quickStartTaskId = null;
+  onQuickStartComplete(qId);
+  return;
+ }
   var dur = getModeDuration(timer.mode) * 60;
   var session = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -356,13 +363,13 @@ function skipTimer() {
   click(S.settings.soundVolume); clearInterval(timer.intervalId);
   timer.running = false; timer.intervalId = null;
   var total = getModeDuration(timer.mode) * 60;
-  if (timer.remaining < total * 0.5) {
+  if (timer.mode === 'work' && timer.remaining < total * 0.5) {
     var session = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       type: timer.mode, start: timer.startedAt || new Date().toISOString(),
       end: new Date().toISOString(), duration: total - timer.remaining, taskId: null
     };
-    S.sessions.push(session); if (timer.mode === 'work') timer.cycleCount++; saveState();
+    S.sessions.push(session); timer.cycleCount++; saveState();
   }
   if (timer.mode === 'work') {
     if (timer.cycleCount >= S.settings.longBreakInterval) {
