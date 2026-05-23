@@ -1,13 +1,11 @@
-/* timer-worker.js: precise background timer */
-let running=false,remaining=0,total=0,lastTick=null,intervalId=null;
+/* timer-worker.js — precise background timer using wall-clock time */
+let startTime=null,totalSeconds=0,running=false,intervalId=null;
 
 function tick(){
-  if(!running) return;
-  const now=Date.now();
-  const elapsed=now-lastTick;
-  lastTick=now;
-  remaining=Math.max(0,remaining-Math.ceil(elapsed/1000));
-  postMessage({type:'tick',remaining,total});
+  if(!running||startTime===null) return;
+  const elapsed=Math.floor((Date.now()-startTime)/1000);
+  const remaining=Math.max(0,totalSeconds-elapsed);
+  postMessage({type:'tick',remaining,total:totalSeconds});
   if(remaining<=0){
     running=false;
     if(intervalId){clearInterval(intervalId);intervalId=null;}
@@ -18,21 +16,23 @@ function tick(){
 self.onmessage=function(e){
   const d=e.data;
   if(d.type==='start'){
-    if(running) return;
-    remaining=d.remaining;
-    total=d.total;
+    if(running&&intervalId) clearInterval(intervalId);
+    startTime=Date.now();
+    totalSeconds=d.remaining;
     running=true;
-    lastTick=Date.now();
-    if(intervalId) clearInterval(intervalId);
     intervalId=setInterval(tick,200);
     tick();
   }else if(d.type==='pause'){
     running=false;
     if(intervalId){clearInterval(intervalId);intervalId=null;}
-    postMessage({type:'paused',remaining,total});
+    if(startTime!==null){
+      const elapsed=Math.floor((Date.now()-startTime)/1000);
+      postMessage({type:'paused',remaining:Math.max(0,totalSeconds-elapsed),total:totalSeconds});
+    }
+    startTime=null;
   }else if(d.type==='stop'){
     running=false;
     if(intervalId){clearInterval(intervalId);intervalId=null;}
-    remaining=0;total=0;
+    startTime=null;totalSeconds=0;
   }
 };

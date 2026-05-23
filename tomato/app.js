@@ -158,16 +158,17 @@ function startTimer(){
   if(timerWorker){
     timerWorker.postMessage({type:'start', remaining:S.timer.remaining, total:S.timer.total});
   }else{
+    const fbStart=Date.now(), fbTotal=S.timer.remaining;
     if(currentTimerId) clearInterval(currentTimerId);
     currentTimerId = setInterval(()=>{
-      S.timer.remaining--;
+      S.timer.remaining=Math.max(0,fbTotal-Math.floor((Date.now()-fbStart)/1000));
       updateTimerDisplay();
       if(S.timer.remaining <= 0){
         if(currentTimerId) clearInterval(currentTimerId);
         currentTimerId = null;
         onTimerComplete();
       }
-    },1000);
+    },200);
   }
   requestWakeLock();
   saveState();
