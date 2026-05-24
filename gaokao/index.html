@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4f46e5">
+<title>高考冲刺 · 记忆系统</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f8fafc;
+  color: #1e293b;
+  min-height: 100vh;
+}
+.header {
+  background: linear-gradient(135deg, #4f46e5, #3730a3);
+  color: white;
+  padding: 40px 20px 32px;
+  text-align: center;
+}
+.header h1 { font-size: 26px; font-weight: 800; }
+.header p { font-size: 14px; opacity: 0.8; margin-top: 6px; }
+.container { max-width: 640px; margin: 0 auto; padding: 20px 16px; }
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.subject-grid { display: grid; gap: 12px; }
+.subject-card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.subject-card:active { transform: scale(0.98); }
+.subject-card .icon {
+  width: 50px; height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+.subject-card .info { flex:1; }
+.subject-card .name { font-size: 18px; font-weight: 700; }
+.subject-card .desc { font-size: 13px; color: #64748b; margin-top: 2px; }
+.subject-card .arrow { font-size: 20px; color: #94a3b8; }
+.subject-card.coming-soon { opacity: 0.5; pointer-events: none; }
+.footer {
+  text-align: center;
+  padding: 32px 16px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📚 高考冲刺 · 记忆系统</h1>
+  <p>间隔重复 · 双轨学习 · 离线可用</p>
+</div>
+<div class="container">
+  <div class="section-title">📖 选择学科</div>
+  <div class="subject-grid">
+    <a href="化学/" class="subject-card">
+      <div class="icon" style="background:#e0e7ff;color:#4f46e5">🧪</div>
+      <div class="info">
+        <div class="name">化学</div>
+        <div class="desc">元素化合物 · 反应原理 · 有机 · 实验</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+    <a href="#" class="subject-card coming-soon">
+      <div class="icon" style="background:#fce7f3;color:#db2777">📖</div>
+      <div class="info">
+        <div class="name">语文</div>
+        <div class="desc">古诗文 · 名句默写 · 文学常识</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+    <a href="#" class="subject-card coming-soon">
+      <div class="icon" style="background:#dbeafe;color:#2563eb">📐</div>
+      <div class="info">
+        <div class="name">数学</div>
+        <div class="desc">公式 · 定理 · 解题方法</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+    <a href="#" class="subject-card coming-soon">
+      <div class="icon" style="background:#d1fae5;color:#059669">🌍</div>
+      <div class="info">
+        <div class="name">英语</div>
+        <div class="desc">单词 · 短语 · 语法 · 作文素材</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+    <a href="#" class="subject-card coming-soon">
+      <div class="icon" style="background:#fef3c7;color:#d97706">⚡</div>
+      <div class="info">
+        <div class="name">物理</div>
+        <div class="desc">公式 · 模型 · 实验</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+    <a href="#" class="subject-card coming-soon">
+      <div class="icon" style="background:#dcfce7;color:#16a34a">🧬</div>
+      <div class="info">
+        <div class="name">生物</div>
+        <div class="desc">概念 · 过程 · 实验设计</div>
+      </div>
+      <div class="arrow">→</div>
+    </a>
+  </div>
+  <div class="footer">
+    数据全部存储在本地浏览器中 · 离线可用<br>
+    化学学科已就绪 · 其他学科即将开放
+  </div>
+</div>
+</body>
+</html>

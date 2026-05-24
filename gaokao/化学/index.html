@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>高考化学 · 冲刺记忆系统</title>
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+<body>
+<div class="app-header">
+  <h1>化学 · 冲刺记忆系统</h1>
+  <div class="subtitle">间隔重复 · FSRS 算法 · 双轨学习</div>
+</div>
+
+<div class="tab-bar" id="mainTabs">
+  <div class="tab-item active" data-tab="dashboard">📊 总览</div>
+  <div class="tab-item" data-tab="review">📖 复习</div>
+  <div class="tab-item" data-tab="search">🔍 搜索</div>
+  <div class="tab-item" data-tab="stats">📈 统计</div>
+</div>
+
+<div class="container" id="app">
+  <div class="tab-content" id="tab-dashboard"></div>
+  <div class="tab-content" id="tab-review" style="display:none"></div>
+  <div class="tab-content" id="tab-search" style="display:none"></div>
+  <div class="tab-content" id="tab-stats" style="display:none"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="shared/engine.js"></script>
+<script src="shared/hints.js"></script>
+<script src="shared/understanding.js"></script>
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  let currentTab = 'dashboard';
+  let reviewQueue = [];
+  let reviewIndex = 0;
+
+  function init() {
+    setupTabs();
+    renderDashboard();
+    setupKeyboard();
+    showOnboarding();
+
+    document.addEventListener('feynman-rated', function() {
+      if (reviewIndex >= reviewQueue.length) return;
+      reviewIndex++;
+      renderReviewCard();
+    });
+
+    document.addEventListener('feynman-retry', function() {
+      if (reviewIndex >= reviewQueue.length) return;
+      renderReviewCard();
+    });
+  }
+
+  function setupKeyboard() {
+    document.addEventListener('keydown', function(e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+      if (currentTab === 'review') {
+        const flipEl = document.getElementById('reviewCardInner');
+        const scoreBtns = document.getElementById('scoreBtns');
+
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          if (scoreBtns && scoreBtns.style.display === 'flex') return;
+          if (flipEl && !flipEl.classList.contains('flipped')) flipEl.click();
+        }
+
+        if (e.key === '1') {
+          const btn = document.querySelector('.score-btn.hard');
+          if (btn && scoreBtns && scoreBtns.style.display === 'flex') btn.click();
+        }
+        if (e.key === '2') {
+          const btn = document.querySelector('.score-btn.medium');
+          if (btn && scoreBtns && scoreBtns.style.display === 'flex') btn.click();
+        }
+        if (e.key === '4' || e.key === '3') {
+          const btn = document.querySelector('.score-btn.easy');
+          if (btn && scoreBtns && scoreBtns.style.display === 'flex') btn.click();
+        }
+      }
+
+      if (e.key === 's' || e.key === 'S') {
+        const searchBox = document.getElementById('globalSearch');
+        if (searchBox) {
+          showTab('search');
+          setTimeout(() => searchBox.focus(), 100);
+          e.preventDefault();
+        }
+      }
+
+      if (e.key === 'd' || e.key === 'D') {
+        const dashboardTab = document.querySelector('.tab-item[data-tab="dashboard"]');
+        if (dashboardTab) dashboardTab.click();
+      }
+    });
+  }
+
+  function setupTabs() {
+    document.querySelectorAll('.tab-item').forEach(el => {
+      el.addEventListener('click', function() {
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        const tab = this.dataset.tab;
+        showTab(tab);
+      });
+    });
+  }
+
+  function showTab(tab) {
+    currentTab = tab;
+    ['dashboard','review','search','stats'].forEach(t => {
+      if ($(`tab-${t}`)) $(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'dashboard') renderDashboard();
+    if (tab === 'review') startReview();
+    if (tab === 'search') renderSearch();
+    if (tab === 'stats') renderStats();
+  }
+
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  /* ===== 总览 ===== */
+  function renderDashboard() {
+    const stats = ChemEngine.getStats();
+    const retention = ChemEngine.getRetentionStats();
+    const cats = ChemEngine.getAllCategories();
+    const html = `
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num">${stats.total}</div><div class="label">总卡片</div></div>
+        <div class="stat-card"><div class="num" style="color:${stats.due > 0 ? 'var(--danger)' : 'var(--success)'}">${stats.due}</div><div class="label">待复习</div></div>
+        <div class="stat-card"><div class="num">${stats.mastered}</div><div class="label">已掌握</div></div>
+        <div class="stat-card"><div class="num">${retention.trackedCards > 0 ? (retention.avgRetention * 100).toFixed(0) + '%' : '—'}</div><div class="label">平均记忆率</div></div>
+      </div>
+      ${stats.due > 0 ? `<div style="margin-bottom:16px"><a href="#" onclick="showTab('review');return false" class="btn btn-primary btn-block">📖 开始今日复习 (${stats.due})</a></div>` : ''}
+      <div class="card-title">📂 知识分类</div>
+      <div class="category-list">
+        ${['01-基本概念','02-元素化合物','03-反应原理','04-有机化学','05-物质结构','06-化学实验'].map(key => {
+          const g = stats.byCategory[key];
+          const name = ChemEngine.categoryName(key);
+          const total = g ? g.total : 0;
+          const due = g ? g.due : 0;
+          const pct = g && g.total ? Math.round(g.mastered / g.total * 100) : 0;
+          return `<a href="${key}/" class="category-item" data-cat="${key}">
+            <div><div class="name">${name}</div><div class="info">${total} 张卡片 · 掌握 ${pct}%</div></div>
+            <div class="stats">${due > 0 ? `<span class="num" style="color:var(--danger)">${due}</span>` : `<span class="num">${total}</span>`}${due > 0 ? '<span class="badge">待复习</span>' : ''}</div>
+          </a>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:24px;text-align:center">
+        <a href="#" onclick="showTab('search');return false" class="btn btn-outline btn-sm" style="margin-right:8px">🔍 搜索卡片</a>
+        <a href="#" onclick="if(confirm('将导入预设化学知识库（跳过已有数据）？')){const n=ChemEngine.loadAllPresets();showToast('已导入 '+n+' 张预设卡片');renderDashboard();}return false" class="btn btn-outline btn-sm">📥 导入预设</a>
+      </div>
+    `;
+    $('tab-dashboard').innerHTML = html;
+  }
+
+  /* ===== 复习 ===== */
+  function startReview() {
+    reviewQueue = ChemEngine.getDueCards();
+    reviewIndex = 0;
+    if (reviewQueue.length === 0) {
+      const allCards = ChemEngine.loadCards();
+      const newCards = allCards.filter(c => c.repetitions === 0);
+      if (newCards.length > 0) {
+        $('tab-review').innerHTML = `
+          <div class="celebration">
+            <div class="icon">📚</div>
+            <h2>${newCards.length} 张新卡片待学习</h2>
+            <p>今天没有到期复习，但新卡片等你开始。</p>
+            <button class="btn btn-primary" onclick="window.allNewReview()" style="margin-top:16px">🚀 开始学习新卡片</button>
+          </div>`;
+        window.allNewReview = function() {
+          reviewQueue = newCards.slice(0, 30);
+          reviewIndex = 0;
+          renderReviewCard();
+        };
+      } else {
+        $('tab-review').innerHTML = `<div class="celebration"><div class="icon">🎉</div><h2>题库为空</h2><p>请先在总控台导入预设或手动添加卡片。</p></div>`;
+      }
+      return;
+    }
+    renderReviewCard();
+  }
+
+  function renderReviewCard() {
+    if (reviewIndex >= reviewQueue.length) {
+      $('tab-review').innerHTML = `<div class="celebration"><div class="icon">🎉</div><h2>太棒了！</h2><p>你已完成 ${reviewQueue.length} 张卡片的复习。</p></div>`;
+      return;
+    }
+    const card = reviewQueue[reviewIndex];
+    const cname = ChemEngine.categoryName(card.category);
+
+    if (card.mode === 'understanding') {
+      ChemUnderstanding.renderFeynmanCard(card, reviewIndex, reviewQueue.length, $('tab-review'));
+      return;
+    }
+
+    $('tab-review').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:13px;color:var(--text-secondary)">${reviewIndex + 1} / ${reviewQueue.length}</span>
+        <span style="font-size:12px;background:#ede9fe;padding:3px 10px;border-radius:100px;color:var(--primary-dark)">${cname}</span>
+      </div>
+      <div class="progress-bar"><div class="fill" style="width:${reviewIndex / reviewQueue.length * 100}%"></div></div>
+      <div class="review-card" id="reviewCard">
+        <div class="review-card-inner" id="reviewCardInner">
+          <div class="review-card-front">
+            <div class="label">点击卡片翻转 · 回忆答案</div>
+            <div class="text">${card.front}</div>
+          </div>
+          <div class="review-card-back">
+            <div class="text">${card.back}</div>
+            ${card.memo ? `<div class="memo">💡 ${card.memo}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="tap-hint">👆 点击卡片查看答案</div>
+      <div id="scoreArea">
+        <div class="score-buttons" id="scoreBtns" style="display:none">
+          <button class="score-btn hard" onclick="window.doScore(1)">😅 忘了</button>
+          <button class="score-btn medium" onclick="window.doScore(2)">🤔 困难</button>
+          <button class="score-btn easy" onclick="window.doScore(4)">✅ 轻松</button>
+        </div>
+      </div>
+    `;
+
+    const inner = $('reviewCardInner');
+    const cardEl = $('reviewCard');
+    let flipped = false;
+
+    cardEl.addEventListener('click', function(e) {
+      if (e.target.closest('.score-btn')) return;
+      flipped = !flipped;
+      inner.classList.toggle('flipped');
+      if (flipped) {
+        document.getElementById('scoreBtns').style.display = 'flex';
+      }
+    });
+  }
+
+  window.doScore = function(score) {
+    if (reviewIndex >= reviewQueue.length) return;
+    const card = reviewQueue[reviewIndex];
+    ChemEngine.reviewCard(card.id, score);
+    reviewIndex++;
+    renderReviewCard();
+  };
+
+  /* ===== 全局搜索 ===== */
+  function renderSearch() {
+    $('tab-search').innerHTML = `
+      <div class="card">
+        <div class="card-title">🔍 搜索全部化学卡片</div>
+        <div class="form-group">
+          <input type="text" class="form-input" id="globalSearch" placeholder="输入关键词搜索..." oninput="window.globalSearch()" autofocus>
+        </div>
+        <div id="globalSearchResults"></div>
+      </div>
+    `;
+    setTimeout(() => {
+      const input = $('globalSearch');
+      if (input) input.focus();
+    }, 100);
+  }
+
+  window.globalSearch = function() {
+    const q = document.getElementById('globalSearch').value.trim();
+    const results = document.getElementById('globalSearchResults');
+    if (!q) { results.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">输入关键词开始搜索...</div>'; return; }
+    const cards = ChemEngine.searchCards(q);
+    if (cards.length === 0) {
+      results.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">未找到匹配的卡片</div>';
+      return;
+    }
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    results.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">找到 ' + cards.length + ' 张卡片</div><div class="card-list">' +
+      cards.slice(0, 50).map(c => {
+        const due = new Date(c.nextReview) <= today;
+        const cname = ChemEngine.categoryName(c.category);
+        return `<div class="card-item" onclick="showSearchDetail('${c.id}')">
+          <div class="front">${c.front}</div>
+          <div class="back">${c.back ? (c.back.length > 60 ? c.back.slice(0,60)+'...' : c.back) : '(空)'}</div>
+          <div class="meta">
+            <span class="tag">${cname}</span>
+            <span class="tag">${c.mode === 'memory' ? '📝记忆' : '🧠理解'}</span>
+            ${due ? '<span style="color:var(--danger)">🔴到期</span>' : ''}
+          </div>
+        </div>`;
+      }).join('') +
+      (cards.length > 50 ? `<div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">...还有 ${cards.length - 50} 张未显示</div>` : '') +
+      '</div>';
+  };
+
+  window.showSearchDetail = function(id) {
+    const cards = ChemEngine.loadCards();
+    const card = cards.find(c => c.id === id);
+    if (!card) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-content">
+        <h3>📇 卡片详情</h3>
+        <p><strong>问题：</strong>${card.front}</p>
+        <p><strong>答案：</strong>${card.back || '(空)'}</p>
+        ${card.memo ? `<p><strong>💡 记忆线索：</strong>${card.memo}</p>` : ''}
+        <p style="font-size:13px;color:var(--text-secondary)">
+          分类：${ChemEngine.categoryName(card.category)} · 模式：${card.mode === 'memory' ? '记忆轨' : '理解轨'} ·
+          间隔：${card.interval}天 · 复习 ${card.repetitions} 次
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) this.remove();
+    });
+  };
+
+  /* ===== 统计 ===== */
+  function renderStats() {
+    const stats = ChemEngine.getStats();
+    const history = ChemEngine.getReviewHistory(7);
+    const retention = ChemEngine.getRetentionStats();
+    let html = `
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num">${stats.total}</div><div class="label">总卡片</div></div>
+        <div class="stat-card"><div class="num">${stats.mastered}</div><div class="label">已掌握 (≥30天)</div></div>
+        <div class="stat-card"><div class="num">${stats.due}</div><div class="label">等待复习</div></div>
+        <div class="stat-card"><div class="num">${history.length}</div><div class="label">近7天复习次数</div></div>
+      </div>
+      <div class="card-title">📊 各板块掌握度</div>
+      <div style="margin-bottom:20px">
+    `;
+    ['01-基本概念','02-元素化合物','03-反应原理','04-有机化学','05-物质结构','06-化学实验'].forEach(key => {
+      const g = stats.byCategory[key];
+      const total = g ? g.total : 0;
+      const mastered = g ? g.mastered : 0;
+      const due = g ? g.due : 0;
+      const pct = total ? Math.round(mastered / total * 100) : 0;
+      html += `
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px">
+            <span>${ChemEngine.categoryName(key)}</span>
+            <span>${pct}% · ${due > 0 ? `<span style="color:var(--danger)">${due} 待复习</span>` : '✓ 已全部掌握'}</span>
+          </div>
+          <div class="progress-bar"><div class="fill" style="width:${pct}%;background:${due > 0 ? 'var(--warning)' : 'var(--success)'}"></div></div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    html += `
+      <div class="card-title">🧠 记忆质量</div>
+      <div style="margin-bottom:20px">
+        <p style="font-size:13px;color:var(--text-secondary)">系统追踪 ${retention.trackedCards} 张卡片的记忆保留率</p>
+        ${retention.trackedCards > 0 ? `
+        <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+          <div style="background:var(--card-bg);border-radius:8px;padding:12px 16px;flex:1;text-align:center;box-shadow:var(--shadow)">
+            <div style="font-size:24px;font-weight:700;color:${retention.avgRetention > 0.8 ? 'var(--success)' : retention.avgRetention > 0.6 ? 'var(--warning)' : 'var(--danger)'}">${(retention.avgRetention * 100).toFixed(1)}%</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">平均记忆保留率</div>
+          </div>
+          <div style="background:var(--card-bg);border-radius:8px;padding:12px 16px;flex:1;text-align:center;box-shadow:var(--shadow)">
+            <div style="font-size:24px;font-weight:700;color:var(--primary)">${ChemEngine.loadSettings().targetRetention * 100}%</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">目标保留率（可调）</div>
+          </div>
+        </div>` : '<p style="font-size:13px;color:var(--text-secondary)">开始复习后这里会显示记忆质量数据。</p>'}
+      </div>
+    `;
+
+    html += `
+      <div class="card-title">🗄️ 数据管理</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="#" onclick="downloadData();return false" class="btn btn-outline btn-sm">📤 导出数据</a>
+        <a href="#" onclick="importData();return false" class="btn btn-outline btn-sm">📥 导入数据</a>
+        <a href="#" onclick="if(confirm('确定要删除全部数据吗？此操作不可恢复！')){localStorage.removeItem('chem_cards');localStorage.removeItem('chem_engine_version');location.reload();}return false" class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)">🗑️ 清空数据</a>
+        <a href="#" onclick="showSettings();return false" class="btn btn-outline btn-sm">⚙️ 设置</a>
+      </div>
+    `;
+    $('tab-stats').innerHTML = html;
+  }
+
+  window.showSettings = function() {
+    const settings = ChemEngine.loadSettings();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-content">
+        <h3>⚙️ 系统设置</h3>
+        <div class="setting-row">
+          <div><div class="label">每日新卡片上限</div><div class="desc">每天最多学习的新卡片数</div></div>
+          <input type="number" id="setNewPerDay" value="${settings.newPerDay}" min="1" max="100">
+        </div>
+        <div class="setting-row">
+          <div><div class="label">目标记忆保留率</div><div class="desc">值越高→复习越频繁，推荐 0.7-0.9</div></div>
+          <input type="number" id="setTargetR" value="${settings.targetRetention}" min="0.5" max="0.95" step="0.05">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="saveSettings()">保存</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) this.remove();
+    });
+  };
+
+  function showOnboarding() {
+    if (localStorage.getItem('chem_onboarded_v2')) return;
+    localStorage.setItem('chem_onboarded_v2', '1');
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '300';
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:520px">
+        <h3>🚀 欢迎使用高考化学记忆系统 v2</h3>
+        <div style="font-size:14px;line-height:1.8;margin:12px 0">
+          <p><strong>🧠 双轨学习：</strong>记忆轨（闪卡）用于纯记忆内容，理解轨（费曼技巧）用于深层概念。</p>
+          <p><strong>⏱️ FSRS 算法：</strong>系统追踪每张卡片的难度(D)、稳定性(S)、记忆保留率(R)，在最佳时间提醒复习。</p>
+          <p><strong>🔍 全局搜索：</strong>按 <kbd>S</kbd> 快速搜索所有卡片。</p>
+          <p><strong>⌨️ 快捷键：</strong><kbd>Space</kbd> 翻卡 · <kbd>1</kbd>忘了 <kbd>2</kbd>困难 <kbd>4</kbd>轻松 · <kbd>H</kbd>提示 · <kbd>D</kbd>总览</p>
+          <p><strong>📥 开始使用：</strong>在总览页点击"导入预设"加载全部化学卡片。</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">开始学习</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) this.remove();
+    });
+  }
+
+  window.saveSettings = function() {
+    const newPerDay = parseInt(document.getElementById('setNewPerDay').value) || 20;
+    const targetRetention = parseFloat(document.getElementById('setTargetR').value) || 0.8;
+    ChemEngine.saveSettings({ newPerDay, targetRetention });
+    document.querySelector('.modal-overlay').remove();
+    showToast('✅ 设置已保存');
+  };
+
+  window.downloadData = function() {
+    const data = ChemEngine.exportData();
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'chem_cards_backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ 数据已导出');
+  };
+
+  window.importData = function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        if (ChemEngine.importData(ev.target.result)) {
+          showToast('✅ 导入成功');
+          renderDashboard();
+        } else {
+          showToast('❌ 导入失败，请检查文件格式');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>
