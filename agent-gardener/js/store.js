@@ -235,15 +235,20 @@ const Store = (() => {
     if (hasData()) return;
     const today = todayStr();
 
-    const a1 = addAgent({ name: '代码审查官', emoji: '🔍', description: 'Reviewing PRs and providing code feedback' });
-    const a2 = addAgent({ name: '内容创作师', emoji: '✍️', description: 'Writing blog posts and documentation' });
-    const a3 = addAgent({ name: '数据分析师', emoji: '📊', description: 'Analyzing metrics and generating reports' });
+    const a1 = addAgent({ name: '代码审查官', emoji: '🔍', description: '审查 PR、代码质量反馈' });
+    const a2 = addAgent({ name: '内容创作师', emoji: '✍️', description: '撰写博客文章和技术文档' });
+    const a3 = addAgent({ name: '数据分析师', emoji: '📊', description: '分析指标、生成报告' });
 
-    addTask({ agentId: a1.id, title: '审查 PR #127 - 新功能实现', scheduledDate: today, scheduledTime: '09:00', checkinDate: today, checkinTime: '11:00' });
-    addTask({ agentId: a1.id, title: '审查 PR #128 - Bug 修复', scheduledDate: today, scheduledTime: '14:00', checkinDate: today, checkinTime: '16:00' });
-    addTask({ agentId: a2.id, title: '撰写月度技术总结', scheduledDate: today, scheduledTime: '10:00', checkinDate: today, checkinTime: '12:00' });
-    addTask({ agentId: a3.id, title: '生成 Q2 用户增长报告', scheduledDate: today, scheduledTime: '13:30', checkinDate: today, checkinTime: '15:30' });
-    addTask({ agentId: a2.id, title: '编辑 API 文档 V3', scheduledDate: today, scheduledTime: '15:00', checkinDate: today, checkinTime: '17:00' });
+    const t1 = addTask({ agentId: a1.id, title: '审查 PR #127 - 新功能实现', scheduledDate: today, scheduledTime: '09:00', checkinDate: today, checkinTime: '11:00' });
+    const t2 = addTask({ agentId: a1.id, title: '审查 PR #128 - Bug 修复', scheduledDate: today, scheduledTime: '14:00', checkinDate: today, checkinTime: '16:00' });
+    const t3 = addTask({ agentId: a2.id, title: '撰写月度技术总结', scheduledDate: today, scheduledTime: '10:00', checkinDate: today, checkinTime: '12:00' });
+    const t4 = addTask({ agentId: a3.id, title: '生成 Q2 用户增长报告', scheduledDate: today, scheduledTime: '13:30', checkinDate: today, checkinTime: '15:30' });
+    const t5 = addTask({ agentId: a2.id, title: '编辑 API 文档 V3', scheduledDate: today, scheduledTime: '15:00', checkinDate: today, checkinTime: '17:00' });
+
+    // Set different statuses to demonstrate workflow
+    updateTask(t2.id, { status: 'running' });
+    updateTask(t4.id, { status: 'review' });
+    updateTask(t5.id, { status: 'reviewed' });
   }
 
   load();

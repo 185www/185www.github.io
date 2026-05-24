@@ -76,12 +76,24 @@
     const nextCheckin = Store.getNextCheckin();
     const counts = Store.getTaskCounts();
 
+    if (agents.length === 0) {
+      viewContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🌱</div>
+          <h2>你的花园还是空的</h2>
+          <p>添加你的第一个 Agent，开始高效管理工作流。<br>"其莳也若子，其置也若弃"</p>
+          <button class="btn btn-primary" id="add-first-agent">添加第一个 Agent</button>
+        </div>`;
+      $('#add-first-agent').addEventListener('click', showAddAgentModal);
+      return;
+    }
+
     let html = '';
 
     // --- Next Check-in Banner ---
     if (pendingReviewCount > 0) {
       html += `
-        <div class="checkin-alert" id="checkin-alert">
+        <div class="checkin-alert">
           <div class="checkin-alert-icon">🔔</div>
           <div class="checkin-alert-body">
             <div class="checkin-alert-title">${pendingReviewCount} 个任务待检验</div>
@@ -91,7 +103,7 @@
         </div>`;
     } else if (nextCheckin) {
       html += `
-        <div class="checkin-next" id="checkin-next">
+        <div class="checkin-next">
           <div class="checkin-next-icon">⏰</div>
           <div class="checkin-next-body">
             <div class="checkin-next-title">下次检验</div>
@@ -109,20 +121,6 @@
         <span class="stat"><span class="stat-dot review"></span>${counts.review} 待检验</span>
         <span class="stat"><span class="stat-dot reviewed"></span>${counts.reviewed} 已检验</span>
       </div>`;
-
-    if (agents.length === 0) {
-      html += `
-        <div class="empty-state">
-          <div class="empty-state-icon">🌱</div>
-          <h2>你的花园还是空的</h2>
-          <p>添加你的第一个 Agent，开始高效管理工作流。<br>"其莳也若子，其置也若弃"</p>
-          <button class="btn btn-primary" id="add-first-agent">添加第一个 Agent</button>
-        </div>`;
-      viewContainer.innerHTML = html;
-      const btn = $('#add-first-agent');
-      if (btn) btn.addEventListener('click', showAddAgentModal);
-      return;
-    }
 
     // --- Agent Cards ---
     html += `<div class="agents-grid">`;
