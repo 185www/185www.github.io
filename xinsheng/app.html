@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>新生 — 健康干预</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#1a1d23;--surface:#242830;--surface2:#2d313a;--accent:#4ecdc4;--accent2:#ff6b6b;--gold:#ffd93d;--text:#e8eaed;--dim:#8a8f9a;--muted:#555a64;--radius:12px}
+html{font-size:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Helvetica Neue",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden;font-size:.95rem}
+.page{display:none!important}.page.active{display:block!important}
+
+/* HEADER */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem 1rem;background:var(--surface);border-bottom:1px solid var(--muted);position:sticky;top:0;z-index:10}
+.header-left{display:flex;align-items:center;gap:.5rem}
+.header-icon{font-size:1.3rem}
+.header-title{font-weight:600;font-size:.95rem;color:var(--accent)}
+.header-badge{background:var(--accent2);color:#fff;font-size:.65rem;padding:.15rem .45rem;border-radius:99px;font-weight:600}
+.header-action{background:none;border:none;color:var(--dim);font-size:1.2rem;cursor:pointer;padding:.3rem;font-family:inherit}
+
+/* CHAT */
+#page-chat.active{display:flex!important;flex-direction:column;height:100vh}
+#chat-messages{flex:1;overflow-y:auto;padding:.5rem .8rem 1rem;display:flex;flex-direction:column;gap:.35rem}
+.msg{max-width:90%;padding:.6rem .85rem;border-radius:12px;animation:fadeUp .25s ease;font-size:.9rem;line-height:1.6}
+.msg.coach{background:var(--surface);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.user{background:var(--accent);color:#1a1d23;align-self:flex-end;border-bottom-right-radius:4px;font-weight:500}
+.msg p{margin-bottom:.3rem}.msg p:last-child{margin-bottom:0}
+.msg .msg-time{font-size:.65rem;color:var(--dim);margin-top:.3rem;display:block}
+@keyframes fadeUp{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+.typing-indicator{align-self:flex-start;display:flex;gap:4px;padding:.6rem .85rem;background:var(--surface);border-radius:12px;border-bottom-left-radius:4px}
+.typing-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bounce 1.4s infinite ease-in-out}
+.typing-dot:nth-child(2){animation-delay:.2s}.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+.options-container{display:flex;flex-direction:column;gap:.35rem;margin-top:.1rem;animation:fadeUp .25s ease}
+.option-btn{background:var(--surface2);color:var(--text);border:1px solid var(--muted);border-radius:10px;padding:.7rem .85rem;font-size:.9rem;cursor:pointer;text-align:left;transition:all .12s;font-family:inherit;line-height:1.4}
+.option-btn:active{background:var(--accent);color:#1a1d23;border-color:var(--accent);transform:scale(.97)}
+.option-btn:disabled{cursor:default;opacity:.35}
+.chat-empty{text-align:center;padding:2rem;color:var(--dim);font-size:.85rem;line-height:1.6}
+
+/* EMERGENCY */
+#page-emergency.active{display:flex!important;flex-direction:column;min-height:100vh}
+.emerg-container{flex:1;padding:1rem;display:flex;flex-direction:column;gap:.6rem}
+.emerg-title{text-align:center;font-size:1.1rem;font-weight:600;color:var(--accent);padding:.5rem 0}
+.emerg-sub{text-align:center;color:var(--dim);font-size:.8rem;margin-bottom:.5rem}
+.emerg-btn{display:flex;align-items:center;gap:.7rem;background:var(--surface);border:1px solid var(--muted);border-radius:var(--radius);padding:1rem;font-size:1rem;cursor:pointer;text-align:left;transition:all .12s;font-family:inherit;color:var(--text);line-height:1.4}
+.emerg-btn:active{transform:scale(.97);border-color:var(--accent);background:var(--surface2)}
+.emerg-icon{font-size:1.5rem;flex-shrink:0}
+.emerg-label{font-weight:600;font-size:.95rem}
+.emerg-desc{font-size:.8rem;color:var(--dim);margin-top:.1rem}
+.emerg-back{background:none;border:none;color:var(--muted);font-size:.85rem;padding:.6rem;cursor:pointer;text-align:center;font-family:inherit}
+
+/* DASHBOARD */
+.dash-header{text-align:center;padding:1.2rem .8rem .3rem}
+.dash-title{font-size:1.4rem;color:var(--accent)}
+.dash-sub{color:var(--dim);font-size:.85rem;margin-top:.15rem}
+.card{background:var(--surface);border-radius:var(--radius);padding:.8rem 1rem;margin:.35rem .8rem}
+.card-title{font-size:.8rem;color:var(--dim);margin-bottom:.3rem;font-weight:500}
+.progress-track{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:.3rem 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:3px;transition:width .5s ease}
+.progress-text{font-size:.75rem;color:var(--dim);text-align:right}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+.stat{text-align:center}
+.stat-val{display:block;font-size:1.4rem;font-weight:700;color:var(--accent)}
+.stat-lbl{font-size:.7rem;color:var(--dim)}
+.identity-card{background:linear-gradient(135deg,var(--surface),#1a2a2a);border:1px solid var(--gold);text-align:center}
+.identity-text{font-size:1rem;font-weight:600;color:var(--gold)}
+.motd{background:var(--surface);border-radius:var(--radius);padding:.8rem 1rem;margin:.35rem .8rem;border-left:3px solid var(--accent);font-size:.85rem;color:var(--dim);line-height:1.5}
+
+/* BUTTONS */
+.btn-primary{display:block;width:calc(100% - 1.6rem);margin:.35rem .8rem;padding:.8rem;font-size:1rem;font-weight:700;background:var(--accent);color:#1a1d23;border:none;border-radius:var(--radius);cursor:pointer;text-align:center;min-height:44px;transition:transform .1s;font-family:inherit}
+.btn-primary:active{transform:scale(.97)}
+.btn-second{display:block;width:calc(100% - 1.6rem);margin:.25rem .8rem;padding:.7rem;font-size:.9rem;background:var(--surface2);color:var(--text);border:1px solid var(--muted);border-radius:var(--radius);cursor:pointer;text-align:center;font-family:inherit}
+.btn-link{display:block;width:100%;padding:.6rem;background:none;border:none;color:var(--muted);font-size:.8rem;cursor:pointer;text-align:center;font-family:inherit}
+
+/* INSTALL BANNER */
+.install-banner{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:2px solid var(--accent);padding:.6rem 1rem;z-index:200;display:none;animation:slideUp .3s ease;padding-bottom:env(safe-area-inset-bottom,.6rem)}
+@keyframes slideUp{0%{transform:translateY(100%)}100%{transform:translateY(0)}}
+.install-text{font-size:.8rem;color:var(--dim);margin-bottom:.4rem}
+.install-row{display:flex;gap:.5rem}
+.install-btn{flex:1;padding:.5rem;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit}
+.install-btn.accept{background:var(--accent);color:#1a1d23}
+.install-btn.dismiss{background:var(--surface2);color:var(--dim)}
+
+/* TOAST / NOTIFICATION */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.93);color:#fff;padding:.6rem 1.2rem;border-radius:8px;font-size:.85rem;z-index:999;animation:fadeOut 2.5s ease forwards;white-space:nowrap;text-align:center;pointer-events:none}
+@keyframes fadeOut{0%{opacity:0;transform:translateX(-50%) translateY(-8px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}75%{opacity:1}100%{opacity:0}}
+
+/* BOTTOM NAV */
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--muted);display:flex;justify-content:space-around;padding:.2rem 0;padding-bottom:env(safe-area-inset-bottom,.2rem);z-index:100}
+.nav-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.1rem;padding:.25rem .6rem;min-width:60px;font-family:inherit;color:var(--dim)}
+.nav-icon{font-size:1.2rem}
+.nav-label{font-size:.6rem}
+.nav-btn.active .nav-label{color:var(--accent);font-weight:600}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-left">
+    <span class="header-icon">🌱</span>
+    <span class="header-title">新生</span>
+    <span class="header-badge" id="h-badge"></span>
+  </div>
+  <button class="header-action" id="h-action" title="紧急救援">🆘</button>
+</div>
+
+<!-- CHAT -->
+<div id="page-chat" class="page active">
+  <div id="chat-messages"></div>
+</div>
+
+<!-- EMERGENCY -->
+<div id="page-emergency" class="page">
+  <div class="emerg-container" id="emerg-container"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page">
+  <div class="dash-header">
+    <h1 class="dash-title">🌱 新生</h1>
+    <p class="dash-sub" id="d-day">第 0 天</p>
+  </div>
+  <div class="card">
+    <p class="card-title">21天干预进程</p>
+    <div class="progress-track"><div class="progress-fill" id="d-progress-bar" style="width:0%"></div></div>
+    <p class="progress-text" id="d-progress-text">0 / 21 天</p>
+  </div>
+  <div class="card">
+    <div class="stat-grid">
+      <div class="stat"><span class="stat-val" id="d-streak">0</span><span class="stat-lbl">成功天数</span></div>
+      <div class="stat"><span class="stat-val" id="d-triggers-count">0</span><span class="stat-lbl">已识别触发</span></div>
+      <div class="stat"><span class="stat-val" id="d-focus-display">—</span><span class="stat-lbl">当前专注</span></div>
+    </div>
+  </div>
+  <div id="d-identity" class="card identity-card" style="display:none"><p class="identity-text" id="d-identity-text"></p></div>
+  <div id="d-triggers" class="card" style="display:none"></div>
+  <div class="motd" id="d-motd">每天进步一点点。打开对话，开始今天的练习。</div>
+  <button id="d-session-btn" class="btn-primary">开始今天的会话</button>
+  <button id="d-emergency-btn" class="btn-second">🆘 我现在需要帮助</button>
+  <button id="d-reset-btn" class="btn-link">重新开始</button>
+</div>
+
+<!-- NAV -->
+<nav id="bottom-nav">
+  <button class="nav-btn active" data-page="page-chat"><span class="nav-icon">💬</span><span class="nav-label">对话</span></button>
+  <button class="nav-btn" data-page="page-emergency"><span class="nav-icon">🆘</span><span class="nav-label">救援</span></button>
+  <button class="nav-btn" data-page="page-dashboard"><span class="nav-icon">📊</span><span class="nav-label">进度</span></button>
+</nav>
+
+<!-- INSTALL BANNER -->
+<div class="install-banner" id="install-banner">
+  <p class="install-text">📌 添加到主屏幕，随时接收提醒</p>
+  <div class="install-row">
+    <button class="install-btn accept" id="install-accept">添加到主屏幕</button>
+    <button class="install-btn dismiss" id="install-dismiss">稍后</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STORAGE LAYER
+// ═══════════════════════════════════════
+(function(){
+var K='xsheng_v4'
+function load(){
+  try{
+    var r=localStorage.getItem(K)
+    if(r){var o=JSON.parse(r);if(o&&typeof o==='object')return o}
+  }catch(e){}
+  return{startDate:null,day:0,currentSession:'onboarding',currentNodeId:null,completed:false,protocolComplete:false,sessionsCompleted:[],values:null,readiness:null,triggers:[],alt:null,coping:null,focus:null,checkins:[],identityLevel:0,scheduledNotifications:[],createdAt:Date.now()}
+}
+function save(o){try{localStorage.setItem(K,JSON.stringify(o))}catch(e){}}
+function getDay(){
+  var o=load()
+  if(!o.startDate){o.startDate=Date.now();o.day=0;save(o);return 0}
+  var e=Math.floor((Date.now()-o.startDate)/86400000)
+  var d=Math.min(e,21)
+  if(d!==o.day){o.day=d;save(o)}
+  return d
+}
+window.XS={
+  getState:load, save:save, getDay:getDay,
+  setSessionState:function(s,n){var o=load();o.currentSession=s;o.currentNodeId=n;save(o)},
+  completeSession:function(id){var o=load();if(o.sessionsCompleted.indexOf(id)<0)o.sessionsCompleted.push(id);save(o)},
+  scheduleNext:function(){
+    var o=load(),c=o.sessionsCompleted.length
+    if(c<=0)o.currentSession='onboarding'
+    else if(c<=1)o.currentSession='cues'
+    else if(c<=2)o.currentSession='planning'
+    else o.currentSession='daily'
+    o.currentNodeId=null;save(o)
+  },
+  setValue:function(v){var o=load();o.values=v;save(o)},
+  setReadiness:function(r){var o=load();o.readiness=r;save(o)},
+  addTrigger:function(t){var o=load();if(o.triggers.indexOf(t)<0)o.triggers.push(t);save(o)},
+  setAlt:function(a){var o=load();o.alt=a;save(o)},
+  setCoping:function(c){var o=load();o.coping=c;save(o)},
+  setFocus:function(f){var o=load();o.focus=f;save(o)},
+  addCheckin:function(e){var o=load();o.checkins.push(e);save(o)},
+  unlockIdentity:function(l){var o=load();if(l>(o.identityLevel||0))o.identityLevel=l;save(o)},
+  completeProtocol:function(){var o=load();o.protocolComplete=true;o.completed=true;save(o)},
+  setScheduledNotifications:function(n){var o=load();o.scheduledNotifications=n;save(o)},
+  reset:function(){try{localStorage.removeItem(K)}catch(e){}}
+}
+})();
+
+// ═══════════════════════════════════════
+// PROTOCOL (inlined, 25KB)
+// ═══════════════════════════════════════
+(function(){var S0=[{id:'welcome',coach:'你好。我不是来教你该怎么生活的。\n\n我是来陪你聊聊的。你愿意花几分钟跟我聊聊吗？',options:[{text:'行，聊聊就聊聊',next:'why'},{text:'我没什么好聊的',next:'resist'}]},{id:'resist',coach:'我理解。很多人都觉得自己没什么好聊的。\n\n那这样——你能不能帮我一个小忙？就当是帮别人看看这个工具好不好用。你愿意吗？',options:[{text:'好吧，帮你看看',next:'why'},{text:'算了',next:'exit'}]},{id:'exit',coach:'没关系。如果你想聊了，随时回来。\n\n祝你身体健康。',options:[]},{id:'why',coach:'好，那我先问你一个问题。\n\n在你这个年纪，你觉得什么对你来说最重要？',options:[{text:'家人的幸福',next:'value_family',effect:function(){XS.setValue('family')}},{text:'自己的健康',next:'value_health',effect:function(){XS.setValue('health')}},{text:'活得有尊严',next:'value_dignity',effect:function(){XS.setValue('dignity')}},{text:'看着孩子成家立业',next:'value_child',effect:function(){XS.setValue('child')}}]},{id:'value_family',coach:'家人的幸福，对吧。\n\n那我想问你一个问题——你觉得你现在每天抽烟/喝酒的习惯，对家人的幸福有影响吗？\n\n不用回答我，你自己心里想想就行。',options:[{text:'有点影响',next:'reflect_family'},{text:'没什么影响',next:'reflect_family'},{text:'我没想过这个问题',next:'reflect_family'}]},{id:'reflect_family',coach:'嗯。\n\n你知道吗，二手烟让家人肺癌风险增加30%。你带给他们的不只是烟雾，还有担心。\n\n你儿子/女儿可能从来不说，但他们每天都在担心你。',options:[{text:'⋯⋯',next:'affirm_family'}]},{id:'affirm_family',coach:'但你刚才说了，家人的幸福对你很重要。\n\n这说明你是一个在乎家人的人。你只是需要一个更好的方法来在乎他们。\n\n我说的对吗？',options:[{text:'对',next:'pivot1'},{text:'可能吧',next:'pivot1'}]},{id:'value_health',coach:'健康，对吧。\n\n但你知道吗，中国有超过3亿人抽烟，其中70%的人都说自己"想戒但戒不掉"。\n\n他们不是不想健康——他们只是被困住了。',options:[{text:'我也是这样',next:'reflect_health'},{text:'我还没到那个程度',next:'reflect_health'}]},{id:'reflect_health',coach:'嗯。\n\n你说健康对你很重要。那你觉得，你现在的习惯跟"健康"之间，有没有什么矛盾？\n\n不用回答我，只是让你想一想。',options:[{text:'有点矛盾',next:'affirm_health'},{text:'没什么矛盾',next:'affirm_health'}]},{id:'affirm_health',coach:'你能承认这一点，其实挺不容易的。很多人连想都不愿意想。\n\n这说明你是一个诚实面对自己的人。',options:[{text:'⋯⋯',next:'pivot1'}]},{id:'value_dignity',coach:'活得有尊严。\n\n那我想问你一个问题——你觉得一个人到了晚年，不能控制自己的身体，离不开烟酒，这算不算有尊严？',options:[{text:'不算',next:'reflect_dignity'},{text:'我没想过',next:'reflect_dignity'}]},{id:'reflect_dignity',coach:'嗯。尊严不是别人给的，是自己守住的。\n\n你每天抽的每一根烟、喝的每一杯酒，其实都在一点点拿走你的选择权。\n\n到最后不是你在选择抽烟，而是烟在控制你。',options:[{text:'⋯⋯你说得对',next:'affirm_dignity'}]},{id:'affirm_dignity',coach:'但你能说出"活得有尊严"，说明你心里还有那个不想被控制的人。\n\n那个人还在。',options:[{text:'⋯⋯',next:'pivot1'}]},{id:'value_child',coach:'看着孩子成家立业。\n\n那我问你一个有点直接的问题——你觉得你现在的身体状态，能保证你看到那一天吗？',options:[{text:'不好说',next:'reflect_child'},{text:'应该可以吧',next:'reflect_child'}]},{id:'reflect_child',coach:'我说个数据吧。每天抽一包烟的人，平均寿命比不抽烟的人短10年。\n\n10年。你可能错过孩子的婚礼，错过孙子的出生，错过很多你盼了一辈子的东西。',options:[{text:'⋯⋯',next:'affirm_child'}]},{id:'affirm_child',coach:'但你在乎这些事情。这说明你是一个心里装着家人的人。\n\n你不是不想活到那一天——你只是需要有人帮你一把。',options:[{text:'⋯⋯',next:'pivot1'}]},{id:'pivot1',coach:'我不是要你今天就把烟酒全戒了。那是你的选择，我不会替你做。\n\n但我可以问你一个问题吗？',options:[{text:'你问吧',next:'readiness'}]},{id:'readiness',coach:'如果有一个方法，能让你在不失去生活乐趣的同时，也让家人少担心一些——\n\n你愿意试一试吗？哪怕只是很小的一步。',options:[{text:'愿意试试',next:'commit_small',effect:function(){XS.setReadiness('ready')}},{text:'我没信心',next:'confidence',effect:function(){XS.setReadiness('low')}},{text:'我觉得没必要',next:'no_need',effect:function(){XS.setReadiness('no')}}]},{id:'confidence',coach:'我理解。很多人不是不想，而是试过太多次都失败了。\n\n但这不是你的问题——戒烟戒酒本来就很难，比你想象的要难得多。科学研究显示，平均要尝试6-7次才能成功。\n\n所以"失败"不是你的错，是这个过程的正常部分。',options:[{text:'那我再试试？',next:'commit_small'},{text:'算了',next:'exit_kind'}]},{id:'no_need',coach:'你觉得没必要，对吧。那是你的判断，我尊重。\n\n但我想问你最后一个问题——如果有一天你真的因为抽烟喝酒进了医院，你觉得谁会是第一个哭的人？',options:[{text:'⋯⋯',next:'commit_small'}]},{id:'commit_small',coach:'好。那我们不做大的承诺。就做一件很小的事——\n\n明天，你能不能比平时少抽一根烟？或少喝一杯酒？或少刷10分钟手机？\n\n就一天。就一点点。试试看。',options:[{text:'好，我试试',next:'onboard_done',effect:function(){XS.completeSession(0);XS.scheduleNext()}},{text:'我做不到',next:'even_smaller'}]},{id:'even_smaller',coach:'那更小一点：明天你每次想抽烟的时候，先等5分钟再抽。\n\n就这个。这个能做到吗？',options:[{text:'这个可以',next:'onboard_done',effect:function(){XS.completeSession(0);XS.scheduleNext()}},{text:'这个也不行',next:'accept_resist'}]},{id:'accept_resist',coach:'没关系。有些人需要更多时间。\n\n那你愿不愿意明天只是"观察"自己——不改变任何习惯，只是注意一下：你什么时候会想抽烟/喝酒/刷手机？\n\n只是看看，不做任何改变。',options:[{text:'只是看看，可以',next:'onboard_done',effect:function(){XS.completeSession(0);XS.scheduleNext()}},{text:'不行',next:'exit_kind'}]},{id:'exit_kind',coach:'好的，我听到了。\n\n不管你什么时候想聊，我都在这里。\n\n祝你身体健康。',options:[]},{id:'onboard_done',coach:'谢谢你的信任。\n\n明天我来找你，到时候我们再聊。\n\n记住：你不需要一次性改变所有事情。\n\n只需要迈出最小的一步。',options:[]}];var S1=[{id:'s1_greet',coach:'你好。昨天你答应我试试看——今天感觉怎么样？',options:[{text:'还不错，试了一下',next:'s1_well'},{text:'没做到，还是老样子',next:'s1_struggle'},{text:'我没试',next:'s1_notry'}]},{id:'s1_well',coach:'不管做到了多少，哪怕只是少了一点点，都是进步。\n\n我想问你一个问题——你一般在什么情况下最想抽烟/喝酒/刷手机？',options:[{text:'吃完饭的时候',next:'s1_cue_meal',effect:function(){XS.addTrigger('meal')}},{text:'跟朋友在一起的时候',next:'s1_cue_social',effect:function(){XS.addTrigger('social')}},{text:'觉得无聊/没意思的时候',next:'s1_cue_bored',effect:function(){XS.addTrigger('bored')}},{text:'心情不好的时候',next:'s1_cue_stress',effect:function(){XS.addTrigger('stress')}}]},{id:'s1_struggle',coach:'没做到很正常的。科学研究发现，大多数人在真正改变之前，平均试过6-7次。\n\n你不是"失败了"，你只是在积累经验。\n\n不过我好奇的是——你一般在什么情况下最想抽烟/喝酒/刷手机？',options:[{text:'吃完饭的时候',next:'s1_cue_meal',effect:function(){XS.addTrigger('meal')}},{text:'跟朋友在一起的时候',next:'s1_cue_social',effect:function(){XS.addTrigger('social')}},{text:'觉得无聊的时候',next:'s1_cue_bored',effect:function(){XS.addTrigger('bored')}},{text:'心情不好的时候',next:'s1_cue_stress',effect:function(){XS.addTrigger('stress')}}]},{id:'s1_notry',coach:'没关系。你在做出改变之前，先"观察"自己也是一种进步。\n\n我今天想问你一个问题——你一般在什么情况下最想抽烟/喝酒/刷手机？',options:[{text:'吃完饭',next:'s1_cue_meal',effect:function(){XS.addTrigger('meal')}},{text:'跟人在一起',next:'s1_cue_social',effect:function(){XS.addTrigger('social')}},{text:'无聊的时候',next:'s1_cue_bored',effect:function(){XS.addTrigger('bored')}},{text:'心情不好',next:'s1_cue_stress',effect:function(){XS.addTrigger('stress')}}]},{id:'s1_cue_meal',coach:'饭后一根烟/一杯酒，对吧。\n\n这是最典型的习惯回路：吃饭（触发）→ 抽烟/喝酒（行为）→ 满足感（奖励）。\n\n你知道吗，这个回路已经被研究透了。神经科学研究显示，这个回路一旦形成，你的大脑会自动执行它，甚至不需要你"决定"去抽。就像条件反射。',options:[{text:'对，就是条件反射',next:'s1_replace'},{text:'那我怎么办？',next:'s1_replace'}]},{id:'s1_cue_social',coach:'社交场合，是吧。因为你"不抽烟不喝酒"就显得不合群。\n\n这里面有个心理学概念叫"社会规范"——你觉得所有人都这样，所以你也这样。\n\n但你知道吗？其实很多人也想少抽少喝，只是没人敢先开口。\n\n如果你说"我开车来的"或者"医生不让喝了"，大多数人不会劝你。他们可能反而佩服你。',options:[{text:'有道理',next:'s1_replace'},{text:'但面子过不去',next:'s1_face'}]},{id:'s1_face',coach:'面子问题，我理解。在中国文化里，拒绝劝酒确实不容易。\n\n但你想过一个角度没有——"能控制自己的人，才是真正有面子的人。"\n\n那些被烟酒控制的人，其实是最没面子的。',options:[{text:'⋯⋯这个角度我没想过',next:'s1_replace'}]},{id:'s1_cue_bored',coach:'无聊的时候，对吧。\n\n这就是典型的"时间填补"行为。不是因为你真的需要烟酒或手机，而是因为你的大脑习惯了用它们来填充空白时间。\n\n就像按一下开关——无聊 → 掏出手机/点烟。中间没有任何思考。',options:[{text:'确实是这样',next:'s1_replace'}]},{id:'s1_cue_stress',coach:'心情不好的时候，对吧。\n\n这个最难。因为烟酒确实能暂时让你感觉好一点——这是化学作用。\n\n但问题在于：等化学作用过去之后，你的压力不但没解决，还多了"我又抽了"的愧疚感。\n\n所以不是"抽烟解压"，而是"抽烟制造了更多压力"。',options:[{text:'嗯⋯⋯',next:'s1_replace'}]},{id:'s1_replace',coach:'那我们来做一个简单的"替换计划"。\n\n你刚才说你在【特定场景】最想抽烟/喝酒/刷手机。\n\n下次再遇到这个场景的时候，你愿意试着换一个动作吗？\n\n不是"不做了"，而是"换成另一个"。',options:[{text:'换什么？',next:'s1_alt_suggest'}]},{id:'s1_alt_suggest',coach:'我推荐几个选项，你选一个你觉得最可行的：',options:[{text:'嚼口香糖替代抽烟',next:'s1_plan',effect:function(){XS.setAlt('gum')}},{text:'以茶代酒',next:'s1_plan',effect:function(){XS.setAlt('tea')}},{text:'出去走5分钟',next:'s1_plan',effect:function(){XS.setAlt('walk')}},{text:'深呼吸3次再决定',next:'s1_plan',effect:function(){XS.setAlt('breathe')}}]},{id:'s1_plan',coach:'好。那我们约定一个"如果-那么"计划：\n\n"如果【触发场景】发生，那么我就【替代行为】。"\n\n你愿意把这个计划记在心里吗？不用保证每次都做到——只要试着想起来就行。',options:[{text:'好，我记住了',next:'s1_done',effect:function(){XS.completeSession(1);XS.scheduleNext()}},{text:'我试试',next:'s1_done',effect:function(){XS.completeSession(1);XS.scheduleNext()}}]},{id:'s1_done',coach:'很好。你已经完成了两件事：\n\n1️⃣ 你找到了自己的触发场景\n2️⃣ 你制定了一个替换计划\n\n这两步已经在科学研究中被证明能显著提高行为改变的成功率。\n\n明天我再来找你。祝你顺利。',options:[]}];var S2=[{id:'s2_greet',coach:'你好。昨天我们做了那个"如果-那么"计划。你试过了吗？',options:[{text:'试了，成功了',next:'s2_win'},{text:'试了，但没坚持住',next:'s2_barrier'},{text:'没想起来做',next:'s2_forgot'}]},{id:'s2_win',coach:'太好了！很多人觉得第一步是最难的。你做到了。\n\n我想让你记住这个感觉——你靠自己的意志力做到了。不是你依赖的东西控制了你，而是你控制了自己。',options:[{text:'嗯，感觉还不错',next:'s2_next'}]},{id:'s2_barrier',coach:'没坚持住很正常。大多数人在形成新习惯之前都会经历这个过程。\n\n你能告诉我是什么让你没坚持住吗？',options:[{text:'诱惑太大了',next:'s2_craving'},{text:'忘了要做什么替代',next:'s2_forgot'},{text:'情绪一上来就控制不住',next:'s2_emotion'}]},{id:'s2_forgot',coach:'忘记做替代行为，这是最常见的障碍。因为旧习惯是自动化的，新习惯需要主动回忆。\n\n有一个心理学技巧叫"实施意向"——你需要在触发的时候有一个明确的提示。\n\n比如：把口香糖放在烟盒旁边。把茶杯放在酒瓶前面。在手机屏保上写"先呼吸"。',options:[{text:'这个办法不错',next:'s2_next'}]},{id:'s2_craving',coach:'渴求感确实很强。神经科学研究显示，渴求感本质上是大脑的"预期奖励"机制——你的大脑以为你要得到奖励了，所以释放了大量驱使你行动的信号。\n\n但关键事实是：渴求感通常只持续10-20分钟。如果你能熬过这20分钟，它就自然消退了。\n\n就像海浪——会来，也会走。',options:[{text:'那我怎么熬过那20分钟？',next:'s2_distract'}]},{id:'s2_emotion',coach:'情绪驱动是最难应对的。因为烟酒在化学层面确实能暂时缓解情绪——这是它们"骗"你的方式。\n\n但替代方法有：\n• 大声说出你的感受（"我现在很烦躁"）\n• 给家人打一个电话\n• 用冷水洗脸\n• 做10个深呼吸\n\n下次情绪上来的时候，先试一个。',options:[{text:'好，我记住了',next:'s2_next'}]},{id:'s2_distract',coach:'好问题。这里有几个研究验证有效的策略：\n\n1. 做一件需要双手的事（拼图、盘手串、叠衣服）\n2. 给自己计时："我只忍耐3分钟"——3分钟后再说\n3. 想象一个红色停止标志 🛑\n4. 换个环境——走到另一个房间\n\n选一个你明天准备试的：',options:[{text:'需要双手的事',next:'s2_next',effect:function(){XS.setCoping('hands')}},{text:'忍耐3分钟',next:'s2_next',effect:function(){XS.setCoping('wait')}},{text:'想象停止标志',next:'s2_next',effect:function(){XS.setCoping('stop')}},{text:'换个环境',next:'s2_next',effect:function(){XS.setCoping('move')}}]},{id:'s2_next',coach:'好。那我们来制定下一步的目标。\n\n你现在在哪个方面最想做出改变？',options:[{text:'想减少抽烟量',next:'s2_goal_smoke',effect:function(){XS.setFocus('smoke')}},{text:'想减少喝酒',next:'s2_goal_alcohol',effect:function(){XS.setFocus('alcohol')}},{text:'想减少刷手机',next:'s2_goal_video',effect:function(){XS.setFocus('video')}},{text:'都想试试',next:'s2_goal_all',effect:function(){XS.setFocus('all')}}]},{id:'s2_goal_smoke',coach:'好。那我们定一个具体的、很小的目标：\n\n"明天比平时少抽3根烟。"\n\n就这个。不多不少。你觉得能做到吗？',options:[{text:'可以',next:'s2_done'},{text:'少1根吧',next:'s2_done'}]},{id:'s2_goal_alcohol',coach:'好。那我们定一个具体的、很小的目标：\n\n"明天喝酒的时候，每杯之间喝一杯水。"\n\n就这个。不多不少。你觉得能做到吗？',options:[{text:'可以',next:'s2_done'},{text:'我试试',next:'s2_done'}]},{id:'s2_goal_video',coach:'好。那我们定一个具体的、很小的目标：\n\n"明天睡前30分钟不碰手机。"\n\n就这个。不多不少。你觉得能做到吗？',options:[{text:'可以',next:'s2_done'},{text:'15分钟吧',next:'s2_done'}]},{id:'s2_goal_all',coach:'好。那我们先从一个开始——选一个你最想改变的：',options:[{text:'抽烟',next:'s2_goal_smoke',effect:function(){XS.setFocus('smoke')}},{text:'喝酒',next:'s2_goal_alcohol',effect:function(){XS.setFocus('alcohol')}},{text:'刷手机',next:'s2_goal_video',effect:function(){XS.setFocus('video')}}]},{id:'s2_done',coach:'好。记住我们今天做的几件事：\n\n✅ 你知道了自己的障碍在哪\n✅ 你选了一个应对策略\n✅ 你定了一个具体的小目标\n\n明天我再来找你。一步一步来。',options:[]}];var dailyInterventions=[{day:3,id:'d3',coach:'你好。今天只想问你一个问题：\n\n昨天你做到了吗？\n\n不管答案是"是"还是"不是"，都不重要。重要的是你还在想这件事，你已经比大多数人多走了一步。',options:[{text:'做到了',next:'d3_done',effect:function(){XS.addCheckin({success:true})}},{text:'没做到',next:'d3_fail',effect:function(){XS.addCheckin({success:false})}}]},{day:3,id:'d3_done',coach:'好。你今天感觉怎么样？有没有什么新的发现？',options:[{text:'感觉还不错',next:'d3_end'},{text:'有点难',next:'d3_end'}]},{day:3,id:'d3_fail',coach:'没关系。允许自己"不完美"是很重要的一步。\n\n很多人犯了一个错误：一旦没做到，就觉得"反正已经失败了，今天就放弃吧"。\n\n这叫"破罐子破摔效应"。它是改变最大的敌人。\n\n记住：少抽一根也是胜利。少喝一口也是进步。不是"全有或全无"。',options:[{text:'有道理',next:'d3_end'}]},{day:3,id:'d3_end',coach:'明天继续。不用做到完美，做到"进步"就行。',options:[]},{day:4,id:'d4',coach:'今天我们来做一个简短的练习——"自我肯定"。\n\n回想一下，最近有没有一次你成功控制住自己的时刻？哪怕是小事。\n\n比如：你想抽烟但没有抽。你想发火但忍住了。你没吃那个甜点。\n\n你做到了什么？',options:[{text:'少抽了一根烟',next:'d4_reframe'},{text:'拒绝了劝酒',next:'d4_reframe'},{text:'没刷那么久手机',next:'d4_reframe'},{text:'想不起来了',next:'d4_reframe'}]},{day:4,id:'d4_reframe',coach:'那一次你做到了。\n\n这意味着什么？意味着你有能力控制自己。不是"你也许会"，而是"你曾经做到过"。\n\n你已经有了这个能力，你只是需要多练习几次。',options:[{text:'嗯⋯⋯',next:'d4_end'}]},{day:4,id:'d4_end',coach:'今天就到这里。记住你曾经做到过的那一次。\n\n你能做到一次，就能做到第二次。',options:[]},{day:5,id:'d5',coach:'今天我们来谈谈"替代"。\n\n我想让你想一样东西——一样你喜欢的东西，能给你带来愉悦感，又不是烟酒手机。\n\n是什么？',options:[{text:'喝茶',next:'d5_link'},{text:'散步',next:'d5_link'},{text:'听戏/听音乐',next:'d5_link'},{text:'跟人聊天',next:'d5_link'},{text:'想不出来',next:'d5_explore'}]},{day:5,id:'d5_explore',coach:'很多人想不出来，因为烟酒已经占据了所有的愉悦通道。\n\n那你有没有什么事情，做的时候会让你忘记时间？\n\n比如：下棋？钓鱼？养花？看球？',options:[{text:'下棋',next:'d5_link',effect:function(){XS.setAlt('chess')}},{text:'钓鱼',next:'d5_link',effect:function(){XS.setAlt('fish')}},{text:'养花',next:'d5_link',effect:function(){XS.setAlt('garden')}},{text:'看球',next:'d5_link',effect:function(){XS.setAlt('sports')}}]},{day:5,id:'d5_link',coach:'好。那今天的小任务是：\n\n当你下次想抽烟/喝酒/刷手机的时候，先去做那件事5分钟。\n\n不是"代替"，而是"先做5分钟"。之后再决定要不要回到老习惯。\n\n试试看。',options:[{text:'好，我试试',next:'d5_end'}]},{day:5,id:'d5_end',coach:'记住：你喜欢的那些事情才是真正属于你的。烟酒不是。',options:[]},{day:6,id:'d6',coach:'今天我们来谈一个很实际的问题。\n\n如果有人劝你抽烟/喝酒，你怎么说？\n\n我给你几个选项：',options:[{text:'我开车来的',next:'d6_roleplay'},{text:'医生不让喝了',next:'d6_roleplay'},{text:'最近身体不舒服',next:'d6_roleplay'},{text:'准备要孩子（或者孩子要孩子了）',next:'d6_roleplay'}]},{day:6,id:'d6_roleplay',coach:'好。你选了这个。\n\n现在想象一下这个场景：你端着茶杯，有人问你"怎么不喝酒？"\n\n你就说："开车来的，下次。"\n\n简单。不用解释。不用道歉。\n\n你能不能现在就练习说一遍？',options:[{text:'（在心里说了一遍）',next:'d6_end'},{text:'说出来有点别扭',next:'d6_practice'}]},{day:6,id:'d6_practice',coach:'第一次说确实别扭。但你多说几次就习惯了。\n\n你要不要换一个你觉得更自然的说法？',options:[{text:'医生不让喝了',next:'d6_end'},{text:'最近在调理身体',next:'d6_end'}]},{day:6,id:'d6_end',coach:'记住：说"不"不需要理由。但有一个理由会让你更自在。\n\n你已经准备好了。',options:[]},{day:7,id:'d7',coach:'你已经坚持一周了。\n\n不管你做没做到，你在这一周里一直在想这件事。这本身就是巨大的进步。\n\n我今天想让你做一个简单的决定：\n\n你愿不愿意给自己一个"7天健康身份"？\n\n就是对自己说一句："我是一个在乎自己的人。"\n\n不用告诉别人。就你自己知道。',options:[{text:'好，我对自己说',next:'d7_done',effect:function(){XS.unlockIdentity(1)}},{text:'我觉得还没到那个程度',next:'d7_notyet'}]},{day:7,id:'d7_notyet',coach:'没关系。身份转变需要时间。\n\n那我换一个问题：你觉得一个"在乎自己的人"会怎么做？\n\n不用回答我。只是想一想。',options:[{text:'⋯⋯我在想',next:'d7_done'}]},{day:7,id:'d7_done',coach:'你已经走完了第一周。\n\n很多人连第一周都做不到——不是因为你做不到，而是因为他们根本没开始。\n\n你已经开始了。这比大多数人强。',options:[]},{day:8,id:'d8',coach:'今天我们来做一个"环境设计"练习。\n\n你有没有注意到，有些环境会让你更容易抽烟喝酒？\n\n比如：茶几上的烟灰缸、酒柜里的酒瓶、枕头边的充电器。\n\n这些"视觉提示"会无意识地触发你的习惯。\n\n今天的任务：把其中一个提示物移走。只移走一个就行。',options:[{text:'好，我移走烟灰缸',next:'d8_end'},{text:'好，我把酒藏起来',next:'d8_end'},{text:'好，我把充电器放远点',next:'d8_end'}]},{day:8,id:'d8_end',coach:'环境设计是行为改变中最被低估的方法之一。因为你的大脑会对外界提示做出自动反应。移除提示 = 减少一半的诱惑。',options:[]},{day:9,id:'d9',coach:'今天我们来做一个对比。\n\n把你现在每天花在烟酒手机上的钱，换算一下：\n\n一周 = ？\n一个月 = ？\n一年 = ？\n\n你每天省下的钱，其实都是在给自己攒"健康本金"。\n\n不用告诉我数字。自己心里算算就行。',options:[{text:'算出来了，挺多的',next:'d9_done'},{text:'没仔细算过',next:'d9_done'}]},{day:9,id:'d9_done',coach:'有时候看到一个具体的数字，比听一百句道理都管用。',options:[]},{day:10,id:'d10',coach:'今天我们来做一个正念练习。\n\n下次你想抽烟/喝酒/刷手机的时候，先停下来，感受一下：\n\n• 你身体哪里最紧张？\n• 你现在的情绪是什么？\n• 你的呼吸是深还是浅？\n\n不要评判，只是观察。\n\n这个过程本身就打断了习惯回路。',options:[{text:'好，我试试观察',next:'d10_end'}]},{day:10,id:'d10_end',coach:'仅仅10秒的觉察，就能让你从"自动模式"切换到"选择模式"。',options:[]},{day:11,id:'d11',coach:'今天是我们认识的第11天。\n\n如果让你回顾这些天，你觉得自己最大的变化是什么？\n\n哪怕很小的变化也算。',options:[{text:'开始注意到自己的习惯了',next:'d11_end'},{text:'偶尔能控制住了',next:'d11_end'},{text:'没什么变化',next:'d11_nope'}]},{day:11,id:'d11_nope',coach:'没有变化也是一种信息。不是说"你不行"，而是"目前的方法对你不太合适"。\n\n那我们换个角度——你觉得什么方式对你可能更有效？',options:[{text:'需要更强的理由',next:'d11_end'},{text:'需要有人监督',next:'d11_end'},{text:'需要更简单的方法',next:'d11_end'}]},{day:11,id:'d11_end',coach:'你已经在反思了。反思本身就是改变的一部分。',options:[]},{day:12,id:'d12',coach:'今天我们来谈谈"复发预防"。\n\n万一哪天你没控制住——比如抽了一根、喝了一杯、刷了一小时——你会怎么做？',options:[{text:'告诉自己没关系，明天继续',next:'d12_good'},{text:'觉得自己失败了',next:'d12_reframe'},{text:'干脆放弃',next:'d12_reframe'}]},{day:12,id:'d12_reframe',coach:'很多人都有这个反应。但这个反应是改变最大的敌人。\n\n心理学上这叫"违反禁戒效应"(Abstinence Violation Effect)——就是"既然我已经破戒了，那不如彻底放弃"的想法。\n\n但真相是：一次破戒 ≠ 失败。\n\n一次破戒只是整个过程中的一个小波折。就像开车遇到一个坑，不代表你要把车扔掉。',options:[{text:'有道理',next:'d12_good'}]},{day:12,id:'d12_good',coach:'好。那我想让你现在对自己说一句话：\n\n"就算我今天没做好，明天我还可以重新开始。"\n\n说一遍。',options:[{text:'（在心里说了一遍）',next:'d12_end'}]},{day:12,id:'d12_end',coach:'记住这句话。它会是你最强大的工具。',options:[]},{day:13,id:'d13',coach:'今天做一个"未来自我"练习。\n\n闭上眼睛，想象一下：\n\n如果一年后的你，已经完全戒掉了烟酒、不再沉迷手机——\n\n他看起来怎么样？\n• 气色更好\n• 走路更稳\n• 说话更有底气\n• 家人看他的眼神不一样了\n\n你能不能为那个"未来的你"，做一件今天的小事？',options:[{text:'我愿意',next:'d13_end'},{text:'想象不出来',next:'d13_try'}]},{day:13,id:'d13_try',coach:'那换个简单的：\n\n你希望你的孩子/孙子怎么描述你？\n\n"我爸爸是个⋯⋯"',options:[{text:'健康的人',next:'d13_end'},{text:'坚强的人',next:'d13_end'},{text:'负责任的人',next:'d13_end'}]},{day:13,id:'d13_end',coach:'那今天为那个形象做一件事。哪怕只是一件很小的事。',options:[]},{day:14,id:'d14',coach:'你已经走了14天。\n\n两周。\n\n在行为改变的研究中，14天是一个重要的里程碑——这时候旧的神经回路开始减弱，新的回路开始形成。\n\n你今天值得对自己说一句：\'我在改变。\'',options:[{text:'我在改变',next:'d14_done',effect:function(){XS.unlockIdentity(2)}}]},{day:14,id:'d14_done',coach:'是的。你在改变。\n\n两周前你打开这个页面的时候，你跟现在已经是不同的你了。\n\n下一周，我们继续。',options:[]},{day:15,id:'d15',coach:'今天的问题很简单：\n\n你现在觉得"抽烟/喝酒/刷手机"对你来说意味着什么？\n\n还是以前那个感觉吗，还是有点不一样了？',options:[{text:'有点不一样了',next:'d15_end'},{text:'还是一样的',next:'d15_end'}]},{day:15,id:'d15_end',coach:'其实答案是什么不重要。重要的是你在问自己这个问题。\n\n当你开始问自己"这对我来说意味着什么"的时候，你已经不再是被习惯控制的那个你了。',options:[]},{day:16,id:'d16',coach:'今天做一个"感恩练习"。\n\n你的身体为你工作了这么多年——即使你抽了很多烟、喝了很多酒，它依然在努力保护你。\n\n你的肝脏在帮你解毒，你的肺在帮你呼吸，你的心脏在帮你跳动。\n\n你今天能不能为你的身体做一件好事？\n\n哪怕只是喝一杯水、走几步路、早睡半小时。',options:[{text:'好，我为身体做一件事',next:'d16_end'}]},{day:16,id:'d16_end',coach:'你的身体是你最忠实的伙伴。它从来不抛弃你。你也不要抛弃它。',options:[]},{day:17,id:'d17',coach:'今天我们来做一个"社交支持"的练习。\n\n你有没有一个可以信任的人——家人、朋友——你可以告诉TA你在尝试改变？\n\n你不需要TA帮你做什么。只是有一个人知道，就能让你的成功率大幅提高。\n\n科学研究显示，有社会支持的行为改变成功率高出50%以上。',options:[{text:'我可以告诉我老婆/老公',next:'d17_end'},{text:'我可以告诉我孩子',next:'d17_end'},{text:'我不想告诉别人',next:'d17_alone'}]},{day:17,id:'d17_alone',coach:'不想告诉别人也没关系。\n\n但你可以换一个方式——在手机上给自己设一个每日提醒：\n\n"你今天为自己做了什么？"\n\n把它当成一个默默支持你的朋友。',options:[{text:'好，我设一个提醒',next:'d17_end'}]},{day:17,id:'d17_end',coach:'你不必一个人扛。\n\n愿意接受帮助，也是一种力量。',options:[]},{day:18,id:'d18',coach:'今天我们来"重新定义"。\n\n"戒烟"、"戒酒"、"戒手机"——这些词听起来像是一种剥夺。你在"失去"什么。\n\n但换一个角度：你不是在"失去"烟酒，你是在"获得"自由。\n\n自由 = 不再被那个冲动控制。\n\n你觉得"自由"和"戒断"，哪个词更吸引你？',options:[{text:'自由',next:'d18_end'},{text:'戒断',next:'d18_end'}]},{day:18,id:'d18_end',coach:'语言会改变我们的感受。从今天起，试着用"我选择"代替"我不能"。\n\n"我选择不抽烟" ≠ "我不能抽烟"',options:[]},{day:19,id:'d19',coach:'今天来做一个"意义"的练习。\n\n你觉得你这段时间的坚持，除了健康之外，还有什么意义？\n\n对你的家人？对你对自己的看法？对你未来的生活？',options:[{text:'给家人一个榜样',next:'d19_end'},{text:'证明我能做到',next:'d19_end'},{text:'活得更久、更好',next:'d19_end'}]},{day:19,id:'d19_end',coach:'当你找到"为什么"的时候，"怎么做"就变得容易了。\n\n你的"为什么"是什么，你已经想过了。',options:[]},{day:20,id:'d20',coach:'第20天了。\n\n如果20天前有人告诉你，你会走到今天这一步，你信吗？',options:[{text:'不信',next:'d20_end'},{text:'有点信',next:'d20_end'}]},{day:20,id:'d20_end',coach:'你比自己想象的更强大。\n\n不是因为我做了什么，是因为你一直在往前走。\n\n明天是第21天。最后一个阶段。',options:[]},{day:21,id:'d21',coach:'21天。\n\n科学研究说，21天是形成新习惯的最小周期。不管你这21天里做到了多少——\n\n你都在你的大脑里建立了新的神经通路。\n\n你已经不是21天前的你了。\n\n我想让你现在对自己说一句话——\n\n"我是一个对自己负责的人。"\n\n不是因为你现在完美了，而是因为你选择了开始。',options:[{text:'我是一个对自己负责的人',next:'d21_done',effect:function(){XS.unlockIdentity(3);XS.completeProtocol()}}]},{day:21,id:'d21_done',coach:'21天的旅程到这里结束了。\n\n但你的旅程没有结束。\n\n你已经有了：\n✅ 知道自己为什么想改变\n✅ 知道自己的触发场景\n✅ 有替换计划\n✅ 有应对策略\n✅ 有支持系统\n✅ 有一个新的自我认知\n\n这些都不是我给你的——是你自己一步步走出来的。\n\n如果你以后需要再聊一聊，我都在这里。\n\n保重。',options:[]}];function getDaily(day){var result=[];for(var i=0;i<dailyInterventions.length;i++){if(dailyInterventions[i].day===day) result.push(dailyInterventions[i])}return result.length?result:[dailyInterventions[dailyInterventions.length-1]]}window.PROTO={S0:S0,S1:S1,S2:S2,dailyInterventions:dailyInterventions,getDaily:getDaily,totalDays:21}})();
+
+// ═══════════════════════════════════════
+// ENGINE
+// ═══════════════════════════════════════
+(function(){
+var $=function(id){return document.getElementById(id)}
+var nodes=[],nodeMap={},P=window.PROTO
+
+// ─── Micro-intervention schedule ───
+var SCHEDULE = [
+  {id:'morning', time:'07:00', label:'🌅 早间计划', text:'今天你想在哪件事上进步一点点？\n\n选一个最小的目标：', duration:30},
+  {id:'midday', time:'12:00', label:'☀️ 午间检查', text:'现在感觉怎么样？\n\n有没有出现想抽烟/喝酒/刷手机的念头？', duration:15},
+  {id:'afternoon', time:'17:00', label:'⚠️ 高危提醒', text:'到高危时段了。\n\n记得你的计划："如果____，那么____"。\n\n先深呼吸3次，再做选择。', duration:20},
+  {id:'evening', time:'21:00', label:'🌙 晚间反思', text:'今天过得怎么样？\n\n做了一件让自己骄傲的事吗？\n\n哪怕很小的一件也算。', duration:45}
+]
+
+// ─── Emergency craving interventions ───
+var EMERGENCY_ITEMS = [
+  {
+    icon:'🚬', label:'想抽烟', desc:'渴求感通常只持续10-20分钟',
+    steps:[
+      {coach:'好的。渴求感来了，但它会走的。\n\n我们先做一件事：闭上眼睛，深呼吸3次。\n\n吸——呼——\n\n吸——呼——\n\n吸——呼——', options:[{text:'我做了深呼吸',next:'e_smoke_2'}]},
+      {id:'e_smoke_2', coach:'现在，拿出你之前准备的替代物。\n\n如果你选了嚼口香糖——现在就嚼一片。\n\n如果你选了散步——走5分钟。\n\n如果你没准备——做一件需要双手的事。\n\n随便什么，持续3分钟。', options:[{text:'我开始了',next:'e_smoke_3'}]},
+      {id:'e_smoke_3', coach:'好。你现在感觉怎么样？\n\n就算还是想抽也没关系——你刚才已经比之前多撑了3分钟。\n\n这3分钟，你的大脑在重新学习：冲动来了，不一定非要服从。', options:[{text:'我感觉好一点了',next:'e_done'},{text:'还是很想抽',next:'e_smoke_4'}]},
+      {id:'e_smoke_4', coach:'告诉家人。现在就给你儿子/女儿或老婆发一条微信：\n\n"我现在特别想抽烟，你跟我说句话。"\n\n让别人介入你的渴求时刻，是最有效的方法之一。', options:[{text:'我发了',next:'e_done'}]}
+    ]
+  },
+  {
+    icon:'🍺', label:'想喝酒', desc:'先喝一杯水，等5分钟再做决定',
+    steps:[
+      {coach:'好的。先停下来——去倒一杯水。\n\n不是酒，是水。\n\n喝完这杯水，等3分钟，然后再决定要不要喝。', options:[{text:'我喝了水',next:'e_alcohol_2'}]},
+      {id:'e_alcohol_2', coach:'你现在想喝酒，可能是因为：\n\n1. 社交压力 → 准备一句拒绝的话："开车来的/医生不让"\n2. 习惯性 → 换成茶或饮料\n3. 情绪驱动 → 给家人打个电话\n\n选一个你现在能做的：', options:[{text:'准备拒绝的话',next:'e_done'},{text:'换成茶/饮料',next:'e_done'},{text:'给家人打电话',next:'e_done'}]}
+    ]
+  },
+  {
+    icon:'📱', label:'想刷手机', desc:'先站起来，离开座位',
+    steps:[
+      {coach:'好的。\n\n把手机放下——不是关机，是放到另一个房间。\n\n然后站起来，走到窗边。\n\n看窗外30秒。\n\n不做别的，只是看。', options:[{text:'我做了',next:'e_phone_2'}]},
+      {id:'e_phone_2', coach:'现在问自己一个问题：\n\n"我真正需要的是什么？"\n\n是休息？是放松？是逃避？\n\n找到真正的需要，然后用一个更健康的方式来满足它。', options:[{text:'我需要休息一下',next:'e_done'},{text:'我只是无聊',next:'e_phone_3'},{text:'我在逃避一些事情',next:'e_done'}]},
+      {id:'e_phone_3', coach:'无聊是最好的创造时间。\n\n去做一件你一直想做但"没时间"做的事：\n\n• 给老朋友打个电话\n• 听一首老歌\n• 整理一个抽屉\n• 写点东西\n\n选一个，做5分钟。', options:[{text:'好，我去做',next:'e_done'}]}
+    ]
+  },
+  {
+    icon:'😤', label:'心情很差', desc:'先停下来，深呼吸',
+    steps:[
+      {coach:'我听到了。心情不好的时候最难。\n\n我们先做一个快速练习——"5-4-3-2-1"：\n\n• 说出你看到的5样东西\n• 说出你触摸到的4样东西\n• 说出你听到的3种声音\n• 说出你闻到的2种气味\n• 说出你能尝到的1种味道\n\n这个练习能把你的大脑从情绪中拉回当下。', options:[{text:'我做完了',next:'e_mood_2'}]},
+      {id:'e_mood_2', coach:'现在做一件对身体好的小事：\n\n• 喝一杯温水\n• 用冷水洗脸\n• 走到外面晒1分钟太阳\n\n你的身体好了，情绪才会好。', options:[{text:'我做了',next:'e_mood_3'}]},
+      {id:'e_mood_3', coach:'最后，对自己说一句话：\n\n"这种感觉会过去的。我不需要用它来伤害自己。"\n\n说一遍。不用信，只是说。', options:[{text:'我说了',next:'e_done'}]}
+    ]
+  }
+]
+
+function init(){
+  var state=XS.getState()
+  if(state.completed){showDashboard();return}
+  // Check hash for routing
+  var hash=location.hash||'#morning'
+  if(hash==='#emergency'){showEmergency();return}
+  if(hash==='#dashboard'){showDashboard();return}
+  startMicroSession()
+}
+
+function getCurrentSlot(){
+  var h=new Date().getHours()
+  if(h<9) return SCHEDULE[0]   // morning
+  if(h<15) return SCHEDULE[1]  // midday
+  if(h<19) return SCHEDULE[2]  // afternoon
+  return SCHEDULE[3]            // evening
+}
+
+function startMicroSession(){
+  var P=window.PROTO
+  if(!P) return
+  var state=XS.getState()
+  var day=XS.getDay()
+  var slot=getCurrentSlot()
+  showSlotIntro(slot, day, P)
+}
+
+function showSlotIntro(slot, day, P){
+  var chat=$('chat-messages')
+  chat.innerHTML=''
+  var state=XS.getState()
+
+  var h=document.createElement('div')
+  h.className='msg coach'
+  h.innerHTML='<p style="font-weight:600;color:var(--accent)">'+slot.label+'</p><p>'+slot.text+'</p><span class="msg-time">约'+slot.duration+'秒</span>'
+  chat.appendChild(h)
+  chat.scrollTop=chat.scrollHeight
+
+  setTimeout(function(){
+    var sd
+    if(day===0) sd=P.S0
+    else if(day===1) sd=P.S1
+    else if(day===2) sd=P.S2
+    else sd=P.getDaily(day)
+
+    if(sd&&sd.length){
+      nodes=sd
+      nodeMap={}
+      for(var i=0;i<nodes.length;i++){
+        if(nodes[i]&&nodes[i].id) nodeMap[nodes[i].id]=nodes[i]
+      }
+      var resumeId=state.currentNodeId
+      var startNode=resumeId&&nodeMap[resumeId]?nodeMap[resumeId]:nodes[0]
+      if(startNode) showNode(startNode)
+    }
+  },800)
+}
+
+function showNode(node){
+  if(!node) return
+  XS.setSessionState(XS.getState().currentSession||'onboarding',node.id)
+
+  var chat=$('chat-messages')
+  var dots=document.createElement('div')
+  dots.className='typing-indicator'
+  dots.innerHTML='<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>'
+  chat.appendChild(dots)
+  chat.scrollTop=chat.scrollHeight
+
+  var delay=Math.max(500,Math.min(2000,(node.coach||'').length*18))
+
+  setTimeout(function(){
+    if(dots.parentNode) dots.remove()
+    var m=document.createElement('div')
+    m.className='msg coach'
+    var parts=(node.coach||'').split('\n\n')
+    var html=''
+    for(var i=0;i<parts.length;i++) html+='<p>'+parts[i].replace(/\n/g,'<br>')+'</p>'
+    m.innerHTML=html
+    chat.appendChild(m)
+    chat.scrollTop=chat.scrollHeight
+
+    setTimeout(function(){
+      if(node.options&&node.options.length) showOptions(node.options)
+      else showEnd()
+    },350)
+  },delay)
+}
+
+function showOptions(opts){
+  var chat=$('chat-messages')
+  if(!chat) return
+  var c=document.createElement('div')
+  c.className='options-container'
+  for(var i=0;i<opts.length;i++){
+    (function(opt){
+      var b=document.createElement('button')
+      b.className='option-btn'
+      b.textContent=opt.text
+      b.onclick=function(){
+        var btns=c.querySelectorAll('.option-btn')
+        for(var j=0;j<btns.length;j++){btns[j].disabled=true;btns[j].style.opacity='0.35'}
+        var u=document.createElement('div')
+        u.className='msg user'
+        u.textContent=opt.text
+        chat.appendChild(u)
+        chat.scrollTop=chat.scrollHeight
+        if(opt.effect) try{opt.effect()}catch(e){}
+        var next=opt.next&&nodeMap[opt.next]?nodeMap[opt.next]:null
+        if(next) setTimeout(function(){showNode(next)},500)
+        else setTimeout(showEnd,500)
+      }
+      c.appendChild(b)
+    })(opts[i])
+  }
+  chat.appendChild(c)
+  chat.scrollTop=chat.scrollHeight
+}
+
+function showEnd(){
+  var chat=$('chat-messages')
+  if(!chat) return
+  var m=document.createElement('div')
+  m.className='msg coach'
+  m.innerHTML='<p style="color:#ffd93d;text-align:center;font-weight:500">🔔 今天就到这里。记住：\n\n你不需要一次性改变所有事情。\n只需要迈出最小的一步。</p>'
+  chat.appendChild(m)
+  var b=document.createElement('button')
+  b.className='btn-primary'
+  b.textContent='📊 查看进度'
+  b.style.margin='.5rem 0'
+  b.onclick=function(){switchView('dashboard')}
+  chat.appendChild(b)
+  chat.scrollTop=chat.scrollHeight
+}
+
+// ─── EMERGENCY VIEW ───
+function showEmergency(){
+  var chat=$('chat-messages')
+  var container=$('emerg-container')
+  if(!container) return
+  container.innerHTML=''
+  var title=document.createElement('div')
+  title.className='emerg-title'
+  title.textContent='🆘 现在你需要什么？'
+  container.appendChild(title)
+  var sub=document.createElement('div')
+  sub.className='emerg-sub'
+  sub.textContent='选一个你现在最想做的事'
+  container.appendChild(sub)
+
+  EMERGENCY_ITEMS.forEach(function(item){
+    var btn=document.createElement('button')
+    btn.className='emerg-btn'
+    btn.innerHTML='<span class="emerg-icon">'+item.icon+'</span><div><div class="emerg-label">'+item.label+'</div><div class="emerg-desc">'+item.desc+'</div></div>'
+    btn.onclick=function(){startEmergencySteps(item.steps)}
+    container.appendChild(btn)
+  })
+}
+
+var eSteps=[],eIdx=0
+function startEmergencySteps(steps){
+  eSteps=steps
+  eIdx=0
+  switchView('chat')
+  var chat=$('chat-messages')
+  chat.innerHTML=''
+  showEmergencyStep()
+}
+
+function showEmergencyStep(){
+  if(eIdx>=eSteps.length){emergencyDone();return}
+  var step=eSteps[eIdx]
+  var chat=$('chat-messages')
+  var dots=document.createElement('div')
+  dots.className='typing-indicator'
+  dots.innerHTML='<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>'
+  chat.appendChild(dots)
+  chat.scrollTop=chat.scrollHeight
+
+  setTimeout(function(){
+    if(dots.parentNode) dots.remove()
+    var m=document.createElement('div')
+    m.className='msg coach'
+    var parts=(step.coach||'').split('\n\n')
+    var html=''
+    for(var i=0;i<parts.length;i++) html+='<p>'+parts[i].replace(/\n/g,'<br>')+'</p>'
+    m.innerHTML=html
+    chat.appendChild(m)
+    chat.scrollTop=chat.scrollHeight
+
+    setTimeout(function(){
+      if(step.options&&step.options.length){
+        var c=document.createElement('div')
+        c.className='options-container'
+        step.options.forEach(function(opt){
+          var b=document.createElement('button')
+          b.className='option-btn'
+          b.textContent=opt.text
+          b.onclick=function(){
+            var btns=c.querySelectorAll('.option-btn')
+            for(var j=0;j<btns.length;j++){btns[j].disabled=true}
+            var u=document.createElement('div');u.className='msg user';u.textContent=opt.text;chat.appendChild(u)
+            chat.scrollTop=chat.scrollHeight
+            eIdx++
+            setTimeout(showEmergencyStep,400)
+          }
+          c.appendChild(b)
+        })
+        chat.appendChild(c)
+        chat.scrollTop=chat.scrollHeight
+      }else{
+        eIdx++
+        setTimeout(showEmergencyStep,400)
+      }
+    },300)
+  },600)
+}
+
+function emergencyDone(){
+  var chat=$('chat-messages')
+  var m=document.createElement('div')
+  m.className='msg coach'
+  m.innerHTML='<p style="color:#4ecdc4;text-align:center;font-weight:500">✅ 你做完了。\n\n记住这个感觉——你靠自己撑过来了。</p>'
+  chat.appendChild(m)
+  var b=document.createElement('button')
+  b.className='btn-second'
+  b.textContent='🆘 还需要其他帮助吗？'
+  b.style.margin='.5rem 0'
+  b.onclick=function(){switchView('emergency')}
+  chat.appendChild(b)
+  chat.scrollTop=chat.scrollHeight
+}
+
+// ─── DASHBOARD ───
+function showDashboard(){
+  var state=XS.getState(),day=XS.getDay()
+  if($('d-day'))$('d-day').textContent='第 '+(day+1)+' 天'
+  var sc=0;for(var i=0;i<state.checkins.length;i++){if(state.checkins[i].success)sc++}
+  if($('d-streak'))$('d-streak').textContent=sc
+  var trigs=state.triggers||[]
+  if($('d-triggers-count'))$('d-triggers-count').textContent=trigs.length+' 个'
+  var fm={smoke:'🚬烟',alcohol:'🍺酒',video:'📱手机',all:'全部'}
+  if($('d-focus-display'))$('d-focus-display').textContent=state.focus?fm[state.focus]||state.focus:'—'
+  var id=state.identityLevel||0
+  var idt=['','我是在乎自己的人','我是对家人负责的人','我是掌控自己人生的人']
+  var idb=['','🟢 Lv.1','🟡 Lv.2','🔴 Lv.3']
+  if(id>0&&$('d-identity')){$('d-identity').style.display='block';if($('d-identity-text'))$('d-identity-text').textContent=idb[id]+' '+idt[id]}
+  else if($('d-identity'))$('d-identity').style.display='none'
+  var pct=Math.round((day/21)*100)
+  if($('d-progress-bar'))$('d-progress-bar').style.width=Math.min(pct,100)+'%'
+  if($('d-progress-text'))$('d-progress-text').textContent=day+' / 21 天'
+  if(trigs.length&&$('d-triggers')){$('d-triggers').style.display='block';$('d-triggers').innerHTML='已识别触发场景：<strong>'+trigs.join('、')+'</strong>'}
+  else if($('d-triggers'))$('d-triggers').style.display='none'
+  if($('d-session-btn'))$('d-session-btn').textContent=day<=21?'📋 第 '+(day+1)+' 天会话':'🎉 重新开始'
+  // Show slot-based motd
+  var slot=getCurrentSlot()
+  if($('d-motd'))$('d-motd').textContent=slot.label+' — '+slot.text.split('\n')[0]
+}
+
+// ─── VIEW SWITCHING ───
+function switchView(name){
+  var pages=['page-chat','page-emergency','page-dashboard']
+  pages.forEach(function(p){var el=$(p);if(el)el.classList.remove('active')})
+  var target='page-'+name
+  var el=$(target)
+  if(el) el.classList.add('active')
+  // Update nav
+  var navs=document.querySelectorAll('.nav-btn')
+  for(var i=0;i<navs.length;i++){
+    navs[i].classList.toggle('active',navs[i].dataset.page===target)
+  }
+  if(name==='chat') startMicroSession()
+  if(name==='emergency') showEmergency()
+  if(name==='dashboard') showDashboard()
+}
+
+// ─── NOTIFICATION SCHEDULING ───
+function scheduleNotifications(){
+  if(!('Notification' in window)||!('serviceWorker' in navigator)) return
+  Notification.requestPermission().then(function(perm){
+    if(perm!=='granted') return
+    SCHEDULE.forEach(function(slot){
+      var now=new Date()
+      var target=new Date()
+      target.setHours(parseInt(slot.time),parseInt(slot.time.split(':')[1]),0,0)
+      var delay=target-now
+      if(delay<0) delay+=86400000
+      setTimeout(function(){
+        navigator.serviceWorker.ready.then(function(reg){
+          reg.showNotification('🌱 新生',{
+            body:slot.text.split('\n')[0],
+            icon:'/xinsheng/icon.svg',
+            tag:'xsheng-'+slot.id,
+            data:{view:'chat'},
+            requireInteraction:true
+          })
+        })
+      },delay)
+    })
+  })
+}
+
+// ─── PWA INSTALL PROMPT ───
+var deferredPrompt=null
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault()
+  deferredPrompt=e
+  var banner=$('install-banner')
+  if(banner)banner.style.display='block'
+})
+
+document.addEventListener('DOMContentLoaded',function(){
+  if($('install-accept')){
+    $('install-accept').onclick=function(){
+      if(deferredPrompt){
+        deferredPrompt.prompt()
+        deferredPrompt.userChoice.then(function(){
+          deferredPrompt=null
+          var banner=$('install-banner')
+          if(banner)banner.style.display='none'
+        })
+      }
+    }
+  }
+  if($('install-dismiss')){
+    $('install-dismiss').onclick=function(){
+      var banner=$('install-banner')
+      if(banner)banner.style.display='none'
+    }
+  }
+})
+
+// ─── HEADER BADGE ───
+function updateBadge(){
+  var state=XS.getState()
+  var day=XS.getDay()
+  if(day===0)$('h-badge').textContent='第一天'
+  else if(day<=21)$('h-badge').textContent='第'+(day+1)+'天'
+  else $('h-badge').textContent='完成'
+}
+
+// ─── EVENT BINDING ───
+function initUI(){
+  updateBadge()
+
+  // Header emergency button
+  if($('h-action'))$('h-action').onclick=function(){switchView('emergency')}
+
+  // Bottom nav
+  var navs=document.querySelectorAll('.nav-btn')
+  for(var i=0;i<navs.length;i++){
+    navs[i].onclick=function(){
+      var name=this.dataset.page.replace('page-','')
+      switchView(name)
+    }
+  }
+
+  // Dashboard buttons
+  if($('d-session-btn'))$('d-session-btn').onclick=function(){switchView('chat')}
+  if($('d-emergency-btn'))$('d-emergency-btn').onclick=function(){switchView('emergency')}
+  if($('d-reset-btn'))$('d-reset-btn').onclick=function(){
+    if(confirm('确定要重新开始吗？所有进度将清空。')){XS.reset();switchView('chat')}
+  }
+
+  // Handle hash changes
+  window.addEventListener('hashchange',function(){
+    var hash=location.hash||''
+    if(hash==='#emergency') switchView('emergency')
+    else if(hash==='#dashboard') switchView('dashboard')
+    else switchView('chat')
+  })
+
+  // Check initial hash
+  var hash=location.hash||''
+  if(hash==='#emergency'){switchView('emergency');return}
+  if(hash==='#dashboard'){switchView('dashboard');return}
+  switchView('chat')
+}
+
+// ─── SW REGISTRATION ───
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js',{scope:'/xinsheng/'})
+  })
+}
+
+// ─── START ───
+initUI()
+scheduleNotifications()
+})();
+</script>
+</body>
+</html>
