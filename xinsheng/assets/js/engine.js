@@ -6,14 +6,21 @@
   var currentNode = null
 
   function init(){
-    // Check if user has completed onboarding
     var state = XS.getState()
     if(state.completed){
       showDashboard()
       return
     }
 
-    // Resume or start session
+    // Add hint for first-time users
+    var chat = $('chat-messages')
+    if(chat.children.length === 0){
+      var hint = document.createElement('div')
+      hint.className = 'msg coach hint'
+      hint.innerHTML = '<p style="color:var(--dim);font-size:.85rem;text-align:center">👇 点下方的选项跟我对话</p>'
+      chat.appendChild(hint)
+    }
+
     var sessionType = state.currentSession || 'onboarding'
     var nodeId = state.currentNodeId || null
     startSession(sessionType, nodeId)
@@ -99,6 +106,10 @@
 
   function addCoachMessage(text, callback){
     var chat = $('chat-messages')
+
+    // Remove hint if present
+    var hint = chat.querySelector('.hint')
+    if(hint) hint.remove()
 
     // Show typing indicator
     var typing = document.createElement('div')
@@ -281,8 +292,7 @@
     $('d-reset-btn').addEventListener('click', function(){
       if(confirm('确定要重新开始吗？所有进度将清空。')){
         XS.reset()
-        var chat = $('chat-messages')
-        chat.innerHTML = '<div class="msg coach"><p>你好。我是你的健康教练。</p><p>我们会在接下来的21天里，每天聊一聊。</p><p>准备好了吗？</p></div>'
+        $('chat-messages').innerHTML = ''
         init()
       }
     })

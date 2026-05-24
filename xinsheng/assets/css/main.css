@@ -13,10 +13,9 @@ body{
 }
 
 /* ─── Chat Interface ────────────────── */
-#page-chat{display:flex;flex-direction:column;height:100vh}
-#page-chat.active{display:flex}
-.page{display:none}
-.page.active{display:block}
+.page{display:none!important}
+.page.active{display:block!important}
+#page-chat.active{display:flex!important;flex-direction:column;height:100vh}
 
 #chat-header{
   display:flex;align-items:center;gap:.6rem;
