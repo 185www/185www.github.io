@@ -3,384 +3,102 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>新生 — 重新掌控你的人生</title>
+<title>新生 — 对话式健康干预</title>
 <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
 
 <!-- ══════════════════════════════════════════════ -->
-<!-- WIZARD (new users)                            -->
+<!-- CHAT INTERFACE                                 -->
 <!-- ══════════════════════════════════════════════ -->
-<div id="page-wizard" class="page active">
-  <div class="wizard-header">
-    <div class="step-dots">
-      <span class="step-dot active" data-step="0"></span>
-      <span class="step-dot" data-step="1"></span>
-      <span class="step-dot" data-step="2"></span>
-      <span class="step-dot" data-step="3"></span>
-    </div>
+<div id="page-chat" class="page active">
+  <div id="chat-header">
+    <span class="chat-avatar">🌱</span>
+    <span class="chat-title">新生 · 健康教练</span>
   </div>
-
-  <!-- Step 0: Truth Finder (Dark Hook) -->
-  <div id="step-0" class="step active">
-    <div class="hook-bg">
-      <div class="hook-content">
-        <p class="hook-subtitle">只需回答几个问题</p>
-        <h1 class="hook-title">看看你的身体<br>在承受什么</h1>
-
-        <div class="card dark-card">
-          <div class="form-group">
-            <label>你的性别</label>
-            <div class="radio-group">
-              <label class="radio-label"><input type="radio" name="gender" value="male" checked> 男</label>
-              <label class="radio-label"><input type="radio" name="gender" value="female"> 女</label>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>你的年龄</label>
-            <input type="number" id="calc-age" min="30" max="90" value="55" class="input-lg">
-          </div>
-          <div class="form-group">
-            <label>每天吸烟 <span class="unit">(支, 0=不吸)</span></label>
-            <input type="number" id="calc-smoke" min="0" max="60" value="0" class="input-lg">
-          </div>
-          <div class="form-group">
-            <label>每次喝酒 <span class="unit">(标准杯, 1杯=啤酒1罐/白酒1两)</span></label>
-            <input type="number" id="calc-alcohol" min="0" max="30" value="0" class="input-lg">
-          </div>
-          <div class="form-group">
-            <label>每天刷短视频 <span class="unit">(小时)</span></label>
-            <input type="number" id="calc-video" min="0" max="16" value="0" class="input-lg">
-          </div>
-          <button id="btn-calc" class="btn-danger btn-lg">看看真相</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Step 1: The Shock (Loss & Damage) -->
-  <div id="step-1" class="step">
-    <div class="shock-bg">
-      <div class="shock-header">
-        <h1 class="shock-title">你正在失去⋯⋯</h1>
-      </div>
-
-      <!-- Money Burning (real-time) -->
-      <div class="card burn-card">
-        <p class="burn-label">今天，你已经烧掉了</p>
-        <p class="burn-counter" id="burn-counter">¥0.00</p>
-        <p class="burn-sub">每分钟都在增加</p>
-      </div>
-
-      <!-- Body Age -->
-      <div class="card result-card">
-        <div class="result-icon">⏳</div>
-        <div class="result-body">
-          <p class="result-label">你的身体年龄</p>
-          <p class="result-value big" id="r-bodyage">—</p>
-          <p class="result-note" id="r-agegap"></p>
-        </div>
-      </div>
-
-      <!-- Years Lost -->
-      <div class="card result-card">
-        <div class="result-icon">💀</div>
-        <div class="result-body">
-          <p class="result-label">因烟酒损失的预期寿命</p>
-          <p class="result-value big" id="r-yearslost">—</p>
-        </div>
-      </div>
-
-      <!-- Money Lost -->
-      <div class="card result-card">
-        <div class="result-icon">💰</div>
-        <div class="result-body">
-          <p class="result-label">在烟酒上花掉的钱</p>
-          <p class="result-value big" id="r-money">—</p>
-          <p class="result-note">相当于 <span id="r-moneyitem"></span></p>
-        </div>
-      </div>
-
-      <!-- Time Lost -->
-      <div class="card result-card">
-        <div class="result-icon">📱</div>
-        <div class="result-body">
-          <p class="result-label">去年刷短视频的总时长</p>
-          <p class="result-value big" id="r-videohours">—</p>
-          <p class="result-note">≈ <span id="r-videodays"></span> 不眠不休</p>
-        </div>
-      </div>
-
-      <!-- Health Risks -->
-      <div class="card result-card">
-        <div class="result-icon">🫁</div>
-        <div class="result-body">
-          <p class="result-label">肺癌风险</p>
-          <p class="result-value" id="r-cancer">—</p>
-        </div>
-      </div>
-      <div class="card result-card">
-        <div class="result-icon">❤️</div>
-        <div class="result-body">
-          <p class="result-label">心血管疾病风险</p>
-          <p class="result-value" id="r-heart">—</p>
-        </div>
-      </div>
-
-      <!-- Family Impact -->
-      <div class="card result-card family-impact">
-        <div class="result-icon">👨‍👩‍👧‍👦</div>
-        <div class="result-body">
-          <p class="result-label">看不到子女结婚的概率</p>
-          <p class="result-value big" id="r-wedding">—</p>
-        </div>
-      </div>
-      <div class="card result-card family-impact">
-        <div class="result-icon">👶</div>
-        <div class="result-body">
-          <p class="result-label">看不到孙辈出生的概率</p>
-          <p class="result-value big" id="r-grandchild">—</p>
-        </div>
-      </div>
-
-      <!-- Alcohol Warning -->
-      <div id="alcohol-warn" class="card warn-card hidden">
-        <p class="warn-title">⚠️ 重要安全提醒</p>
-        <p class="warn-text">你报告的饮酒量较高。如果每天大量饮酒，突然完全戒断可能有危险（戒断症状包括焦虑、颤抖、癫痫）。<strong>建议在医生指导下逐步减量。</strong></p>
-      </div>
-
-      <button id="btn-to-hope" class="btn-hope btn-lg">但是⋯⋯永远不晚</button>
-    </div>
-  </div>
-
-  <!-- Step 2: The Hope (Recovery Timeline) -->
-  <div id="step-2" class="step">
-    <div class="hope-bg">
-      <div class="hope-header">
-        <h1 class="hope-title">你的身体在等你回头</h1>
-        <p class="hope-sub">停止伤害的那一刻，修复就已经开始</p>
-      </div>
-
-      <div class="timeline">
-        <div class="tl-item good">
-          <div class="tl-time">20分钟</div>
-          <div class="tl-desc">心率、血压开始恢复正常</div>
-        </div>
-        <div class="tl-item good">
-          <div class="tl-time">12小时</div>
-          <div class="tl-desc">血液中一氧化碳降至正常水平</div>
-        </div>
-        <div class="tl-item good">
-          <div class="tl-time">2周</div>
-          <div class="tl-desc">肺功能改善，血液循环提升</div>
-        </div>
-        <div class="tl-item good">
-          <div class="tl-time">1个月</div>
-          <div class="tl-desc">皮肤变好，精力提升，肝脂肪减少</div>
-        </div>
-        <div class="tl-item great">
-          <div class="tl-time">1年</div>
-          <div class="tl-desc">心脏病风险降低 <strong>50%</strong></div>
-        </div>
-        <div class="tl-item great">
-          <div class="tl-time">5年</div>
-          <div class="tl-desc">口腔癌、食道癌风险 <strong>减半</strong></div>
-        </div>
-        <div class="tl-item great">
-          <div class="tl-time">10年</div>
-          <div class="tl-desc">肺癌死亡率 <strong>降低50%</strong></div>
-        </div>
-      </div>
-
-      <!-- Cognitive recovery from short video -->
-      <div class="card hope-card">
-        <p class="hope-card-title">🧠 停止过度刷短视频后</p>
-        <ul class="hope-list">
-          <li>3天后：注意力开始恢复</li>
-          <li>1周后：睡眠质量改善</li>
-          <li>1个月后：记忆力和自控力显著提升</li>
-          <li>3个月后：大脑奖赏系统重新校准，日常小事也能带来满足感</li>
-        </ul>
-      </div>
-
-      <button id="btn-to-vow" class="btn-primary btn-lg">我要做出改变</button>
-    </div>
-  </div>
-
-  <!-- Step 3: The Commitment -->
-  <div id="step-3" class="step">
-    <div class="vow-bg">
-      <div class="vow-header">
-        <h1 class="vow-title">📜 做出你的承诺</h1>
-        <p class="vow-sub">写下你的名字和宣言。这不是给别人看的，是给你自己。</p>
-      </div>
-
-      <div class="card">
-        <div class="form-group">
-          <label>你的名字</label>
-          <input type="text" id="vow-name" placeholder="如：王志明" class="input-lg">
-        </div>
-        <div class="form-group">
-          <label>你的健康宣言</label>
-          <textarea id="vow-text" rows="3" placeholder="例：从今天起，我选择对自己负责。我不再让烟酒控制我的生活。" class="input-lg"></textarea>
-        </div>
-        <button id="btn-save-vow" class="btn-primary btn-lg">✍️ 我宣誓</button>
-        <button id="btn-skip-vow" class="btn-link">跳过，直接开始</button>
-      </div>
-
-      <!-- Preview certificate -->
-      <div class="certificate-preview">
-        <div class="cert">
-          <p class="cert-seal">🛡️</p>
-          <p class="cert-title">健康宣言</p>
-          <p class="cert-line">我，<span id="cert-name">我</span>，</p>
-          <p class="cert-line">从今天起郑重承诺：</p>
-          <p class="cert-vow" id="cert-text">我选择健康</p>
-          <p class="cert-line">我对自己负责。</p>
-          <p class="cert-date" id="cert-date">— 年 — 月 — 日</p>
-        </div>
-      </div>
+  <div id="chat-messages">
+    <div class="msg coach">
+      <p>你好。我是你的健康教练。</p>
+      <p>我们会在接下来的21天里，每天聊一聊。</p>
+      <p>这不是一个工具——这是一个对话。准备好了吗？</p>
     </div>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════════ -->
-<!-- DASHBOARD (returning users)                   -->
+<!-- DASHBOARD                                      -->
 <!-- ══════════════════════════════════════════════ -->
 <div id="page-dashboard" class="page">
   <div class="dash-header">
-    <h1 class="dash-title">新生</h1>
-    <p class="dash-sub">每一天都是新的开始</p>
+    <h1 class="dash-title">🌱 新生</h1>
+    <p class="dash-sub" id="d-day">第 0 天</p>
   </div>
 
-  <!-- Fire Belt (Don't Break the Chain) -->
-  <div class="card fire-card">
-    <p class="fire-label">🔥 你的火焰链</p>
-    <div id="fire-belt" class="fire-belt"></div>
-  </div>
-
-  <!-- Daily Mission -->
-  <div class="card mission-card">
-    <div class="mission-top">
-      <span class="mission-badge" id="mission-badge">⏳ 未完成</span>
-      <span class="mission-label">今日使命</span>
+  <!-- Progress -->
+  <div class="card progress-card">
+    <p class="section-label">21天干预进程</p>
+    <div class="progress-track">
+      <div class="progress-fill" id="d-progress-bar" style="width:0%"></div>
     </div>
-    <p class="mission-text" id="mission-text">加载中...</p>
-    <p class="mission-count" id="mission-count"></p>
+    <p class="progress-text" id="d-progress-text">0 / 21 天</p>
   </div>
 
-  <!-- Check-in -->
-  <div class="card">
-    <p class="checkin-title">✅ 今天你做到了吗？</p>
-    <div class="checkin-options">
-      <label class="checkin-item" data-behavior="smoke">
-        <span class="ci-icon">🚬</span>
-        <span class="ci-text">今天没抽烟</span>
-        <input type="checkbox" class="ci-input">
-      </label>
-      <label class="checkin-item" data-behavior="alcohol">
-        <span class="ci-icon">🍺</span>
-        <span class="ci-text">今天没喝酒</span>
-        <input type="checkbox" class="ci-input">
-      </label>
-      <label class="checkin-item" data-behavior="video">
-        <span class="ci-icon">📱</span>
-        <span class="ci-text">刷手机不到1小时</span>
-        <input type="checkbox" class="ci-input">
-      </label>
-      <label class="checkin-item" data-behavior="alt">
-        <span class="ci-icon">💪</span>
-        <span class="ci-text">做了替代活动</span>
-        <input type="checkbox" class="ci-input">
-      </label>
-    </div>
-    <button id="btn-checkin" class="btn-primary btn-lg">📝 记录今天</button>
-  </div>
-
-  <!-- Streaks -->
-  <div class="card">
-    <p class="section-title">📊 连续天数</p>
-    <div class="streak-row">
-      <div class="streak-box"><span class="s-label">戒烟</span><span class="s-num" id="s-smoke">0</span><span class="s-unit">天</span></div>
-      <div class="streak-box"><span class="s-label">戒酒</span><span class="s-num" id="s-alcohol">0</span><span class="s-unit">天</span></div>
-      <div class="streak-box"><span class="s-label">少刷</span><span class="s-num" id="s-video">0</span><span class="s-unit">天</span></div>
-    </div>
-  </div>
-
-  <!-- Savings -->
-  <div class="card">
-    <p class="section-title">💰 累计成果</p>
-    <div class="savings-row">
-      <div class="saving-box"><span class="sv-label">省钱</span><span class="sv-num" id="sv-money">¥0</span></div>
-      <div class="saving-box"><span class="sv-label">省时间</span><span class="sv-num" id="sv-time">0小时</span></div>
-      <div class="saving-box"><span class="sv-label">坚持</span><span class="sv-num" id="sv-days">0天</span></div>
+  <!-- Stats -->
+  <div class="card stat-card">
+    <div class="stat-row">
+      <div class="stat-box">
+        <span class="stat-num" id="d-streak">0</span>
+        <span class="stat-label">成功天数</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-num" id="d-triggers-count">0</span>
+        <span class="stat-label">已识别触发</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-num" id="d-focus-display">—</span>
+        <span class="stat-label">当前专注</span>
+      </div>
     </div>
   </div>
 
   <!-- Identity -->
-  <div id="identity-section" class="card identity-card hidden">
-    <p class="section-title">🏆 你的健康身份</p>
-    <p class="identity-lv" id="identity-level"></p>
-    <p class="identity-text" id="identity-text"></p>
+  <div id="d-identity" class="card identity-card" style="display:none">
+    <p class="identity-text" id="d-identity-text"></p>
   </div>
 
-  <!-- Family Wall -->
-  <div class="card">
-    <p class="section-title">❤️ 家人寄语</p>
-    <div id="family-list"></div>
-    <div class="family-form">
-      <textarea id="family-input" rows="2" placeholder="写一段话..." class="input-lg"></textarea>
-      <input type="text" id="family-author" placeholder="署名（如：儿子）" class="input-lg">
-      <button id="btn-family-add" class="btn-secondary btn-lg">保存寄语</button>
-    </div>
+  <!-- Triggers -->
+  <div id="d-triggers" class="card" style="display:none">
+    <p id="d-triggers-text"></p>
   </div>
 
-  <!-- Craving Rescue -->
-  <div class="card craving-card">
-    <p class="section-title">🆘 现在就想抽烟/喝酒/刷手机？</p>
-    <button id="btn-craving" class="btn-danger btn-lg">帮我！我现在忍不住了</button>
+  <!-- Focus -->
+  <div id="d-focus" class="card" style="display:none">
+    <p id="d-focus-text"></p>
   </div>
-</div>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- CRAVING MODAL                                  -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="craving-modal" class="modal-overlay hidden">
-  <div class="modal-card">
-    <button id="btn-craving-close" class="modal-close">✕</button>
-    <h2 class="modal-title">先别着急，做三次深呼吸</h2>
+  <!-- Continue session -->
+  <button id="d-session-btn" class="btn-primary btn-lg">开始今天的会话</button>
 
-    <div id="breathing-circle" class="breathing-circle inhale">吸气...</div>
-
-    <p class="modal-q">你想战胜哪种冲动？</p>
-    <div class="craving-btns">
-      <button class="craving-behavior-btn btn-secondary" data-behavior="smoke">🚬 想抽烟</button>
-      <button class="craving-behavior-btn btn-secondary" data-behavior="alcohol">🍺 想喝酒</button>
-      <button class="craving-behavior-btn btn-secondary" data-behavior="video">📱 想刷手机</button>
-    </div>
-
-    <div id="craving-alt" class="craving-alt hidden">
-      <p class="alt-label">💡 试试这个</p>
-      <p class="alt-text" id="craving-alt-text"></p>
-    </div>
-  </div>
+  <!-- Reset -->
+  <button id="d-reset-btn" class="btn-link">重新开始</button>
 </div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- BOTTOM NAV                                     -->
 <!-- ══════════════════════════════════════════════ -->
 <nav id="bottom-nav">
-  <button class="nav-btn active" data-page="page-wizard">
-    <span class="nav-icon">📊</span>
-    <span class="nav-label">首页</span>
+  <button class="nav-btn active" data-page="page-chat">
+    <span class="nav-icon">💬</span>
+    <span class="nav-label">对话</span>
   </button>
   <button class="nav-btn" data-page="page-dashboard">
-    <span class="nav-icon">✅</span>
+    <span class="nav-icon">📊</span>
     <span class="nav-label">进度</span>
   </button>
 </nav>
 
 <script src="assets/js/storage.js"></script>
-<script src="assets/js/app.js"></script>
+<script src="assets/js/protocol.js"></script>
+<script src="assets/js/engine.js"></script>
 </body>
 </html>
