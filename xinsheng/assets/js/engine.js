@@ -2,7 +2,7 @@
 var $=function(id){return document.getElementById(id)}
 
 var nodes=[]    // flat array of current session nodes
-var nodeMap={}  // id → node lookup
+var nodeMap={}  // id to node lookup
 
 function init(){
   var state=XS.getState()
