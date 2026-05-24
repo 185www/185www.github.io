@@ -219,6 +219,19 @@ const Store = (() => {
     return data.tasks.filter(t => t.status === 'review').length;
   }
 
+  function getDueCheckins() {
+    const now = nowISO();
+    return data.tasks.filter(t => {
+      if (t.status !== 'running' && t.status !== 'pending') return false;
+      const checkISO = t.checkinDate + 'T' + (t.checkinTime || '12:00');
+      return checkISO <= now;
+    });
+  }
+
+  function hasDueCheckins() {
+    return getDueCheckins().length > 0 || getPendingReviewCount() > 0;
+  }
+
   // ---- Settings ----
   function getSettings() { return { ...data.settings }; }
 
@@ -257,6 +270,7 @@ const Store = (() => {
     subscribe, getAgents, getAgent, addAgent, updateAgent, deleteAgent,
     getTasks, getTask, addTask, updateTask, deleteTask,
     getTaskCounts, getNeedsReview, getNextCheckin, getPendingReviewCount,
+    getDueCheckins, hasDueCheckins,
     getSettings, updateSettings,
     getDateStr, todayStr, formatTime, nowISO,
     STATUS_FLOW, hasData, loadDemo

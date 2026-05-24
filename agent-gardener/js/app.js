@@ -816,6 +816,63 @@
   }
 
   // ======================================================================
+  // AUTO CHECK-IN
+  // ======================================================================
+
+  let autoCheckinTimer = null;
+
+  function startAutoCheckin() {
+    if (autoCheckinTimer) clearInterval(autoCheckinTimer);
+
+    function check() {
+      if (!modal.classList.contains('hidden')) return;
+
+      const dueTasks = Store.getDueCheckins();
+      const prevCount = Store.getPendingReviewCount();
+
+      if (dueTasks.length > 0) {
+        let changed = false;
+        dueTasks.forEach(t => {
+          Store.updateTask(t.id, { status: 'review' });
+          changed = true;
+        });
+
+        if (changed) {
+          const newCount = Store.getPendingReviewCount();
+          if (newCount > prevCount) {
+            sendNotif();
+            showToast(`🔔 ${newCount} 个任务已到检验时间`);
+            if (currentView === 'dashboard') render();
+          }
+        }
+      }
+    }
+
+    check();
+    autoCheckinTimer = setInterval(check, 30000);
+  }
+
+  function sendNotif() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      new Notification('🔔 Agent Gardener', {
+        body: `有 ${Store.getPendingReviewCount()} 个任务等待检验`,
+        icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ctext y=".9em" font-size="90"%3E🌱%3C/text%3E%3C/svg%3E',
+        tag: 'agent-gardener-checkin',
+        silent: false
+      });
+    } else if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+
+  function requestNotifPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+
+  // ======================================================================
   // THEME
   // ======================================================================
   function initTheme() {
@@ -866,6 +923,18 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
+
+    // Auto-checkin: auto-detect due tasks and show checkin mode
+    const dueTasks = Store.getDueCheckins();
+    if (dueTasks.length > 0) {
+      dueTasks.forEach(t => Store.updateTask(t.id, { status: 'review' }));
+    }
+    if (Store.getPendingReviewCount() > 0) {
+      setTimeout(showCheckinMode, 500);
+    }
+
+    startAutoCheckin();
+    requestNotifPermission();
   }
 
   if (document.readyState === 'loading') {
