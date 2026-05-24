@@ -4,13 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>新生 — 对话式健康干预</title>
-<link rel="stylesheet" href="assets/css/main.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#1a1d23;--surface:#242830;--surface2:#2d313a;--accent:#4ecdc4;--accent2:#ff6b6b;--gold:#ffd93d;--text:#e8eaed;--dim:#8a8f9a;--muted:#555a64;--radius:12px;--font-size:16px}
+html{font-size:var(--font-size)}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Helvetica Neue",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;padding-bottom:64px;overflow-x:hidden;font-size:.95rem}
+.page{display:none!important}
+.page.active{display:block!important}
+#page-chat.active{display:flex!important;flex-direction:column;height:100vh}
+#chat-header{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:var(--surface);border-bottom:1px solid var(--muted);position:sticky;top:0;z-index:10}
+.chat-avatar{font-size:1.5rem}
+.chat-title{font-weight:600;font-size:1rem;color:var(--accent)}
+#chat-messages{flex:1;overflow-y:auto;padding:.5rem .8rem 1rem;display:flex;flex-direction:column;gap:.4rem}
+.msg{max-width:88%;padding:.75rem 1rem;border-radius:14px;animation:fadeUp .3s ease;font-size:.95rem;line-height:1.7}
+.msg.coach{background:var(--surface);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.user{background:var(--accent);color:#1a1d23;align-self:flex-end;border-bottom-right-radius:4px;font-weight:500}
+.msg p{margin-bottom:.4rem}.msg p:last-child{margin-bottom:0}
+@keyframes fadeUp{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+.typing-indicator{align-self:flex-start;display:flex;gap:4px;padding:.75rem 1rem;background:var(--surface);border-radius:14px;border-bottom-left-radius:4px}
+.typing-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);animation:bounce 1.4s infinite ease-in-out}
+.typing-dot:nth-child(2){animation-delay:.2s}.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+.options-container{display:flex;flex-direction:column;gap:.4rem;margin-top:.2rem;animation:fadeUp .3s ease}
+.option-btn{background:var(--surface2);color:var(--text);border:1px solid var(--muted);border-radius:10px;padding:.85rem 1rem;font-size:.95rem;cursor:pointer;text-align:left;transition:all .15s;font-family:inherit;line-height:1.4}
+.option-btn:active{background:var(--accent);color:#1a1d23;border-color:var(--accent);transform:scale(.98)}
+.option-btn:disabled{cursor:default;opacity:.4}
+.dash-header{text-align:center;padding:1.5rem .8rem .5rem}
+.dash-title{font-size:1.6rem;color:var(--accent)}
+.dash-sub{color:var(--dim);font-size:.9rem;margin-top:.2rem}
+.card{background:var(--surface);border-radius:var(--radius);padding:1rem 1.2rem;margin:.5rem .8rem}
+.progress-track{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin:.5rem 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:4px;transition:width .5s ease}
+.progress-text{font-size:.8rem;color:var(--dim);text-align:right}
+.section-label{font-size:.85rem;color:var(--dim);margin-bottom:.3rem}
+.stat-row{display:flex;justify-content:space-around;gap:.5rem}
+.stat-box{text-align:center;flex:1}
+.stat-num{display:block;font-size:1.6rem;font-weight:700;color:var(--accent)}
+.stat-label{font-size:.75rem;color:var(--dim)}
+.identity-card{background:linear-gradient(135deg,var(--surface),#1a2a2a);border:1px solid var(--gold);text-align:center}
+.identity-text{font-size:1.1rem;font-weight:600;color:var(--gold)}
+.btn-primary{display:block;width:calc(100% - 1.6rem);margin:.5rem .8rem;padding:.9rem;font-size:1.05rem;font-weight:700;background:var(--accent);color:#1a1d23;border:none;border-radius:var(--radius);cursor:pointer;text-align:center;min-height:50px;transition:transform .1s;font-family:inherit}
+.btn-primary:active{transform:scale(.97)}
+.btn-link{display:block;width:100%;padding:.7rem;background:none;border:none;color:var(--muted);font-size:.85rem;cursor:pointer;text-align:center;font-family:inherit}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.92);color:#fff;padding:.7rem 1.4rem;border-radius:8px;font-size:.9rem;z-index:999;animation:fadeOut 2.5s ease;white-space:nowrap;text-align:center}
+@keyframes fadeOut{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--muted);display:flex;justify-content:space-around;padding:.3rem 0;padding-bottom:env(safe-area-inset-bottom,.3rem);z-index:100}
+.nav-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.1rem;padding:.3rem .8rem;min-width:70px;font-family:inherit;color:var(--dim)}
+.nav-icon{font-size:1.3rem}
+.nav-label{font-size:.65rem}
+.nav-btn.active .nav-label{color:var(--accent);font-weight:600}
+.hidden{display:none!important}
+#loading-bar{position:fixed;top:0;left:0;width:100%;height:3px;background:var(--muted);z-index:999}
+#loading-fill{height:100%;width:0;background:var(--accent);transition:width .3s}
+</style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- CHAT INTERFACE                                 -->
-<!-- ══════════════════════════════════════════════ -->
+<div id="loading-bar"><div id="loading-fill"></div></div>
+
+<!-- CHAT -->
 <div id="page-chat" class="page active">
   <div id="chat-header">
     <span class="chat-avatar">🌱</span>
@@ -19,80 +71,262 @@
   <div id="chat-messages"></div>
 </div>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- DASHBOARD                                      -->
-<!-- ══════════════════════════════════════════════ -->
+<!-- DASHBOARD -->
 <div id="page-dashboard" class="page">
   <div class="dash-header">
     <h1 class="dash-title">🌱 新生</h1>
     <p class="dash-sub" id="d-day">第 0 天</p>
   </div>
-
-  <!-- Progress -->
   <div class="card progress-card">
     <p class="section-label">21天干预进程</p>
-    <div class="progress-track">
-      <div class="progress-fill" id="d-progress-bar" style="width:0%"></div>
-    </div>
+    <div class="progress-track"><div class="progress-fill" id="d-progress-bar" style="width:0%"></div></div>
     <p class="progress-text" id="d-progress-text">0 / 21 天</p>
   </div>
-
-  <!-- Stats -->
   <div class="card stat-card">
     <div class="stat-row">
-      <div class="stat-box">
-        <span class="stat-num" id="d-streak">0</span>
-        <span class="stat-label">成功天数</span>
-      </div>
-      <div class="stat-box">
-        <span class="stat-num" id="d-triggers-count">0</span>
-        <span class="stat-label">已识别触发</span>
-      </div>
-      <div class="stat-box">
-        <span class="stat-num" id="d-focus-display">—</span>
-        <span class="stat-label">当前专注</span>
-      </div>
+      <div class="stat-box"><span class="stat-num" id="d-streak">0</span><span class="stat-label">成功天数</span></div>
+      <div class="stat-box"><span class="stat-num" id="d-triggers-count">0</span><span class="stat-label">已识别触发</span></div>
+      <div class="stat-box"><span class="stat-num" id="d-focus-display">—</span><span class="stat-label">当前专注</span></div>
     </div>
   </div>
-
-  <!-- Identity -->
-  <div id="d-identity" class="card identity-card" style="display:none">
-    <p class="identity-text" id="d-identity-text"></p>
-  </div>
-
-  <!-- Triggers -->
-  <div id="d-triggers" class="card" style="display:none">
-    <p id="d-triggers-text"></p>
-  </div>
-
-  <!-- Focus -->
-  <div id="d-focus" class="card" style="display:none">
-    <p id="d-focus-text"></p>
-  </div>
-
-  <!-- Continue session -->
+  <div id="d-identity" class="card identity-card" style="display:none"><p class="identity-text" id="d-identity-text"></p></div>
+  <div id="d-triggers" class="card" style="display:none"></div>
+  <div id="d-focus" class="card" style="display:none"></div>
   <button id="d-session-btn" class="btn-primary btn-lg">开始今天的会话</button>
-
-  <!-- Reset -->
   <button id="d-reset-btn" class="btn-link">重新开始</button>
 </div>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- BOTTOM NAV                                     -->
-<!-- ══════════════════════════════════════════════ -->
+<!-- NAV -->
 <nav id="bottom-nav">
-  <button class="nav-btn active" data-page="page-chat">
-    <span class="nav-icon">💬</span>
-    <span class="nav-label">对话</span>
-  </button>
-  <button class="nav-btn" data-page="page-dashboard">
-    <span class="nav-icon">📊</span>
-    <span class="nav-label">进度</span>
-  </button>
+  <button class="nav-btn active" data-page="page-chat"><span class="nav-icon">💬</span><span class="nav-label">对话</span></button>
+  <button class="nav-btn" data-page="page-dashboard"><span class="nav-icon">📊</span><span class="nav-label">进度</span></button>
 </nav>
 
-<script src="assets/js/storage.js"></script>
+<script>
+// ═══════════════════════════════════════
+// STORAGE LAYER (inlined, 3KB)
+// ═══════════════════════════════════════
+(function(){
+var K='xsheng_v4'
+function load(){
+  try{
+    var r=localStorage.getItem(K)
+    if(r){var o=JSON.parse(r);if(o&&typeof o==='object')return o}
+  }catch(e){}
+  return{startDate:null,day:0,currentSession:'onboarding',currentNodeId:null,completed:false,protocolComplete:false,sessionsCompleted:[],values:null,readiness:null,triggers:[],alt:null,coping:null,focus:null,checkins:[],identityLevel:0,createdAt:Date.now()}
+}
+function save(o){try{localStorage.setItem(K,JSON.stringify(o))}catch(e){}}
+function getDay(){
+  var o=load()
+  if(!o.startDate){o.startDate=Date.now();o.day=0;save(o);return 0}
+  var e=Math.floor((Date.now()-o.startDate)/86400000)
+  var d=Math.min(e,21)
+  if(d!==o.day){o.day=d;save(o)}
+  return d
+}
+window.XS={
+  getState:load,
+  save:save,
+  getDay:getDay,
+  setSessionState:function(s,n){var o=load();o.currentSession=s;o.currentNodeId=n;save(o)},
+  completeSession:function(id){var o=load();if(o.sessionsCompleted.indexOf(id)<0)o.sessionsCompleted.push(id);save(o)},
+  scheduleNext:function(){
+    var o=load(),c=o.sessionsCompleted.length
+    if(c<=0)o.currentSession='onboarding'
+    else if(c<=1)o.currentSession='cues'
+    else if(c<=2)o.currentSession='planning'
+    else o.currentSession='daily'
+    o.currentNodeId=null;save(o)
+  },
+  setValue:function(v){var o=load();o.values=v;save(o)},
+  setReadiness:function(r){var o=load();o.readiness=r;save(o)},
+  addTrigger:function(t){var o=load();if(o.triggers.indexOf(t)<0)o.triggers.push(t);save(o)},
+  setAlt:function(a){var o=load();o.alt=a;save(o)},
+  setCoping:function(c){var o=load();o.coping=c;save(o)},
+  setFocus:function(f){var o=load();o.focus=f;save(o)},
+  addCheckin:function(e){var o=load();o.checkins.push(e);save(o)},
+  unlockIdentity:function(l){var o=load();if(l>(o.identityLevel||0))o.identityLevel=l;save(o)},
+  reset:function(){try{localStorage.removeItem(K)}catch(e){}}
+}
+})();
+
+// ═══════════════════════════════════════
+// ENGINE (inlined, simplified)
+// ═══════════════════════════════════════
+(function(){
+var $=function(id){return document.getElementById(id)}
+var nodes=[],nodeMap={}
+
+function init(){
+  var state=XS.getState()
+  if(state.completed){showDashboard();return}
+
+  if(!window.PROTO){
+    var chat=$('chat-messages')
+    if(chat){
+      chat.innerHTML='<div class="msg coach"><p>⚠️ 内容加载失败。<br>请检查网络后 <a href="javascript:location.reload()" style="color:#4ecdc4">刷新页面</a></p></div>'
+    }
+    return
+  }
+  startSession()
+}
+
+function startSession(){
+  var P=window.PROTO
+  if(!P) return
+  var state=XS.getState()
+  var day=XS.getDay()
+  var sd
+  if(day===0) sd=P.S0
+  else if(day===1) sd=P.S1
+  else if(day===2) sd=P.S2
+  else sd=P.getDaily(day)
+
+  nodes=sd||[]
+  nodeMap={}
+  for(var i=0;i<nodes.length;i++){
+    if(nodes[i]&&nodes[i].id) nodeMap[nodes[i].id]=nodes[i]
+  }
+
+  var resumeId=state.currentNodeId
+  var startNode=resumeId&&nodeMap[resumeId]?nodeMap[resumeId]:nodes[0]
+  if(startNode) showNode(startNode)
+}
+
+function showNode(node){
+  if(!node) return
+  XS.setSessionState(XS.getState().currentSession||'onboarding',node.id)
+
+  var chat=$('chat-messages')
+  var hint=chat&&chat.querySelector('.hint')
+  if(hint) hint.remove()
+
+  // loading indicator
+  var dots=document.createElement('div')
+  dots.className='typing-indicator'
+  dots.innerHTML='<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>'
+  if(chat) chat.appendChild(dots)
+  if(chat) chat.scrollTop=chat.scrollHeight
+
+  var delay=Math.max(600,Math.min(2500,(node.coach||'').length*20))
+
+  setTimeout(function(){
+    if(dots.parentNode) dots.remove()
+    var m=document.createElement('div')
+    m.className='msg coach'
+    var parts=(node.coach||'').split('\n\n')
+    var html=''
+    for(var i=0;i<parts.length;i++) html+='<p>'+parts[i].replace(/\n/g,'<br>')+'</p>'
+    m.innerHTML=html
+    if(chat) chat.appendChild(m)
+    if(chat) chat.scrollTop=chat.scrollHeight
+
+    setTimeout(function(){
+      if(node.options&&node.options.length) showOptions(node.options)
+      else showEnd()
+    },400)
+  },delay)
+}
+
+function showOptions(opts){
+  var chat=$('chat-messages')
+  if(!chat) return
+  var c=document.createElement('div')
+  c.className='options-container'
+  for(var i=0;i<opts.length;i++){
+    (function(opt){
+      var b=document.createElement('button')
+      b.className='option-btn'
+      b.textContent=opt.text
+      b.onclick=function(){
+        var btns=c.querySelectorAll('.option-btn')
+        for(var j=0;j<btns.length;j++){btns[j].disabled=true;btns[j].style.opacity='0.4'}
+        var u=document.createElement('div')
+        u.className='msg user'
+        u.textContent=opt.text
+        chat.appendChild(u)
+        chat.scrollTop=chat.scrollHeight
+        if(opt.effect) try{opt.effect()}catch(e){}
+        var next=opt.next&&nodeMap[opt.next]?nodeMap[opt.next]:null
+        if(next) setTimeout(function(){showNode(next)},600)
+        else setTimeout(showEnd,600)
+      }
+      c.appendChild(b)
+    })(opts[i])
+  }
+  chat.appendChild(c)
+  chat.scrollTop=chat.scrollHeight
+}
+
+function showEnd(){
+  var chat=$('chat-messages')
+  if(!chat) return
+  var m=document.createElement('div')
+  m.className='msg coach'
+  m.innerHTML='<p style="color:#ffd93d;text-align:center;font-weight:500">🔔 今天就到这里。我明天再来找你。</p>'
+  chat.appendChild(m)
+  var b=document.createElement('button')
+  b.className='btn-primary btn-lg'
+  b.textContent='📊 查看进度'
+  b.style.margin='1rem .8rem'
+  b.onclick=showDashboard
+  chat.appendChild(b)
+  chat.scrollTop=chat.scrollHeight
+}
+
+function showDashboard(){
+  if($('page-chat'))$('page-chat').classList.remove('active')
+  if($('page-dashboard'))$('page-dashboard').classList.add('active')
+  var state=XS.getState(),day=XS.getDay()
+  if($('d-day'))$('d-day').textContent='第 '+(day+1)+' 天'
+  var sc=0;for(var i=0;i<state.checkins.length;i++){if(state.checkins[i].success)sc++}
+  if($('d-streak'))$('d-streak').textContent=sc
+  var trigs=state.triggers||[]
+  if($('d-triggers-count'))$('d-triggers-count').textContent=trigs.length+' 个'
+  var fm={smoke:'🚬烟',alcohol:'🍺酒',video:'📱手机',all:'全部'}
+  if($('d-focus-display'))$('d-focus-display').textContent=state.focus?fm[state.focus]||state.focus:'—'
+  var id=state.identityLevel||0
+  var idt=['','我是在乎自己的人','我是对家人负责的人','我是掌控自己人生的人']
+  var idb=['','🟢 Lv.1','🟡 Lv.2','🔴 Lv.3']
+  if(id>0&&$('d-identity')){$('d-identity').style.display='block';if($('d-identity-text'))$('d-identity-text').textContent=idb[id]+' '+idt[id]}
+  else if($('d-identity'))$('d-identity').style.display='none'
+  var pct=Math.round((day/21)*100)
+  if($('d-progress-bar'))$('d-progress-bar').style.width=Math.min(pct,100)+'%'
+  if($('d-progress-text'))$('d-progress-text').textContent=day+' / 21 天'
+  if(trigs.length&&$('d-triggers')){$('d-triggers').style.display='block';$('d-triggers').innerHTML='已识别触发场景：<strong>'+trigs.join('、')+'</strong>'}
+  else if($('d-triggers'))$('d-triggers').style.display='none'
+  if(state.focus&&$('d-focus')){$('d-focus').style.display='block';$('d-focus').innerHTML='当前专注：<strong>'+(fm[state.focus]||state.focus)+'</strong>'}
+  else if($('d-focus'))$('d-focus').style.display='none'
+  if($('d-session-btn'))$('d-session-btn').textContent=day<=21?'📋 第 '+(day+1)+' 天会话':'🎉 重新开始'
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  if($('d-session-btn'))$('d-session-btn').onclick=function(){
+    if($('page-dashboard'))$('page-dashboard').classList.remove('active')
+    if($('page-chat'))$('page-chat').classList.add('active')
+    if($('chat-messages'))$('chat-messages').innerHTML=''
+    init()
+  }
+  if($('d-reset-btn'))$('d-reset-btn').onclick=function(){
+    if(confirm('确定要重新开始吗？所有进度将清空。')){XS.reset();if($('chat-messages'))$('chat-messages').innerHTML='';init()}
+  }
+  var navs=document.querySelectorAll('.nav-btn')
+  for(var i=0;i<navs.length;i++){
+    navs[i].onclick=function(){
+      var t=this.dataset.page
+      var pages=document.querySelectorAll('.page')
+      for(var j=0;j<pages.length;j++)pages[j].classList.remove('active')
+      if($(t))$(t).classList.add('active')
+      var btns=document.querySelectorAll('.nav-btn')
+      for(var j=0;j<btns.length;j++)btns[j].classList.remove('active')
+      this.classList.add('active')
+      if(t==='page-dashboard')showDashboard()
+    }
+  }
+  init()
+})
+})();
+</script>
 <script src="assets/js/protocol.js"></script>
-<script src="assets/js/engine.js"></script>
 </body>
 </html>
