@@ -761,10 +761,18 @@
     return [dailyInterventions[dailyInterventions.length-1]]
   }
 
-  window.XProtocol = {
+  function getDaily(day){
+    var result=[]
+    for(var i=0;i<dailyInterventions.length;i++){
+      if(dailyInterventions[i].day===day) result.push(dailyInterventions[i])
+    }
+    return result.length?result:[dailyInterventions[dailyInterventions.length-1]]
+  }
+
+  window.PROTO = {
     S0:S0, S1:S1, S2:S2,
     dailyInterventions:dailyInterventions,
-    getSessionForDay:getSessionForDay,
+    getDaily:getDaily,
     totalDays:21
   }
 })()
