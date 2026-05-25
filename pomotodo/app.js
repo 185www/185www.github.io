@@ -705,10 +705,7 @@ function saveDetail() {
       var tagText = chip.getAttribute('data-remove-tag');
       if (tagText) currentTags.push(tagText);
     });
-    // If chips are present, use them; otherwise keep existing tags
-    if (currentTags.length > 0 || tagChips.length === 0) {
-      t.tags = currentTags;
-    }
+    t.tags = currentTags;
   }
   var prioBtn = document.querySelector('#det-prio-group .prio-btn.active');
   if (prioBtn) t.priority = parseInt(prioBtn.dataset.prio) || 4;
@@ -1206,7 +1203,7 @@ function renderTasks() {
   // Filter by GTD area
   if (currentArea && currentArea !== 'all') {
     tasks = tasks.filter(function(t) {
-      if (currentArea === 'next') return t.area === 'next' || t.today;
+      if (currentArea === 'next') return t.area === 'next';
       if (currentArea === 'projects') return t.area === 'projects' && !t.completed;
       return t.area === currentArea;
     });
@@ -1291,7 +1288,7 @@ function renderTasks() {
       '<span class="task-text" data-act="detail" data-id="' + t.id + '">' + esc(t.title) + ' ' + tagHtml + todayBadge + dueBadge + projBadge + parentBadge + subtaskBadge + '</span>' +
       '<span class="task-pomo">' + '🍅'.repeat(Math.min(t.pomodorosCompleted, 5)) + (t.pomodorosCompleted > 5 ? '+' + t.pomodorosCompleted : '') + '</span>' +
       '<div class="task-btns">' +
-      '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' + +
+      '<button class="task-btn" data-act="pin" data-id="' + t.id + '">' + (t.pinned ? '📌' : '📍') + '</button>' +
               (isOverdueItem ? '<button class="task-btn quickstart-btn" data-act="quickstart" data-id="' + t.id + '" title="5\u5206\u949f\u5feb\u901f\u542f\u52a8">\u26a1</button>' : '')
       '<button class="task-btn" data-act="select" data-id="' + t.id + '">' + (isActive ? '🍅' : '○') + '</button>' +
       '<button class="task-btn del" data-act="delete" data-id="' + t.id + '">✕</button>' +
@@ -1301,7 +1298,7 @@ function renderTasks() {
 
 function updateDoneList() {
   var today = new Date().toISOString().slice(0, 10);
-  var todaySessions = S.sessions.filter(function(s) { return s.start && s.start.slice(0, 10) === today; });
+  var todaySessions = S.sessions.filter(function(s) { return s.type === 'work' && s.start && s.start.slice(0, 10) === today; });
   var countEl = document.getElementById('done-count');
   if (countEl) countEl.textContent = todaySessions.length;
   var list = document.getElementById('done-list');
@@ -1538,20 +1535,7 @@ function importData(file) {
 // ==================== V5 FEATURES ====================
 
 // --- P-02: Rest Guide ---
-function showRestGuide() {
-  if (!S.settings.restGuideEnabled) return;
-  queueModal('rest-guide', function() {
-    document.getElementById('rest-guide-overlay').hidden = false;
-    document.getElementById('rest-options').hidden = false;
-    document.getElementById('rest-timer-display').hidden = true;
-    _activeModal = 'rest-guide';
-  }, 50);
-}nction showRestGuide() {
- if (!S.settings.restGuideEnabled) return;
- document.getElementById('rest-guide-overlay').hidden = false;
- document.getElementById('rest-options').hidden = false;
- document.getElementById('rest-timer-display').hidden = true;
-}
+fu
 function closeRestGuide() {
   document.getElementById('rest-guide-overlay').hidden = true;
   closeActiveModal();
@@ -1808,29 +1792,7 @@ function quickStartOverdue(taskId) {
 }
 
 // Handle 5-min quick start completion → prompt to continue
-function onQuickStartComplete(taskId) {
-  var t = S.tasks.find(function(x) { return x.id === taskId; });
-  if (!t) return;
-  queueModal('quickstart-continue', function() {
-    var overlay = document.getElementById('modal-quickstart-continue');
-    if (overlay) {
-      var nameEl = document.getElementById('qs-task-name');
-      if (nameEl) nameEl.textContent = t.title;
-      overlay.hidden = false;
-      _activeModal = 'quickstart-continue';
-    }
-  }, 60);
-}nction onQuickStartComplete(taskId) {
-  var t = S.tasks.find(function(x) { return x.id === taskId; });
-  if (!t) return;
-  var overlay = document.getElementById('modal-quickstart-continue');
-  if (overlay) {
-    var nameEl = document.getElementById('qs-task-name');
-    if (nameEl) nameEl.textContent = t.title;
-    overlay.hidden = false;
-  }
-}
-
+fu
 function confirmQuickStartContinue() {
   var overlay = document.getElementById('modal-quickstart-continue');
   if (overlay) overlay.hidden = true;
