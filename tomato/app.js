@@ -3,7 +3,7 @@
 'use strict';
 
 /* ============= STATE ============= */
-const STORAGE_KEY = 'pomotodo_v3';
+const STORAGE_KEY = 'pomotodo_v4';
 const CIRCUMFERENCE = 2 * Math.PI * 88; // ~553.1
 
 const defaultSettings = {
@@ -25,7 +25,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(d && typeof d === 'object' && d.version === 3) return d;
+      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4)) return d;
     }
   }catch(e){}
   return freshState();
@@ -33,7 +33,7 @@ function loadState(){
 
 function freshState(){
   return {
-    version:3,
+    version:4,
     settings:{...defaultSettings},
     tasks:[],
     projects:[],
@@ -44,6 +44,7 @@ function freshState(){
     showOnboarding:true,
     _lastVisitDate:null,
     _reviewedDates:{},
+    _lastWeeklyReviewDate:null,
     timer:{
       mode:'work',
       phase:'idle',
@@ -320,12 +321,24 @@ function recordPomodoro(){
   S.timer.intervalsCompleted++;
   S.timer.currentCycle++;
 
+  let estimateReached = false;
   if(S.timer.currentTaskId){
     const t = findTask(S.timer.currentTaskId);
     if(t){
       t.completedPomodoros = (t.completedPomodoros||0)+1;
       S.lastCompletedTaskId = t.id;
+      if(t.estimatedPomodoros && t.completedPomodoros >= t.estimatedPomodoros){
+        estimateReached = true;
+      }
     }
+  }
+  if(estimateReached){
+    setTimeout(()=>{
+      const t = findTask(S.timer.currentTaskId);
+      if(t && !t.completed){
+        toast('🎯 预估番茄已达成，建议标记任务完成！');
+      }
+    }, 2000);
   }
 }
 
@@ -485,7 +498,7 @@ function deleteTask(id){
 function toggleTaskComplete(id){
   const t = findTask(id);
   if(!t) return;
-  if(t.area==='archive' && t.completed){
+  if(t.area==='done' && t.completed){
     t.completed = false;
     t.completedAt = null;
     t.area = 'inbox';
@@ -508,7 +521,7 @@ function toggleTaskComplete(id){
   }
   t.completed = !t.completed;
   t.completedAt = t.completed ? isoNow() : null;
-  if(t.completed && t.area!=='archive') t.area='archive';
+  if(t.completed && t.area!=='done') t.area='done';
   saveState();
   renderTasks();
   updateDoneToday();
@@ -574,6 +587,13 @@ function renderTasks(){
   const filter = qs('.filter-btn.active');
   const fval = filter ? filter.dataset.filter : 'all';
 
+  // projects tab shows projects list instead
+  if(area==='projects'){
+    renderProjectPanelList(list);
+    updateAreaCounts();
+    return;
+  }
+
   let tasks = S.tasks.filter(t=>{
     if(t.parentId){
       const p = findTask(t.parentId);
@@ -621,14 +641,22 @@ function renderTasks(){
 
     const prioEmoji = ['','🔴','🟠','🟡','⚪'][t.priority]||'⚪';
 
+    let extraMeta = '';
+    if(area==='waiting'){
+      if(t.delegatedTo) extraMeta += '<span class="task-delegated">→ '+escHtml(t.delegatedTo)+'</span>';
+      if(t.expectedDate) extraMeta += '<span class="task-expected">📅 '+fmtDue(t.expectedDate)+'</span>';
+    }
+
     item.innerHTML = `
       <div class="task-check ${t.completed?'checked':''}" data-action="toggle">${t.completed?'✓':''}</div>
       <span class="task-prio">${prioEmoji}</span>
+      ${area==='inbox' && !t.completed ? '<span class="task-clarify-btn" data-action="clarify">🧹</span>' : ''}
       <span class="task-text">${escHtml(t.title)}${hasChildren?' <span class="task-sub-indicator">📋</span>':''}</span>
       <div class="task-meta">
         ${t.tags && t.tags.length ? t.tags.map(tg=>'<span class="task-tag">#'+escHtml(tg)+'</span>').join('') : ''}
         ${t.project ? '<span class="task-project-dot" style="background:'+(getProjectColor(t.project)||'#888')+'"></span>' : ''}
         ${t.due ? '<span class="task-due'+(new Date(t.due)<new Date() && !t.completed?' overdue':'')+'">'+fmtDue(t.due)+'</span>' : ''}
+        ${extraMeta}
       </div>
     `;
     item.onclick = (e)=>{
@@ -638,7 +666,12 @@ function renderTasks(){
         toggleTaskComplete(t.id);
         return;
       }
-      if(!e.target.closest('.task-check')){
+      if(action==='clarify'){
+        e.stopPropagation();
+        openClarify(t.id);
+        return;
+      }
+      if(!e.target.closest('.task-check') && !e.target.closest('.task-clarify-btn')){
         openDetail(t.id);
       }
     };
@@ -650,7 +683,7 @@ function renderTasks(){
 }
 
 function updateAreaCounts(){
-  ['inbox','next','projects','someday','archive'].forEach(a=>{
+  ['inbox','next','projects','waiting','someday','reference','done'].forEach(a=>{
     const cnt = S.tasks.filter(t=>{
       if(t.parentId){
         const p = findTask(t.parentId);
@@ -667,6 +700,262 @@ function getProjectColor(name){
   const p = S.projects.find(x=>x.name===name);
   return p ? p.color : '#888';
 }
+
+/* ============= PROJECT PANEL ============= */
+function renderProjectPanelList(list){
+  list.innerHTML = '';
+  S.projects.filter(p=>p.status==='active').forEach(p=>{
+    const tasks = S.tasks.filter(t=>t.project===p.name && !t.completed);
+    const doneTasks = S.tasks.filter(t=>t.project===p.name && t.completed);
+    const totalPomos = tasks.reduce((s,t)=>s+(t.completedPomodoros||0),0)+doneTasks.reduce((s,t)=>s+(t.completedPomodoros||0),0);
+    const nextAct = tasks.find(t=>t.area==='next');
+    const div = document.createElement('div');
+    div.className='task-item';
+    div.innerHTML=`<div class="project-header"><span class="proj-color" style="background:${p.color}"></span><span class="proj-name">${escHtml(p.name)}</span><span class="proj-status">${tasks.length}个待办</span></div>`;
+    if(p.outcome) div.innerHTML+=`<div class="project-outcome">🎯 ${escHtml(p.outcome)}</div>`;
+    if(tasks.length+doneTasks.length>0){
+      const pct = Math.min(100,(totalPomos/Math.max(1,(tasks.length+doneTasks.length)))*100);
+      div.innerHTML+=`<div class="project-progress-bar"><div class="project-progress-fill" style="width:${pct}%"></div></div>`;
+    }
+    if(nextAct) div.innerHTML+=`<div class="project-next-action">▶ 下一步：${escHtml(nextAct.title)}</div>`;
+    div.innerHTML+=`<div class="project-actions"><button class="btn-sm" data-action="add-next">＋下一步</button><button class="btn-sm btn-primary" data-action="focus">🍅 专注</button></div>`;
+    div.onclick=e=>{
+      const act=e.target.dataset.action;
+      if(act==='add-next'){
+        e.stopPropagation();
+        const title=prompt('下一步行动：');
+        if(!title) return;
+        const t=createTask(title,{area:'next',project:p.name});
+        toast('已添加下一步行动');
+        renderProjectPanelList(list);
+        updateAreaCounts();
+      }else if(act==='focus'){
+        e.stopPropagation();
+        const target=nextAct||tasks[0];
+        if(target){
+          S.timer.currentTaskId=target.id;
+          saveState();
+          updateActiveTaskDisplay();
+          navigateTo('work');
+        }else{
+          toast('项目暂无待办任务');
+        }
+      }else{
+        openProjectDetail(p.id);
+      }
+    };
+    list.appendChild(div);
+  });
+  if(list.children.length===0){
+    list.innerHTML='<li class="task-item" style="justify-content:center;color:var(--text2);font-size:13px">暂无活跃项目</li>';
+  }
+}
+
+function openProjectDetail(pid){
+  const p=S.projects.find(x=>x.id===pid);
+  if(!p) return;
+  const tasks=S.tasks.filter(t=>t.project===p.name);
+  // reuse detail panel with project view
+  $('det-title').value = p.name;
+  qsa('#det-prio-group .prio-btn').forEach(b=>b.classList.remove('active'));
+  $('det-area').value = 'projects';
+  $('det-project').value = p.name;
+  $('det-parent-section').style.display='none';
+  $('det-subtask-section').hidden = true;
+  $('det-promote-project').style.display='none';
+  $('det-estpomo').value = 0;
+  $('det-notes').value = p.outcome||'';
+  $('det-pomo-count').textContent = tasks.reduce((s,t)=>s+(t.completedPomodoros||0),0);
+  $('det-created').textContent = '项目 ID: '+p.id.slice(0,8);
+  // add delegated/waiting fields
+  $('det-due').value = '';
+  $('det-tags').innerHTML = '';
+  $('det-delegated-row').hidden = true;
+  $('det-expected-row').hidden = true;
+  $('detail-panel').hidden=false;
+  $('detail-panel').classList.add('show');
+  $('detail-overlay').hidden=false;
+  setTimeout(()=>$('detail-overlay').classList.add('show'),10);
+  // change save to update project outcome
+  $('det-save').onclick = ()=>{
+    const newName=$('det-title').value.trim();
+    if(!newName){toast('项目名称不能为空');return;}
+    p.name=newName;
+    p.outcome=$('det-notes').value;
+    saveState();
+    closeDetail();
+    renderProjectPanelList($('task-list'));
+    renderProjects();
+    renderTasks();
+  };
+  $('det-delete').onclick = ()=>{
+    if(!confirm('确定删除项目"'+p.name+'"？关联任务的项目字段将被清空。')) return;
+    S.tasks.forEach(t=>{if(t.project===p.name) t.project='';});
+    S.projects=S.projects.filter(x=>x.id!==pid);
+    saveState();
+    closeDetail();
+    renderProjects();
+    renderTasks();
+  };
+}
+
+/* ============= CLARIFY ============= */
+let clarifyTaskId = null;
+
+function openClarify(id){
+  clarifyTaskId = id;
+  const t = findTask(id);
+  if(!t) return;
+  $('cl-title').textContent = escHtml(t.title);
+  // populate project select
+  const sel = $('cl-project-sel');
+  sel.innerHTML = '<option value="">无项目</option>';
+  S.projects.forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  // reset extras
+  $('cl-extras').hidden = true;
+  $('cl-project-select').hidden = true;
+  $('cl-waiting-fields').hidden = true;
+  $('cl-delegated').value = '';
+  $('cl-expected').value = '';
+  $('cl-confirm').dataset.action = '';
+  $('modal-clarify').hidden = false;
+}
+
+qsa('.cl-btn').forEach(b=>{
+  b.onclick = ()=>{
+    const action = b.dataset.action;
+    $('cl-confirm').dataset.action = action;
+    if(action==='project'){
+      $('cl-project-select').hidden = false;
+      $('cl-waiting-fields').hidden = true;
+    }else if(action==='waiting'){
+      $('cl-project-select').hidden = true;
+      $('cl-waiting-fields').hidden = false;
+    }else{
+      $('cl-project-select').hidden = true;
+      $('cl-waiting-fields').hidden = true;
+    }
+    $('cl-extras').hidden = (action!=='project' && action!=='waiting');
+  };
+});
+
+$('cl-cancel').onclick = ()=>{ $('modal-clarify').hidden = true; clarifyTaskId = null; };
+
+$('cl-confirm').onclick = ()=>{
+  const action = $('cl-confirm').dataset.action;
+  if(!action || clarifyTaskId===null) return;
+  const t = findTask(clarifyTaskId);
+  if(!t) return;
+  switch(action){
+    case 'delete':
+      deleteTask(clarifyTaskId);
+      toast('已删除');
+      break;
+    case 'doitnow':
+      t.area = 'done';
+      t.completed = true;
+      t.completedAt = isoNow();
+      toast('⚡ 已完成！');
+      break;
+    case 'next':
+      t.area = 'next';
+      toast('已转为下一步行动');
+      break;
+    case 'project':
+      t.area = 'projects';
+      t.project = $('cl-project-sel').value || t.project;
+      toast('已归入项目');
+      break;
+    case 'waiting':
+      t.area = 'waiting';
+      t.delegatedTo = $('cl-delegated').value.trim() || null;
+      t.expectedDate = $('cl-expected').value || null;
+      toast('已设为等待他人');
+      break;
+    case 'someday':
+      t.area = 'someday';
+      toast('已移至将来也许');
+      break;
+    case 'reference':
+      t.area = 'reference';
+      toast('已转为参考信息');
+      break;
+  }
+  $('modal-clarify').hidden = true;
+  clarifyTaskId = null;
+  saveState();
+  renderTasks();
+  updateDoneToday();
+  updateAllViews();
+};
+
+/* ============= WEEKLY REVIEW ============= */
+const weeklyReviewSteps = [
+  { title:'📥 清空收件箱', desc:'将所有待处理的任务厘清到合适的区域', check:()=>S.tasks.filter(t=>t.area==='inbox'&&!t.completed).length===0 },
+  { title:'📁 检查项目', desc:'查看所有活跃项目，确保都有下一步行动', check:()=>S.projects.filter(p=>p.status==='active').length===0 },
+  { title:'▶ 审查行动清单', desc:'检查下一步行动是否仍然有效、优先级正确', check:()=>false },
+  { title:'⏳ 检查等待清单', desc:'检查等待他人的事项，跟进过期项目', check:()=>S.tasks.filter(t=>t.area==='waiting'&&!t.completed).length===0 },
+  { title:'💭 回顾将来也许', desc:'检查 someday 清单，看看是否有可以转为项目的', check:()=>S.tasks.filter(t=>t.area==='someday'&&!t.completed).length===0 },
+  { title:'✅ 回顾已完成', desc:'看看本周完成了哪些任务，给自己鼓励', check:()=>false },
+];
+let wrCurrentStep = 0;
+
+function showWeeklyReview(){
+  wrCurrentStep = 0;
+  renderWRStep();
+  $('weekly-review-overlay').hidden = false;
+}
+
+function renderWRStep(){
+  const step = weeklyReviewSteps[wrCurrentStep];
+  const body = $('wr-body');
+  const counts = {
+    inbox: S.tasks.filter(t=>t.area==='inbox'&&!t.completed).length,
+    projects: S.projects.filter(p=>p.status==='active').length,
+    next: S.tasks.filter(t=>t.area==='next'&&!t.completed).length,
+    waiting: S.tasks.filter(t=>t.area==='waiting'&&!t.completed).length,
+    someday: S.tasks.filter(t=>t.area==='someday'&&!t.completed).length,
+    done: S.tasks.filter(t=>t.area==='done'&&t.completedAt&&t.completedAt.startsWith(todayStr())).length,
+  };
+  let html = `<h4>${step.title}</h4><p style="font-size:13px;color:var(--text2);margin:4px 0 8px">${step.desc}</p>`;
+  html += `<div class="wr-step-item"><span class="wr-count">📥</span> 收件箱待厘清：<strong>${counts.inbox}</strong></div>`;
+  html += `<div class="wr-step-item"><span class="wr-count">📁</span> 活跃项目：<strong>${counts.projects}</strong></div>`;
+  html += `<div class="wr-step-item"><span class="wr-count">▶</span> 下一步行动：<strong>${counts.next}</strong></div>`;
+  html += `<div class="wr-step-item"><span class="wr-count">⏳</span> 等待他人：<strong>${counts.waiting}</strong></div>`;
+  html += `<div class="wr-step-item"><span class="wr-count">💭</span> 将来也许：<strong>${counts.someday}</strong></div>`;
+  html += `<div class="wr-step-item"><span class="wr-count">✅</span> 今日完成：<strong>${counts.done}</strong></div>`;
+  body.innerHTML = html;
+  $('wr-step').textContent = (wrCurrentStep+1)+'/'+weeklyReviewSteps.length;
+  $('wr-prev').hidden = wrCurrentStep===0;
+  $('wr-next').textContent = wrCurrentStep>=weeklyReviewSteps.length-1 ? '完成回顾' : '下一步';
+}
+
+$('wr-next').onclick = ()=>{
+  if(wrCurrentStep >= weeklyReviewSteps.length-1){
+    S._lastWeeklyReviewDate = todayStr();
+    saveState();
+    $('weekly-review-overlay').hidden = true;
+    toast('✅ 本周回顾完成！');
+    return;
+  }
+  wrCurrentStep++;
+  renderWRStep();
+};
+
+$('wr-prev').onclick = ()=>{
+  if(wrCurrentStep>0){ wrCurrentStep--; renderWRStep(); }
+};
+
+$('wr-skip').onclick = ()=>{
+  S._lastWeeklyReviewDate = todayStr();
+  saveState();
+  $('weekly-review-overlay').hidden = true;
+};
 
 function fmtDue(d){
   if(!d) return '';
@@ -712,14 +1001,10 @@ function addFromInput(){
   const raw = input.value.trim();
   if(!raw) return;
   const parsed = parseQuickInput(raw);
-  const activeArea = qs('.gtd-tab.active');
-  const area = activeArea ? activeArea.dataset.area : 'inbox';
 
-  // get quick input bar values
   const qiPrio = qs('.prio-btn.active');
   const prio = qiPrio ? parseInt(qiPrio.dataset.prio) : parsed.priority;
 
-  const qiArea = $('qi-area');
   const qiProject = $('qi-project');
   const qiDue = $('qi-datetime');
   const qiTags = Array.from(qsa('#qi-tags .det-tag')).map(el=>el.dataset.tag);
@@ -727,16 +1012,15 @@ function addFromInput(){
   const mergedTags = [...new Set([...parsed.tags, ...qiTags])];
 
   const task = createTask(parsed.title, {
-    area: qiArea.value || area,
+    area: 'inbox',
     priority: prio,
     tags: mergedTags,
     due: qiDue.value ? new Date(qiDue.value).toISOString() : parsed.due ? parsed.due.toISOString() : null,
     project: qiProject.value || '',
   });
 
-  // if quick input area is 'projects', auto promote to project if task has project field
   input.value = '';
-  toast('已添加到 ' + task.area);
+  toast('已添加到收件箱');
   renderTasks();
   updateDoneToday();
   updateAllViews();
@@ -812,6 +1096,18 @@ function openDetail(id){
   });
   // due
   $('det-due').value = t.due ? new Date(t.due).toISOString().slice(0,16) : '';
+  // delegated / expected
+  const delRow = $('det-delegated-row');
+  const expRow = $('det-expected-row');
+  if(t.area==='waiting'){
+    delRow.hidden = false;
+    expRow.hidden = false;
+    $('det-delegated').value = t.delegatedTo||'';
+    $('det-expected').value = t.expectedDate||'';
+  }else{
+    delRow.hidden = true;
+    expRow.hidden = true;
+  }
   // area
   $('det-area').value = t.area;
   // project
@@ -831,6 +1127,8 @@ function openDetail(id){
     parentSec.style.display='none';
   }
   // subtasks
+  const subSec = $('det-subtask-section');
+  subSec.hidden = false;
   $('det-subtask-count').textContent = (t.subtasks||[]).length;
   renderDetailSubtasks(t);
   // promote button
@@ -918,6 +1216,10 @@ $('det-save').onclick = ()=>{
   t.project = $('det-project').value;
   t.estimatedPomodoros = parseInt($('det-estpomo').value) || 0;
   t.notes = $('det-notes').value;
+  if(t.area==='waiting'){
+    t.delegatedTo = $('det-delegated').value.trim() || null;
+    t.expectedDate = $('det-expected').value || null;
+  }
   saveState();
   closeDetail();
   renderTasks();
@@ -1793,12 +2095,22 @@ function renderProjects(){
   S.projects.forEach((p,i)=>{
     const div = document.createElement('div');
     div.className='project-item';
-    div.innerHTML = `<span class="proj-color" style="background:${p.color}"></span><span class="proj-name">${escHtml(p.name)}</span><span class="proj-del" data-idx="${i}">✕</span>`;
+    const statusIcon = p.status==='complete'?'✅':p.status==='someday'?'💭':'📁';
+    div.innerHTML = `<span class="proj-color" style="background:${p.color}"></span><span class="proj-name">${escHtml(p.name)} ${p.outcome?'<span style="font-size:11px;color:var(--text2)">— '+escHtml(p.outcome)+'</span>':''}</span><span style="font-size:11px;color:var(--text2)">${statusIcon}</span><span class="proj-del" data-idx="${i}">✕</span>`;
     div.querySelector('.proj-del').onclick = ()=>{
       if(!confirm('删除项目 "'+p.name+'"？关联的任务将保留但项目字段会清空。')) return;
-      // clear project field on tasks
       S.tasks.forEach(t=>{ if(t.project===p.name) t.project=''; });
       S.projects.splice(i,1);
+      saveState();
+      renderProjects();
+      renderTasks();
+    };
+    div.onclick = (e)=>{
+      if(e.target.closest('.proj-del')) return;
+      const newOutcome = prompt('项目成果（期望结果）：', p.outcome||'');
+      if(newOutcome!==null) p.outcome = newOutcome;
+      const newStatus = prompt('状态：active / complete / someday', p.status);
+      if(newStatus && ['active','complete','someday'].includes(newStatus)) p.status = newStatus;
       saveState();
       renderProjects();
       renderTasks();
@@ -1826,8 +2138,9 @@ $('btn-add-project').onclick = ()=>{
   const name = $('project-new-name').value.trim();
   if(!name){ toast('请输入项目名称'); return; }
   if(S.projects.find(p=>p.name===name)){ toast('项目已存在'); return; }
+  const outcome = prompt('期望成果（可选，按回车跳过）：') || '';
   const color = $('project-new-color').value;
-  S.projects.push({name, color});
+  S.projects.push({id:uid(), name, color, outcome, status:'active', nextActionId:null});
   saveState();
   renderProjects();
   $('project-new-name').value='';
@@ -1953,7 +2266,7 @@ function applySettings(){
 /* ============= KEYBOARD SHORTCUTS ============= */
 document.addEventListener('keydown', e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
-  const anyModalOpen = !$('modal-complete').hidden || !$('modal-abandon-confirm').hidden || !$('rest-guide-overlay').hidden || !$('daily-launch-overlay').hidden || !$('daily-review-overlay').hidden || !$('modal-quickstart-continue').hidden || !$('onboarding').hidden;
+  const anyModalOpen = !$('modal-complete').hidden || !$('modal-abandon-confirm').hidden || !$('rest-guide-overlay').hidden || !$('daily-launch-overlay').hidden || !$('daily-review-overlay').hidden || !$('modal-quickstart-continue').hidden || !$('onboarding').hidden || !$('modal-clarify').hidden || !$('weekly-review-overlay').hidden;
   if(anyModalOpen && e.key!=='Escape') return;
   switch(e.key){
     case ' ':
@@ -1981,18 +2294,57 @@ document.addEventListener('keydown', e=>{
       $('daily-review-overlay').hidden = true;
       $('modal-quickstart-continue').hidden = true;
       $('onboarding').hidden = true;
+      $('modal-clarify').hidden = true;
+      $('weekly-review-overlay').hidden = true;
+      clarifyTaskId = null;
       break;
   }
 });
 
+/* ============= DATA MIGRATION ============= */
+function migrateData(){
+  if(S.version===3){
+    S.tasks.forEach(t=>{
+      if(t.area==='archive') t.area='done';
+      if(t.projectId===undefined) t.projectId=null;
+      if(t.delegatedTo===undefined) t.delegatedTo=null;
+      if(t.expectedDate===undefined) t.expectedDate=null;
+      if(t.context===undefined) t.context='';
+    });
+    S.projects.forEach(p=>{
+      if(!p.id) p.id=uid();
+      if(p.outcome===undefined) p.outcome='';
+      if(p.status===undefined) p.status='active';
+      if(p.nextActionId===undefined) p.nextActionId=null;
+    });
+    S.version=4;
+    saveState();
+  }
+}
+
 /* ============= INIT ============= */
 function initApp(){
+  migrateData();
   // ensure S has proper timer object
   if(!S.timer) S.timer = freshState().timer;
   if(!S.pomodoroHistory) S.pomodoroHistory = {};
   if(!S.projects) S.projects = [];
   if(!S.dailyFocusTasks) S.dailyFocusTasks = [];
   if(!S.settings) S.settings = {...defaultSettings};
+
+  // set default fields for tasks and projects
+  S.tasks.forEach(t=>{
+    if(t.projectId===undefined) t.projectId=null;
+    if(t.delegatedTo===undefined) t.delegatedTo=null;
+    if(t.expectedDate===undefined) t.expectedDate=null;
+    if(t.context===undefined) t.context='';
+  });
+  S.projects.forEach(p=>{
+    if(!p.id) p.id=uid();
+    if(p.outcome===undefined) p.outcome='';
+    if(p.status===undefined) p.status='active';
+    if(p.nextActionId===undefined) p.nextActionId=null;
+  });
 
   // merge settings with defaults
   Object.keys(defaultSettings).forEach(k=>{
@@ -2002,6 +2354,7 @@ function initApp(){
   // ensure metadata fields
   if(S._reviewedDates===undefined) S._reviewedDates={};
   if(S._lastVisitDate===undefined) S._lastVisitDate=null;
+  if(S._lastWeeklyReviewDate===undefined) S._lastWeeklyReviewDate=null;
 
   // if timer was running on page unload, reset to idle (can't track wall-clock time)
   if(S.timer.phase==='running') S.timer.phase='idle';
@@ -2031,6 +2384,14 @@ function initApp(){
 
   // task resumption
   checkTaskResumption();
+
+  // weekly review
+  if(S._lastWeeklyReviewDate){
+    const [wy,wm,wd] = S._lastWeeklyReviewDate.split('-').map(Number);
+    const wl = new Date(wy,wm-1,wd);
+    const diffDays = Math.floor((Date.now()-wl.getTime())/86400000);
+    if(diffDays>=7) setTimeout(showWeeklyReview, 1200);
+  }
 
   // onboarding or daily launch
   if(S.showOnboarding){

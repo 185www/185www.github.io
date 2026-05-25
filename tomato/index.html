@@ -48,10 +48,12 @@
   <section class="panel panel-tasks">
     <div class="gtd-tabs" id="gtd-tabs">
       <button class="gtd-tab active" data-area="inbox">📥 收件箱 <span class="gtd-cnt" id="cnt-inbox">0</span></button>
-      <button class="gtd-tab" data-area="next">▶ 下一步 <span class="gtd-cnt" id="cnt-next">0</span></button>
+      <button class="gtd-tab" data-area="next">▶ 行动 <span class="gtd-cnt" id="cnt-next">0</span></button>
       <button class="gtd-tab" data-area="projects">📁 项目 <span class="gtd-cnt" id="cnt-project">0</span></button>
-      <button class="gtd-tab" data-area="someday">💭 将来/也许 <span class="gtd-cnt" id="cnt-someday">0</span></button>
-      <button class="gtd-tab" data-area="archive">📦 归档 <span class="gtd-cnt" id="cnt-archive">0</span></button>
+      <button class="gtd-tab" data-area="waiting">⏳ 等待 <span class="gtd-cnt" id="cnt-waiting">0</span></button>
+      <button class="gtd-tab" data-area="someday">💭 将来 <span class="gtd-cnt" id="cnt-someday">0</span></button>
+      <button class="gtd-tab" data-area="reference">📚 参考 <span class="gtd-cnt" id="cnt-reference">0</span></button>
+      <button class="gtd-tab" data-area="done">✅ 完成 <span class="gtd-cnt" id="cnt-done">0</span></button>
     </div>
     <div class="task-input-wrap">
       <input type="text" class="task-input" id="task-input" placeholder="添加任务… #标签 !1紧急 @today" maxlength="200"/>
@@ -67,8 +69,7 @@
       </div>
       <div class="qi-row"><span class="qi-label">标签</span><div class="qi-tags" id="qi-tags"></div><input type="text" class="qi-tag-input" id="qi-tag-input" placeholder="新标签"/></div>
       <div class="qi-row"><span class="qi-label">日期时间</span><input type="datetime-local" class="qi-datetime" id="qi-datetime"/><button class="qi-btn today-btn" id="qi-today-btn">📌 今日</button></div>
-      <div class="qi-row"><span class="qi-label">区域</span>
-        <select class="qi-select" id="qi-area"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option></select>
+      <div class="qi-row"><span class="qi-label">项目</span>
         <select class="qi-select" id="qi-project"><option value="">无项目</option></select>
       </div>
     </div>
@@ -91,7 +92,9 @@
     <div class="detail-field"><label>优先级</label><div class="det-prio-group" id="det-prio-group"><button class="qi-btn prio-btn" data-prio="1">P1</button><button class="qi-btn prio-btn" data-prio="2">P2</button><button class="qi-btn prio-btn" data-prio="3">P3</button><button class="qi-btn prio-btn" data-prio="4">P4</button></div></div>
     <div class="detail-field"><label>标签</label><div class="det-tags" id="det-tags"></div><input type="text" id="det-tag-input" class="det-input" placeholder="添加标签"/></div>
     <div class="detail-field"><label>截止时间</label><input type="datetime-local" id="det-due" class="det-input"/></div>
-    <div class="detail-field"><label>区域</label><select id="det-area" class="det-select"><option value="inbox">📥 收件箱</option><option value="next">▶ 下一步</option><option value="projects">📁 项目</option><option value="someday">💭 将来</option><option value="archive">📦 归档</option></select></div>
+    <div class="detail-field" id="det-delegated-row"><label>委派给</label><input type="text" id="det-delegated" class="det-input" placeholder="谁？"/></div>
+    <div class="detail-field" id="det-expected-row"><label>预期日期</label><input type="date" id="det-expected" class="det-input"/></div>
+    <div class="detail-field"><label>区域</label><select id="det-area" class="det-select"><option value="inbox">📥 收件箱</option><option value="next">▶ 行动</option><option value="projects">📁 项目</option><option value="waiting">⏳ 等待</option><option value="someday">💭 将来</option><option value="reference">📚 参考</option><option value="done">✅ 完成</option></select></div>
     <div class="detail-field"><label>项目</label><select id="det-project" class="det-select"><option value="">无项目</option></select></div>
     <div class="detail-field" id="det-parent-section" style="display:none"><label>父任务</label><span id="det-parent-link" class="det-parent-link"></span></div>
     <div class="detail-field" id="det-subtask-section"><label>子任务 <span id="det-subtask-count"></span></label><div class="det-subtask-list" id="det-subtask-list"></div><div class="det-subtask-add"><input type="text" id="det-subtask-input" class="det-input" placeholder="添加子任务…" maxlength="200"/><button class="btn-sm" id="det-subtask-add-btn">＋</button></div></div>
@@ -251,9 +254,40 @@
   <div class="confetti-container"></div>
   <div class="celebration-text">🎉 太棒了！</div>
 </div>
+<!-- ==================== CLARIFY MODAL ==================== -->
+<div class="modal-overlay" id="modal-clarify" hidden>
+  <div class="modal-box"><h3>🧹 厘清任务</h3>
+    <div class="cl-body"><strong id="cl-title"></strong></div>
+    <div class="cl-options">
+      <button class="cl-btn" data-action="delete">🗑 删除</button>
+      <button class="cl-btn" data-action="doitnow">⚡ 立即执行</button>
+      <button class="cl-btn" data-action="next">▶ 下一步行动</button>
+      <button class="cl-btn" data-action="project">📁 归入项目</button>
+      <button class="cl-btn" data-action="waiting">⏳ 等待他人</button>
+      <button class="cl-btn" data-action="someday">💭 将来也许</button>
+      <button class="cl-btn" data-action="reference">📚 参考信息</button>
+    </div>
+    <div class="cl-extras" id="cl-extras" hidden>
+      <div id="cl-project-select" hidden><span class="cl-label">选择项目：</span><select id="cl-project-sel" class="qi-select"></select></div>
+      <div id="cl-waiting-fields" hidden>
+        <span class="cl-label">委派给：</span><input type="text" id="cl-delegated" class="qi-datetime" placeholder="谁？"/>
+        <span class="cl-label">预期日期：</span><input type="date" id="cl-expected" class="qi-datetime"/>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn-sm" id="cl-cancel">取消</button><button class="btn-sm btn-primary" id="cl-confirm">确认</button></div>
+  </div>
+</div>
+<!-- ==================== WEEKLY REVIEW MODAL ==================== -->
+<div class="weekly-review-overlay" id="weekly-review-overlay" hidden>
+  <div class="weekly-review-card"><h3>🔁 每周回顾</h3>
+    <div class="wr-body" id="wr-body"></div>
+    <div class="wr-nav"><button class="btn-sm" id="wr-prev" hidden>上一步</button><span class="wr-step" id="wr-step"></span><button class="btn-sm btn-primary" id="wr-next">下一步</button></div>
+    <div class="modal-actions"><button class="btn-sm" id="wr-skip">稍后再说</button></div>
+  </div>
+</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=2"></script>
+<script src="./app.js?v=3"></script>
 </body>
 </html>
