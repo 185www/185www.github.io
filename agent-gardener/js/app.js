@@ -506,7 +506,7 @@
 
     // Refresh on visibility change (user returns to tab)
     document.addEventListener('visibilitychange', () => {
-      if(!document.hidden && !md.classList.contains('hidden')) {
+      if(!document.hidden) {
         const d2 = Store.dueCheckins();
         if(d2.length) { d2.forEach(t => Store.updTask(t.id, {status:'review'})); render(); }
       }
