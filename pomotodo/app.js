@@ -396,7 +396,7 @@ function skipTimer() {
   if (timer.mode === 'work' && timer.remaining < total * 0.5) {
     var session = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      type: timer.mode, start: timer.startedAt || new Date().toISOString(),
+      type: timer.mode, start: timer.startedAt || new Date(Date.now() - (total - timer.remaining) * 1000).toISOString(),
       end: new Date().toISOString(), duration: total - timer.remaining, taskId: null
     };
     S.sessions.push(session); timer.cycleCount++; saveState();
