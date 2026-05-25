@@ -17,8 +17,9 @@ self.onmessage=function(e){
   const d=e.data;
   if(d.type==='start'){
     if(running&&intervalId) clearInterval(intervalId);
-    startTime=Date.now();
-    totalSeconds=d.remaining;
+    const offset=(d.total||d.remaining)-d.remaining;
+    startTime=Date.now()-(offset*1000);
+    totalSeconds=d.total||d.remaining;
     running=true;
     intervalId=setInterval(tick,200);
     tick();

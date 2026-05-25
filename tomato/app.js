@@ -485,12 +485,21 @@ function deleteTask(id){
 function toggleTaskComplete(id){
   const t = findTask(id);
   if(!t) return;
-  if(t.area==='archive') return;
+  if(t.area==='archive' && t.completed){
+    t.completed = false;
+    t.completedAt = null;
+    t.area = 'inbox';
+    saveState();
+    renderTasks();
+    updateDoneToday();
+    updateAllViews();
+    return;
+  }
   // check subtasks
   if(!t.completed && t.subtasks && t.subtasks.length){
     const allDone = t.subtasks.every(st=>{
       const stt = findTask(st.id);
-      return stt && stt.completed;
+      return !stt || stt.completed;
     });
     if(!allDone){
       toast('请先完成所有子任务');
@@ -713,7 +722,7 @@ function addFromInput(){
   const qiArea = $('qi-area');
   const qiProject = $('qi-project');
   const qiDue = $('qi-datetime');
-  const qiTags = qsa('#qi-tags .det-tag').map(el=>el.dataset.tag);
+  const qiTags = Array.from(qsa('#qi-tags .det-tag')).map(el=>el.dataset.tag);
 
   const mergedTags = [...new Set([...parsed.tags, ...qiTags])];
 
@@ -774,6 +783,10 @@ $('qi-today-btn').onclick = ()=>{
 let detailTaskId = null;
 
 function openDetail(id){
+  if(closeDetailTimer){
+    clearTimeout(closeDetailTimer);
+    closeDetailTimer = null;
+  }
   detailTaskId = id;
   const t = findTask(id);
   if(!t) return;
@@ -956,12 +969,16 @@ $('det-promote-project').onclick = ()=>{
   toast('已转为项目');
 };
 
+let closeDetailTimer = null;
+
 function closeDetail(){
   $('detail-panel').classList.remove('show');
   $('detail-overlay').classList.remove('show');
-  setTimeout(()=>{
+  if(closeDetailTimer) clearTimeout(closeDetailTimer);
+  closeDetailTimer = setTimeout(()=>{
     $('detail-panel').hidden = true;
     $('detail-overlay').hidden = true;
+    closeDetailTimer = null;
   }, 250);
   detailTaskId = null;
 }
@@ -1735,14 +1752,14 @@ bindSettingToggle('opt-interrupt-confirm','interruptConfirm');
 bindSettingToggle('opt-sound','sound');
 bindSettingToggle('opt-wakelock','wakelock');
 
+const settingsKeyMap = {work:'work', short:'shortBreak', long:'longBreak', interval:'longBreakInterval'};
 ['opt-work','opt-short','opt-long','opt-interval'].forEach(id=>{
   $(id).onchange = function(){
-    const key = id.replace('opt-','');
+    const key = settingsKeyMap[id.replace('opt-','')];
     const val = parseInt(this.value);
     if(val<1) return;
     S.settings[key] = val;
     saveState();
-    // reset timer if idle
     if(S.timer.phase==='idle'){
       S.timer.remaining = S.settings[S.timer.mode]*60;
       S.timer.total = S.settings[S.timer.mode]*60;
