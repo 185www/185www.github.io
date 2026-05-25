@@ -2533,3 +2533,16 @@ body:has(.resumption-bar:not([hidden])) .app-header {
   border-radius: 6px;
   padding: 6px 8px;
 }
+
+/* ===== [hidden] fixes for all overlays ===== */
+.daily-launch-overlay[hidden],
+.daily-review-overlay[hidden],
+.rest-guide-overlay[hidden],
+.celebration-overlay[hidden],
+.detail-overlay[hidden],
+.onboarding-overlay[hidden],
+.modal-overlay[hidden] { display: none !important; }
+
+.resumption-bar[hidden] { display: none !important; }
+
+.daily-focus-section[hidden] { display: none !important; }
