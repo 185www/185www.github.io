@@ -1817,8 +1817,19 @@ function onQuickStartComplete(taskId) {
 
 
 function confirmQuickStartContinue() {
-  var overlay = document.getElementById('modal-quickstart-continue');
-  if (overlay) overlay.hidden = true;
+  document.getElementById('modal-quickstart-continue').hidden = true;
+  closeActiveModal();
+  // Record the 5-min warm-up session
+  var now = new Date().toISOString();
+  var session = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    type: 'work', start: now, end: now, duration: 5 * 60, taskId: _quickStartTaskId
+  };
+  S.sessions.push(session);
+  if (_quickStartTaskId) {
+    var t = S.tasks.find(function(x) { return x.id === _quickStartTaskId; });
+    if (t) t.pomodorosCompleted++;
+  }
   // Switch to full 25-min pomodoro
   timer.mode = 'work';
   timer.remaining = S.settings.workDuration * 60;
@@ -1832,11 +1843,23 @@ function confirmQuickStartContinue() {
 }
 
 function declineQuickStartContinue() {
-  var overlay = document.getElementById('modal-quickstart-continue');
-  if (overlay) overlay.hidden = true;
-  // Record the 5-min session and go to break
+  document.getElementById('modal-quickstart-continue').hidden = true;
+  closeActiveModal();
+  // Record the 5-min warm-up session
+  var now = new Date().toISOString();
+  var taskId = _quickStartTaskId;
+  var session = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    type: 'work', start: now, end: now, duration: 5 * 60, taskId: taskId
+  };
+  S.sessions.push(session);
+  if (taskId) {
+    var t = S.tasks.find(function(x) { return x.id === taskId; });
+    if (t) t.pomodorosCompleted++;
+  }
   _quickStartTaskId = null;
   saveState();
+  updateDoneList();
   toast('👍 5分钟也很好，积少成多！');
 }
 
