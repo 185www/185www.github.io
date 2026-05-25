@@ -1535,7 +1535,15 @@ function importData(file) {
 // ==================== V5 FEATURES ====================
 
 // --- P-02: Rest Guide ---
-fu
+function showRestGuide() {
+  if (!S.settings.restGuideEnabled) return;
+  queueModal('rest-guide', function() {
+    document.getElementById('rest-guide-overlay').hidden = false;
+    document.getElementById('rest-options').hidden = false;
+    document.getElementById('rest-timer-display').hidden = true;
+    _activeModal = 'rest-guide';
+  }, 50);
+}
 function closeRestGuide() {
   document.getElementById('rest-guide-overlay').hidden = true;
   closeActiveModal();
@@ -1793,6 +1801,21 @@ function quickStartOverdue(taskId) {
 
 // Handle 5-min quick start completion → prompt to continue
 fu
+function onQuickStartComplete(taskId) {
+  var t = S.tasks.find(function(x) { return x.id === taskId; });
+  if (!t) return;
+  queueModal('quickstart-continue', function() {
+    var overlay = document.getElementById('modal-quickstart-continue');
+    if (overlay) {
+      var nameEl = document.getElementById('qs-task-name');
+      if (nameEl) nameEl.textContent = t.title;
+      overlay.hidden = false;
+      _activeModal = 'quickstart-continue';
+    }
+  }, 60);
+}
+
+
 function confirmQuickStartContinue() {
   var overlay = document.getElementById('modal-quickstart-continue');
   if (overlay) overlay.hidden = true;
