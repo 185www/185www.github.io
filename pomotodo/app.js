@@ -337,12 +337,12 @@ function resetTimer() {
 }
 
 function onTimerComplete() {
- // V5 P-08: Handle quick start 5-min completion
+  // V5 P-08: Handle quick start 5-min completion
  if (_quickStartTaskId && timer.mode === 'work') {
-  var qId = _quickStartTaskId;
-  _quickStartTaskId = null;
-  onQuickStartComplete(qId);
-  return;
+   clearTimerState();
+   releaseWakeLock();
+   onQuickStartComplete(_quickStartTaskId);
+   return;
  }
   var dur = getModeDuration(timer.mode) * 60;
   var session = {
