@@ -2423,11 +2423,16 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
     if (s) s.addEventListener('change', readSettings);
   });
   var volEl = document.getElementById('opt-volume');
-  if (volEl) volEl.addEventListener('input', function(e) {
-    var rv = document.getElementById('range-val');
-    if (rv) rv.textContent = Math.round(e.target.value * 100) + '%';
-    readSettings();
-  });
+  if (volEl) (function() {
+    var _saveTimer = null;
+    volEl.addEventListener('input', function(e) {
+      var rv = document.getElementById('range-val');
+      if (rv) rv.textContent = Math.round(e.target.value * 100) + '%';
+      if (_saveTimer) clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(readSettings, 200);
+    });
+    volEl.addEventListener('change', readSettings);
+  })();
   var testSound = document.getElementById('btn-test-sound');
   if (testSound) testSound.addEventListener('click', function() { chime(S.settings.soundVolume); });
 
