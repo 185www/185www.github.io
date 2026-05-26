@@ -552,11 +552,12 @@ function updateTask(id, updates) {
 function addProject(name, color) {
   if (!name) return;
   S.projects.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, color: color || '#e74c3c'});
-  saveState(); renderProjectList(); renderProjectSelects();
+  saveState(); renderProjectList(); renderProjectSelects(); updateGtdCounts();
 }
 function deleteProject(id) {
   S.projects = S.projects.filter(function(x) { return x.id !== id; });
   S.tasks.forEach(function(t) { if (t.projectId === id) t.projectId = ''; });
+  updateGtdCounts();
   saveState(); renderProjectList(); renderProjectSelects();
 }
 function renderProjectSelects() {
@@ -599,6 +600,7 @@ function updateGtdCounts() {
     else if (t.area === 'someday') c.someday++;
     else c.inbox++;
   });
+  c.projects = S.projects.length;
   var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
   set('cnt-inbox', c.inbox); set('cnt-next', c.next);
   set('cnt-project', c.projects); set('cnt-someday', c.someday);
@@ -1214,6 +1216,15 @@ function renderTasks() {
   var filter = currentFilter;
   var tasks = S.tasks.slice();
 
+  // 隐藏有父任务的子任务（子任务在父任务详情中查看）
+  tasks = tasks.filter(function(t) {
+    if (t.parentId) {
+      var p = S.tasks.find(function(x) { return x.id === t.parentId; });
+      if (p) return false;
+    }
+    return true;
+  });
+
   // Filter by GTD area
   if (currentArea && currentArea !== 'all') {
     tasks = tasks.filter(function(t) {
@@ -1740,11 +1751,13 @@ function confirmDailyLaunch() {
  checks.forEach(function(cb) { ids.push(cb.dataset.taskId); });
  S.settings.dailyFocusIds = ids;
  S.tasks.forEach(function(t) { t.dailyFocus = ids.indexOf(t.id) >= 0; });
- S.settings.lastLaunchDate = new Date().toISOString().slice(0, 10);
- saveState();
- document.getElementById('daily-launch-overlay').hidden = true;
+  S.settings.lastLaunchDate = new Date().toISOString().slice(0, 10);
+  saveState();
+  renderTasks();
+  updateGtdCounts();
+  document.getElementById('daily-launch-overlay').hidden = true;
   closeActiveModal();
- renderDailyFocus();
+  renderDailyFocus();
  if (ids.length > 0) { timer.taskId = ids[0]; updateTimerUI(); }
 }
 
