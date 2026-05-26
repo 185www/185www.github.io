@@ -1,4 +1,35 @@
 const Verifier = {
+  valance(input, expectedValences) {
+    if (!input || typeof input !== 'object') return false;
+    for (const substanceKey in expectedValences) {
+      const expected = expectedValences[substanceKey];
+      const given = input[substanceKey];
+      if (!given) return false;
+      for (const el in expected) {
+        if (parseInt(given[el], 10) !== expected[el]) return false;
+      }
+    }
+    return true;
+  },
+
+  rank(input, correctOrder) {
+    if (!Array.isArray(input)) return false;
+    if (input.length !== correctOrder.length) return false;
+    return input.every((v, i) => (parseInt(v, 10) - 1) === correctOrder[i]);
+  },
+
+  construct(input, expectedParts) {
+    if (!input || !input.trim()) return false;
+    const normalize = (s) => s
+      .replace(/\s+/g, '')
+      .replace(/[→＝=——]/g, '-')
+      .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, d => '0123456789'['₀₁₂₃₄₅₆₇₈₉'.indexOf(d)])
+      .toLowerCase();
+    const cleaned = normalize(input);
+    const expected = normalize(expectedParts);
+    return cleaned === expected;
+  },
+
   fillBlank(input, expected, options = {}) {
     if (!input || !input.trim()) return false;
     const normalized = input.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -9,30 +40,10 @@ const Verifier = {
     return normalized === normalizedExpected;
   },
 
-  equation(input, expectedEquation) {
-    if (!input || !input.trim()) return { pass: false };
-    const normalized = input.trim().replace(/\s+/g, ' ').replace(/→/g, '=').replace(/＝/g, '=').replace(/——/g, '=');
-    const expected = expectedEquation.trim().replace(/\s+/g, ' ').replace(/→/g, '=').replace(/＝/g, '=').replace(/——/g, '=');
-    return { pass: normalized === expected, expected: expectedEquation };
-  },
-
-  coefficients(input, expectedArray) {
-    if (!input || !input.trim()) return false;
-    const parts = input.trim().split(/[,，\s]+/).map(s => parseInt(s, 10));
-    if (parts.length !== expectedArray.length) return false;
-    return parts.every((p, i) => p === expectedArray[i]);
-  },
-
   choice(input, options, correctIndex) {
     if (input === undefined || input === null || input === '') return false;
     const idx = typeof input === 'number' ? input : parseInt(input, 10);
     return idx === correctIndex;
-  },
-
-  sequence(input, expectedOrder) {
-    if (!Array.isArray(input)) return false;
-    if (input.length !== expectedOrder.length) return false;
-    return input.every((item, i) => item === expectedOrder[i]);
   },
 
   multiChoice(input, correctIndices) {
@@ -43,9 +54,9 @@ const Verifier = {
     return sorted.every((v, i) => v === sortedCorrect[i]);
   },
 
-  identifyError(input, errorPositions) {
-    if (!input) return false;
-    const pos = parseInt(input, 10);
-    return errorPositions.includes(pos);
+  keyTerms(input, requiredTerms) {
+    if (!input || !input.trim()) return false;
+    const normalized = input.toLowerCase();
+    return requiredTerms.every(term => normalized.includes(term.toLowerCase()));
   }
 };

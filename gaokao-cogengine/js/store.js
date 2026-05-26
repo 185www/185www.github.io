@@ -46,7 +46,7 @@ const Store = {
     record.history.push({
       date: record.lastReviewDate,
       passed: result.passed,
-      failedStep: result.failedStep || null
+      failedSteps: result.failedSteps || (result.failedStep !== undefined ? [result.failedStep] : [])
     });
     if (record.history.length > 100) {
       record.history = record.history.slice(-100);

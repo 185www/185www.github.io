@@ -217,6 +217,164 @@ body {
 .feedback-success { background: #dcfce7; color: var(--success); }
 .feedback-error { background: #fef2f2; color: var(--danger); }
 
+/* Valence Marking */
+.valence-marking { display: flex; flex-direction: column; gap: 16px; }
+.valence-substance {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.valence-formula {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--primary);
+}
+.valence-elements { display: flex; gap: 12px; flex-wrap: wrap; }
+.valence-element {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.element-symbol {
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 20px;
+}
+.valence-input {
+  width: 56px;
+  padding: 6px 8px;
+  font-size: 15px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+  -webkit-appearance: none;
+  outline: none;
+}
+.valence-input:focus { border-color: var(--primary); }
+
+/* Ranking */
+.rank-items { display: flex; flex-direction: column; gap: 10px; }
+.rank-instruction {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.rank-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.rank-label { font-size: 15px; font-weight: 500; }
+.rank-input {
+  width: 52px;
+  padding: 6px 8px;
+  font-size: 15px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+  -webkit-appearance: none;
+  outline: none;
+}
+.rank-input:focus { border-color: var(--primary); }
+
+/* Reasoning Card */
+.reasoning-card {
+  margin-bottom: 16px;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 10px;
+  padding: 16px;
+}
+.reasoning-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 8px;
+}
+.reasoning-body {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #78350f;
+}
+
+/* Button Secondary */
+.btn-secondary {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary);
+  background: #eff6ff;
+  border: 1.5px solid var(--primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-secondary:active { opacity: .7; }
+
+/* Reasoning Trace */
+.reasoning-trace {
+  margin: 20px 0;
+  padding: 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.trace-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+.trace-step {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.trace-step:last-child { border-bottom: none; }
+.trace-step-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+.trace-step-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* Result Card */
+.result-card {
+  text-align: center;
+  padding: 24px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.result-pass { background: #dcfce7; }
+.result-fail { background: #fef2f2; }
+.result-icon {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.result-pass .result-icon { color: var(--success); }
+.result-fail .result-icon { color: var(--danger); }
+.result-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.result-actions { margin-top: 8px; }
+
 @media (min-width: 640px) {
   .page { padding: 24px 32px; }
   .page-title { font-size: 24px; }

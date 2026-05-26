@@ -250,8 +250,19 @@ const App = {
       this._finishExercise();
       return;
     }
+
     let inputHtml = '';
-    if (stepData.type === 'fill-blank') {
+    let postHtml = '';
+
+    if (stepData.showingReasoning) {
+      inputHtml = `
+        <div class="reasoning-card">
+          <div class="reasoning-title">推理路径</div>
+          <div class="reasoning-body">${stepData.reasoningText.replace(/\n/g, '<br>')}</div>
+        </div>
+        <button class="btn-secondary" id="continue-btn">理解了，继续</button>
+      `;
+    } else if (stepData.type === 'fill-blank' || stepData.type === 'construct-equation') {
       inputHtml = `
         <input type="text" class="answer-input" id="answer-input" placeholder="输入答案..." autocomplete="off">
         <button class="btn-primary" id="submit-answer">提交</button>
@@ -270,7 +281,45 @@ const App = {
         </div>
         <button class="btn-primary" id="submit-answer">提交</button>
       `;
+    } else if (stepData.type === 'mark-valence') {
+      const substances = stepData.substances || [];
+      postHtml = `<button class="btn-primary" id="submit-answer">提交</button>`;
+      inputHtml = `
+        <div class="valence-marking">
+          ${substances.map((sub, si) => `
+            <div class="valence-substance">
+              <div class="valence-formula">${sub.formula}</div>
+              <div class="valence-elements">
+                ${Object.keys(sub.valences).map(el => `
+                  <div class="valence-element">
+                    <span class="element-symbol">${el}</span>
+                    <input type="number" class="valence-input" id="valence-${sub.key}-${el}" placeholder="?" min="-10" max="10">
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else if (stepData.type === 'rank-items') {
+      const items = stepData.items || [];
+      postHtml = `<button class="btn-primary" id="submit-answer">提交</button>`;
+      inputHtml = `
+        <div class="rank-items">
+          <p class="rank-instruction">请为以下各项输入顺序编号（1, 2, 3...）</p>
+          ${items.map((item, i) => `
+            <div class="rank-item">
+              <span class="rank-label">${item}</span>
+              <input type="number" class="rank-input" id="rank-${i}" placeholder="序号" min="1" max="${items.length}">
+            </div>
+          `).join('')}
+        </div>
+      `;
     }
+
+    const progressPct = stepData.showingReasoning
+      ? (stepData.index - 1) / stepData.total * 100
+      : (stepData.index - 1) / stepData.total * 100;
 
     app.innerHTML = `
       <div class="page">
@@ -281,11 +330,14 @@ const App = {
         <div class="exercise-progress">
           <div class="step-indicator">步骤 ${stepData.index}/${stepData.total}</div>
           <div class="progress-track">
-            <div class="progress-fill" style="width:${(stepData.index - 1) / stepData.total * 100}%"></div>
+            <div class="progress-fill" style="width:${progressPct}%"></div>
           </div>
         </div>
         <div class="step-prompt">${stepData.prompt.replace(/\n/g, '<br>')}</div>
-        <div class="step-input">${inputHtml}</div>
+        ${stepData.showingReasoning ? '' : '<div class="step-input">'}
+        ${inputHtml}
+        ${stepData.showingReasoning ? '' : '</div>'}
+        ${postHtml || ''}
         <div class="feedback-area" id="feedback-area"></div>
       </div>
     `;
@@ -298,6 +350,15 @@ const App = {
 
     app.querySelector('#submit-answer')?.addEventListener('click', () => {
       this._handleAnswer();
+    });
+
+    app.querySelector('#continue-btn')?.addEventListener('click', () => {
+      const cont = ExerciseEngine.continueAfterWrong();
+      if (cont.status === 'complete') {
+        this._finishExercise(cont.result);
+      } else {
+        this._renderExerciseStep();
+      }
     });
 
     app.querySelector('#show-hint')?.addEventListener('click', () => {
@@ -315,7 +376,8 @@ const App = {
     if (!stepData) return;
 
     let answer;
-    if (stepData.type === 'fill-blank') {
+
+    if (stepData.type === 'fill-blank' || stepData.type === 'construct-equation') {
       answer = document.getElementById('answer-input')?.value || '';
     } else if (stepData.type === 'choice') {
       const selected = document.querySelector('input[name="answer"]:checked');
@@ -323,26 +385,33 @@ const App = {
     } else if (stepData.type === 'multi-choice') {
       const selected = document.querySelectorAll('input[name="answer"]:checked');
       answer = Array.from(selected).map(el => parseInt(el.value));
-    }
-
-    if (answer === null || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
-      this._showFeedback('请先输入答案', 'error');
-      return;
+    } else if (stepData.type === 'mark-valence') {
+      const substances = stepData.substances || [];
+      answer = {};
+      substances.forEach(sub => {
+        answer[sub.key] = {};
+        Object.keys(sub.valences).forEach(el => {
+          const input = document.getElementById(`valence-${sub.key}-${el}`);
+          answer[sub.key][el] = input ? parseInt(input.value, 10) : null;
+        });
+      });
+    } else if (stepData.type === 'rank-items') {
+      const items = stepData.items || [];
+      answer = [];
+      items.forEach((item, i) => {
+        const input = document.getElementById(`rank-${i}`);
+        answer[i] = input ? parseInt(input.value, 10) : null;
+      });
     }
 
     const result = ExerciseEngine.submitAnswer(answer);
 
-    if (result.status === 'failed') {
-      this._showFeedback(`回答错误！正确：${result.result.expectedAnswer || ''}`, 'error');
-      setTimeout(() => {
-        this._finishExercise(result.result);
-      }, 1500);
-    } else if (result.status === 'passed') {
-      this._showFeedback('全部回答正确！', 'success');
-      setTimeout(() => {
-        this._finishExercise(result.result);
-      }, 1000);
-    } else {
+    if (result.status === 'wrong') {
+      this._showFeedback('这一步的推理有误，请查看正确的推理路径', 'error');
+      this._renderExerciseStep();
+    } else if (result.status === 'complete') {
+      this._finishExercise(result.result);
+    } else if (result.status === 'correct') {
       this._showFeedback('回答正确！', 'success');
       setTimeout(() => {
         this._renderExerciseStep();
@@ -357,12 +426,56 @@ const App = {
 
   _finishExercise(result) {
     const ex = this._currentExerciseData;
+    const app = document.getElementById('app');
+
     if (result) {
       Store.updateRecord(ex.id, result);
     }
-    ExerciseEngine.reset();
-    this.currentView = 'exercises';
-    this.render();
+
+    const reasoningHtml = (result.reasoningTrace || []).length > 0 ? `
+      <div class="reasoning-trace">
+        <h3 class="trace-title">完整推理路径</h3>
+        ${result.reasoningTrace.map(t => `
+          <div class="trace-step">
+            <div class="trace-step-number">步骤 ${t.step}</div>
+            <div class="trace-step-body">${t.reasoning.replace(/\n/g, '<br>')}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    app.innerHTML = `
+      <div class="page">
+        <header class="page-header">
+          <h1 class="page-title">${result.title}</h1>
+        </header>
+        <div class="result-card ${result.passed ? 'result-pass' : 'result-fail'}">
+          <div class="result-icon">${result.passed ? '✓' : '✗'}</div>
+          <div class="result-text">
+            ${result.passed
+              ? '推理路径全部正确！你对这个化学问题的推理链掌握得很好。'
+              : `推理路径中有 ${result.failedSteps.length} 步需要纠正。请仔细阅读正确的推理过程。`
+            }
+          </div>
+        </div>
+        ${reasoningHtml}
+        <div class="result-actions">
+          <button class="btn-primary" id="back-to-list">返回练习列表</button>
+          ${!result.passed ? '<button class="btn-secondary" id="retry-exercise" style="margin-top:8px">重做本题</button>' : ''}
+        </div>
+      </div>
+    `;
+
+    app.querySelector('#back-to-list')?.addEventListener('click', () => {
+      ExerciseEngine.reset();
+      this.currentView = 'exercises';
+      this.render();
+    });
+
+    app.querySelector('#retry-exercise')?.addEventListener('click', () => {
+      ExerciseEngine.reset();
+      this.startExercise(this._currentExerciseIndex);
+    });
   }
 };
 

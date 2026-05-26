@@ -1,205 +1,313 @@
 const ExerciseTemplates = {
-  'equation-builder': {
-    name: '方程式构建',
-    render(params) {
-      return [
-        {
-          id: 1,
-          prompt: `写出反应物（${params.description || ''}）`,
-          type: 'fill-blank',
-          hint: params.hints?.[0] || '',
-          validate(input) {
-            return Verifier.fillBlank(input, params.reactants, { fuzzy: true });
-          },
-          expected: params.reactants
-        },
-        {
-          id: 2,
-          prompt: '判断该反应的类型',
-          type: 'choice',
-          options: params.reactionType.options,
-          validate(input) {
-            return Verifier.choice(input, params.reactionType.options, params.reactionType.correctIndex);
-          },
-          expected: params.reactionType.options[params.reactionType.correctIndex]
-        },
-        {
-          id: 3,
-          prompt: '写出反应产物',
-          type: 'fill-blank',
-          hint: params.hints?.[1] || '',
-          validate(input) {
-            return Verifier.fillBlank(input, params.products, { fuzzy: true });
-          },
-          expected: params.products
-        },
-        {
-          id: 4,
-          prompt: '配平方程式，输入各物质的系数（用逗号分隔）',
-          type: 'fill-blank',
-          hint: params.hints?.[2] || '',
-          validate(input) {
-            return Verifier.coefficients(input, params.coefficients);
-          },
-          expected: params.coefficients.join(', ')
-        }
-      ];
-    }
-  },
-
-  'concept-mapper': {
-    name: '概念映射',
+  'redox-reasoning': {
+    name: '氧化还原推理',
     render(params) {
       const steps = [];
-      steps.push({
-        id: 1,
-        prompt: `补全核心定义：${params.definition.blank}`,
-        type: 'fill-blank',
-        validate(input) {
-          return Verifier.fillBlank(input, params.definition.answer, { fuzzy: true });
-        },
-        expected: params.definition.answer
-      });
-      if (params.attributes) {
+
+      if (params.substances) {
         steps.push({
-          id: 2,
-          prompt: '判断以下哪些描述是正确的？（可多选）',
-          type: 'multi-choice',
-          options: params.attributes.items,
+          id: 1,
+          prompt: `标出下列物质中各元素的化合价：\n${params.substances.map(s => s.formula).join(' + ')} → ?`,
+          type: 'mark-valence',
+          substances: params.substances,
           validate(input) {
-            return Verifier.multiChoice(input, params.attributes.correctIndices);
+            return Verifier.valance(input, params.substances.reduce((acc, s) => {
+              acc[s.key] = s.valences;
+              return acc;
+            }, {}));
           },
-          expected: params.attributes.correctIndices.map(i => params.attributes.items[i]).join('、')
+          reasoningText: params.reasoning?.[0] || ''
         });
       }
-      if (params.boundaries) {
+
+      if (params.identifyOptions) {
         steps.push({
-          id: 3,
-          prompt: '以下哪些属于该概念的范畴？（可多选）',
-          type: 'multi-choice',
-          options: params.boundaries.items,
+          id: steps.length + 1,
+          prompt: params.identifyPrompt || '根据化合价变化，判断哪个物质是氧化剂（得电子、化合价降低），哪个是还原剂（失电子、化合价升高）？',
+          type: 'choice',
+          options: params.identifyOptions,
           validate(input) {
-            return Verifier.multiChoice(input, params.boundaries.correctIndices);
+            return Verifier.choice(input, params.identifyOptions, params.identifyCorrectIndex);
           },
-          expected: params.boundaries.correctIndices.map(i => params.boundaries.items[i]).join('、')
+          reasoningText: params.reasoning?.[1] || ''
         });
       }
+
+      if (params.priorityItems) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: params.priorityPrompt || '体系中存在多个还原性物质时，需要判断优先顺序。请按还原性从强到弱排序（输入序号，用逗号分隔）',
+          type: 'rank-items',
+          items: params.priorityItems,
+          hint: params.priorityHint || '还原性强的先被氧化',
+          validate(input) {
+            const parsed = (input || '').trim().split(/[,，\s]+/).map(s => parseInt(s, 10));
+            return Verifier.rank(parsed, params.priorityOrder);
+          },
+          reasoningText: params.reasoning?.[2] || ''
+        });
+      }
+
+      if (params.semiPrompt) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: params.semiPrompt,
+          type: 'fill-blank',
+          hint: params.semiHint || '',
+          validate(input) {
+            return Verifier.fillBlank(input, params.semiAnswer, { fuzzy: true });
+          },
+          reasoningText: params.reasoning?.[3] || ''
+        });
+      }
+
+      if (params.finalEquation) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: '写出完整的配平化学方程式（用 → 连接，反应物在左，生成物在右）',
+          type: 'construct-equation',
+          hint: params.finalHint || '',
+          validate(input) {
+            return Verifier.construct(input, params.finalEquation);
+          },
+          reasoningText: params.reasoning?.[params.reasoning ? params.reasoning.length - 1 : 0] || ''
+        });
+      }
+
       return steps;
     }
   },
 
-  comparator: {
-    name: '对比辨析',
+  'concept-construction': {
+    name: '概念建构',
     render(params) {
-      return [
-        {
-          id: 1,
-          prompt: `选出 ${params.conceptA} 的正确特征（可多选）`,
-          type: 'multi-choice',
-          options: params.featuresA.items,
-          validate(input) {
-            return Verifier.multiChoice(input, params.featuresA.correctIndices);
-          },
-          expected: params.featuresA.correctIndices.map(i => params.featuresA.items[i]).join('、')
-        },
-        {
-          id: 2,
-          prompt: `选出 ${params.conceptB} 的正确特征（可多选）`,
-          type: 'multi-choice',
-          options: params.featuresB.items,
-          validate(input) {
-            return Verifier.multiChoice(input, params.featuresB.correctIndices);
-          },
-          expected: params.featuresB.correctIndices.map(i => params.featuresB.items[i]).join('、')
-        },
-        {
-          id: 3,
-          prompt: `两者最本质的区别是什么？`,
-          type: 'choice',
-          options: params.difference.options,
-          validate(input) {
-            return Verifier.choice(input, params.difference.options, params.difference.correctIndex);
-          },
-          expected: params.difference.options[params.difference.correctIndex]
-        }
-      ];
-    }
-  },
+      const steps = [];
 
-  'procedure-sequencer': {
-    name: '流程排序',
-    render(params) {
-      return [
-        {
+      if (params.cases && params.caseCommonality) {
+        steps.push({
           id: 1,
-          prompt: `从以下选项中选出该流程包含的正确步骤（可多选）`,
+          prompt: `分析以下案例，找出它们的共同特征：\n${params.cases.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\n这些案例的共同点是：`,
           type: 'multi-choice',
-          options: params.steps.items,
+          options: params.caseOptions,
           validate(input) {
-            return Verifier.multiChoice(input, params.steps.correctIndices);
+            return Verifier.multiChoice(input, params.caseCorrectIndices);
           },
-          expected: `${params.steps.correctIndices.length}个步骤`
-        },
-        {
-          id: 2,
-          prompt: '将上述正确步骤按正确顺序排列（输入序号，用逗号分隔）',
+          reasoningText: params.reasoning?.[0] || `共同特征：${params.caseCommonality}`
+        });
+      }
+
+      if (params.definitionKeyTerms) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: `根据以上共同特征，给出"${params.conceptName}"的完整定义`,
           type: 'fill-blank',
-          hint: '按操作先后顺序排列',
+          hint: params.definitionHint || '',
           validate(input) {
-            const seq = (input || '').trim().split(/[,，\s]+/).map(s => parseInt(s, 10));
-            return Verifier.sequence(seq, params.steps.correctOrder);
+            return Verifier.keyTerms(input, params.definitionKeyTerms);
           },
-          expected: params.steps.correctOrder.join(' → ')
-        },
-        {
-          id: 3,
-          prompt: '以下哪些是该操作的关键注意事项？（可多选）',
+          reasoningText: params.reasoning?.[1] || `完整的定义：${params.fullDefinition}`
+        });
+      }
+
+      if (params.boundaryItems) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: '以下哪些属于该概念的范畴？（可多选）',
           type: 'multi-choice',
-          options: params.notes.items,
+          options: params.boundaryItems,
           validate(input) {
-            return Verifier.multiChoice(input, params.notes.correctIndices);
+            return Verifier.multiChoice(input, params.boundaryCorrectIndices);
           },
-          expected: params.notes.correctIndices.map(i => params.notes.items[i]).join('、')
-        }
-      ];
+          reasoningText: params.reasoning?.[2] || ''
+        });
+      }
+
+      if (params.explainPrompt) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: params.explainPrompt,
+          type: 'fill-blank',
+          hint: params.explainHint || '',
+          validate(input) {
+            return Verifier.keyTerms(input, params.explainKeyTerms);
+          },
+          reasoningText: params.reasoning?.[3] || ''
+        });
+      }
+
+      return steps;
     }
   },
 
-  'error-detector': {
-    name: '错误诊断',
+  'comparison-reasoning': {
+    name: '比较推理',
     render(params) {
-      return [
-        {
+      const steps = [];
+
+      if (params.description) {
+        steps.push({
           id: 1,
-          prompt: `以下陈述中有错误：\n"${params.statement}"\n错误出在哪里？`,
+          prompt: `以下描述对应的是哪种物质？\n"${params.description}"\n\n这是 ${params.conceptA} 还是 ${params.conceptB}？`,
           type: 'choice',
-          options: params.errorLocation.options,
+          options: [params.conceptA, params.conceptB],
           validate(input) {
-            return Verifier.choice(input, params.errorLocation.options, params.errorLocation.correctIndex);
+            return Verifier.choice(input, [params.conceptA, params.conceptB], params.identifyCorrectIndex);
           },
-          expected: params.errorLocation.options[params.errorLocation.correctIndex]
-        },
-        {
-          id: 2,
-          prompt: '错误的根本原因是什么？',
+          reasoningText: params.reasoning?.[0] || ''
+        });
+      }
+
+      if (params.excludePrompt) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: params.excludePrompt,
+          type: 'fill-blank',
+          hint: params.excludeHint || '',
+          validate(input) {
+            return Verifier.keyTerms(input, params.excludeKeyTerms);
+          },
+          reasoningText: params.reasoning?.[1] || ''
+        });
+      }
+
+      if (params.differenceOptions) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: '两者最本质的区别是什么？',
           type: 'choice',
-          options: params.explanation.options,
+          options: params.differenceOptions,
           validate(input) {
-            return Verifier.choice(input, params.explanation.options, params.explanation.correctIndex);
+            return Verifier.choice(input, params.differenceOptions, params.differenceCorrectIndex);
           },
-          expected: params.explanation.options[params.explanation.correctIndex]
-        },
-        {
-          id: 3,
+          reasoningText: params.reasoning?.[2] || ''
+        });
+      }
+
+      if (params.scenarioPrompt) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: params.scenarioPrompt,
+          type: 'choice',
+          options: params.scenarioOptions,
+          validate(input) {
+            return Verifier.choice(input, params.scenarioOptions, params.scenarioCorrectIndex);
+          },
+          reasoningText: params.reasoning?.[3] || ''
+        });
+      }
+
+      return steps;
+    }
+  },
+
+  'experimental-reasoning': {
+    name: '实验推理',
+    render(params) {
+      const steps = [];
+
+      if (params.principleOptions) {
+        steps.push({
+          id: 1,
+          prompt: `实验目的：${params.goal}\n完成该实验需要利用什么化学原理？`,
+          type: 'choice',
+          options: params.principleOptions,
+          validate(input) {
+            return Verifier.choice(input, params.principleOptions, params.principleCorrectIndex);
+          },
+          reasoningText: params.reasoning?.[0] || ''
+        });
+      }
+
+      if (params.keyStepItems) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: '以下哪些操作是该实验必需的？（可多选）',
+          type: 'multi-choice',
+          options: params.keyStepItems,
+          validate(input) {
+            return Verifier.multiChoice(input, params.keyStepCorrectIndices);
+          },
+          reasoningText: params.reasoning?.[1] || ''
+        });
+      }
+
+      if (params.orderItems) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: params.orderPrompt || '将所选步骤按正确的操作顺序排列（输入序号，用逗号分隔）',
+          type: 'rank-items',
+          items: params.orderItems,
+          hint: params.orderHint || '',
+          validate(input) {
+            const parsed = (input || '').trim().split(/[,，\s]+/).map(s => parseInt(s, 10));
+            return Verifier.rank(parsed, params.orderCorrect);
+          },
+          reasoningText: params.reasoning?.[2] || ''
+        });
+      }
+
+      if (params.consequenceOptions) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: params.consequencePrompt || '如果顺序出错（比如先做了某步），会造成什么后果？',
+          type: 'choice',
+          options: params.consequenceOptions,
+          validate(input) {
+            return Verifier.choice(input, params.consequenceOptions, params.consequenceCorrectIndex);
+          },
+          reasoningText: params.reasoning?.[3] || ''
+        });
+      }
+
+      return steps;
+    }
+  },
+
+  'error-analysis': {
+    name: '错误分析',
+    render(params) {
+      const steps = [];
+
+      if (params.errorOptions) {
+        steps.push({
+          id: 1,
+          prompt: `以下陈述中有错误：\n"${params.statement}"\n\n错误出在哪里？`,
+          type: 'choice',
+          options: params.errorOptions,
+          validate(input) {
+            return Verifier.choice(input, params.errorOptions, params.errorCorrectIndex);
+          },
+          reasoningText: params.reasoning?.[0] || ''
+        });
+      }
+
+      if (params.principleKeyTerms) {
+        steps.push({
+          id: steps.length + 1,
+          prompt: '从化学原理层面解释：为什么这是错的？哪个概念被误解了？',
+          type: 'fill-blank',
+          hint: params.principleHint || '',
+          validate(input) {
+            return Verifier.keyTerms(input, params.principleKeyTerms);
+          },
+          reasoningText: params.reasoning?.[1] || ''
+        });
+      }
+
+      if (params.correctVersion) {
+        steps.push({
+          id: steps.length + 1,
           prompt: '写出正确的版本',
           type: 'fill-blank',
-          hint: params.hint || '',
+          hint: params.finalHint || '',
           validate(input) {
             return Verifier.fillBlank(input, params.correctVersion, { fuzzy: true });
           },
-          expected: params.correctVersion
-        }
-      ];
+          reasoningText: params.reasoning?.[2] || ''
+        });
+      }
+
+      return steps;
     }
   }
 };
