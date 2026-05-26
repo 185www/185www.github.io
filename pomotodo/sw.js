@@ -1,5 +1,5 @@
-const CACHE = 'pomotodo-v24-modal-queue';
-const ASSETS = ['./', './index.html', './style.css', './app.js', './timer-worker.js', './manifest.json'];
+const CACHE = 'pomotodo-v25';
+const ASSETS = ['./', './index.html?v=24', './style.css?v=24', './app.js?v=24', './timer-worker.js', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -13,7 +13,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(ks =>
-      Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(ks.filter(k => k.startsWith('pomotodo-') && k !== CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
