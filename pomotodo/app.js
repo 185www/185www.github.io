@@ -116,9 +116,13 @@ try {
   timerWorker.onmessage = function(e) {
     var d = e.data;
     if (d.type === 'tick') { timer.remaining = d.remaining; updateTimerUI(); }
-    else if (d.type === 'complete') { timer.remaining = 0; timer.running = false; onTimerComplete(); }
+    else if (d.type === 'complete') {
+      clearInterval(timer.intervalId); timer.intervalId = null;
+      timer.remaining = 0; timer.running = false; onTimerComplete();
+    }
   };
 } catch(_) { timerWorker = null; }
+var _timerCompleting = false;
 
 // ==================== STATE I/O ====================
 function acquireWakeLock() {
@@ -275,6 +279,12 @@ function getModeDuration(mode) {
 
 function startInterval() {
   clearInterval(timer.intervalId);
+  if (timerWorker) {
+    timer.intervalId = setInterval(function() {
+      if (!timer.startedAt) return;
+    }, 30000);
+    return;
+  }
   timer.intervalId = setInterval(function() {
     if (!timer.startedAt) return;
     var elapsed = (Date.now() - new Date(timer.startedAt).getTime()) / 1000;
@@ -333,10 +343,13 @@ function resetTimer() {
   timer.startedAt = null; timer.startedRemaining = null;
   clearTimerState();
   if (timerWorker) timerWorker.postMessage({ type: 'stop' });
-  updateTimerUI();
+  updateTimerUI(); renderTasks();
 }
 
 function onTimerComplete() {
+  if (_timerCompleting) return;
+  _timerCompleting = true;
+  try {
   // V5 P-08: Handle quick start 5-min completion
  if (_quickStartTaskId && timer.mode === 'work') {
    clearTimerState();
@@ -369,8 +382,9 @@ function onTimerComplete() {
     timer.mode = 'work'; timer.remaining = S.settings.workDuration * 60;
     timer.startedAt = null; timer.startedRemaining = null;
     if (S.settings.autoStartWork) setTimeout(startTimer, 500);
-    updateTimerUI(); updateDoneList();
+    updateTimerUI(); updateDoneList(); renderTasks();
   }
+  } finally { _timerCompleting = false; }
 }
 
 function advanceAfterComplete(selectedTaskId) {
@@ -408,7 +422,7 @@ function skipTimer() {
   } else { timer.mode = 'work'; timer.remaining = S.settings.workDuration * 60; }
   timer.startedAt = null; timer.startedRemaining = null; clearTimerState();
   if (timerWorker) timerWorker.postMessage({ type: 'stop' });
-  updateTimerUI(); updateDoneList();
+  updateTimerUI(); updateDoneList(); renderTasks();
 }
 
 // ==================== TASKS ====================
@@ -883,8 +897,8 @@ function selectCalDateAndSwitch(dateStr) {
 
 function switchCalView(mode) {
   calViewMode = mode;
-  if (mode === 'day' && selectedCalDate) {
-    selectedCalDayDate = selectedCalDate;
+  if (mode === 'day') {
+    selectedCalDayDate = selectedCalDate || new Date().toISOString().slice(0, 10);
   }
   renderCalendar();
 }
@@ -2013,6 +2027,7 @@ function toast(msg) {
 
 // ==================== INIT & EVENTS ====================
 document.addEventListener('DOMContentLoaded', function() {
+  try {
   // Safe event binding helper — never crashes on missing element
   function $on(id, evt, fn) { var e = document.getElementById(id); if (e) e.addEventListener(evt, fn); }
 
@@ -2058,7 +2073,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ---- Task input ----
   var taskInput = document.getElementById('task-input');
   $on('task-add-btn', 'click', addTaskFromInput);
-  taskInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') addTaskFromInput(); });
+  if (taskInput) taskInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') addTaskFromInput(); });
 
   // ---- Quick input toggle ----
   $on('task-input-more', 'click', toggleQuickInput);
@@ -2526,6 +2541,7 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
   });
 
   document.addEventListener('keydown', function(e) {
+    if (_activeModal && e.key !== 'Escape') return;
     if (e.key === 'Escape') { if (detailTaskId) { closeDetail(); return; } if (quickInputVisible) { toggleQuickInput(); return; } }
   // Ctrl+Enter 保存详情面板
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && detailTaskId) {
@@ -2565,15 +2581,16 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
   closeActiveModal();
  });
  $on('abandon-confirm', 'click', function() {
- document.getElementById('modal-abandon-confirm').hidden = true;
-  closeActiveModal();
- timer.running = false;
- timer.remaining = getModeDuration(timer.mode) * 60;
- timer.startedAt = null;
- timer.startedRemaining = null;
- clearTimerState();
- updateTimerUI();
- });
+  document.getElementById('modal-abandon-confirm').hidden = true;
+   closeActiveModal();
+  timer.running = false; clearInterval(timer.intervalId); timer.intervalId = null;
+  timer.remaining = getModeDuration(timer.mode) * 60;
+  timer.startedAt = null;
+  timer.startedRemaining = null;
+  clearTimerState();
+  if (timerWorker) timerWorker.postMessage({ type: 'stop' });
+  updateTimerUI(); renderTasks();
+  });
 
  // ---- V5: Rest Guide Overlay ----
  document.querySelectorAll('.rest-opt-btn').forEach(function(btn) {
@@ -2586,9 +2603,10 @@ if (detStartTimer) detStartTimer.addEventListener('click', function() {
  $on('rest-skip-btn', 'click', closeRestGuide);
 
  // ---- V5: Daily Review Overlay ----
- $on('dr-done', 'click', saveDailyReview);
- $on('dr-skip', 'click', function() {
- document.getElementById('daily-review-overlay').hidden = true;
-  closeActiveModal();
- });
+  $on('dr-done', 'click', saveDailyReview);
+  $on('dr-skip', 'click', function() {
+  document.getElementById('daily-review-overlay').hidden = true;
+   closeActiveModal();
+  });
+ } catch(e) { console.warn('Init error:', e); }
 });
