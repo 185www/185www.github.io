@@ -2031,6 +2031,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Safe event binding helper — never crashes on missing element
   function $on(id, evt, fn) { var e = document.getElementById(id); if (e) e.addEventListener(evt, fn); }
 
+  ;(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';document.head.appendChild(s)})();
+
   migrateFromV2(); initSettings(); updateTimerUI(); renderTasks(); updateDoneList(); updateGtdCounts(); renderCalendar(); initV5Features();
   recoverTimer();
 
