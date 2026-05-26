@@ -1579,3 +1579,24 @@ header::after {
 
 /* Iter badge */
 .iter { display: inline-block; font-size: 0.65rem; color: var(--text-tertiary); background: var(--surface-hover); padding: 1px 6px; border-radius: var(--radius-full); margin-left: 4px; vertical-align: middle; }
+
+/* View containers */
+.dashboard-view, .waiting-view, .schedule-view {
+  animation: fadeSlideUp 350ms ease;
+}
+
+/* Ensure checkin alert button is right-aligned */
+.checkin-alert .btn {
+  flex-shrink: 0;
+}
+
+/* Modal overlay animation fix */
+.modal-overlay {
+  animation: fadeIn 200ms ease;
+}
+
+/* Ensure checkin-note-input has proper width */
+.checkin-note-input {
+  width: 100%;
+  box-sizing: border-box;
+}
