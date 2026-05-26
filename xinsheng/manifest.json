@@ -1,12 +1,12 @@
 {
-  "name": "新生 — 对话式健康干预",
-  "short_name": "新生",
-  "description": "21天行为改变计划，帮你逐渐减少烟酒依赖",
+  "name": "爸妈的树",
+  "short_name": "爸妈的树",
+  "description": "21天行为改变计划 — 你的树在等你浇水",
   "start_url": "/xinsheng/index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#1a1d23",
-  "background_color": "#1a1d23",
+  "theme_color": "#f8f5f0",
+  "background_color": "#f8f5f0",
   "scope": "/xinsheng/",
   "icons": [
     {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
