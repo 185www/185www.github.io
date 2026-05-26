@@ -1485,9 +1485,12 @@ function renderDlFocus(){
     div.className='dl-focus-item';
     div.innerHTML = `<span>${i+1}. ${escHtml(item.title)}</span><span class="dfi-del" data-idx="${i}">✕</span>`;
     div.querySelector('.dfi-del').onclick = ()=>{
+      const taskIdx = S.tasks.findIndex(t=>t.id===item.id);
+      if(taskIdx>=0 && !S.tasks[taskIdx].completed) S.tasks.splice(taskIdx,1);
       S.dailyFocusTasks.splice(i,1);
       saveState();
       renderDlFocus();
+      renderTasks();
     };
     list.appendChild(div);
   });
@@ -1501,7 +1504,9 @@ $('dl-quick-add-btn').onclick = ()=>{
     toast('最多选择 3 个焦点任务');
     return;
   }
-  S.dailyFocusTasks.push({title:val});
+  let task = S.tasks.find(t=>t.title===val && !t.completed);
+  if(!task) task = createTask(val);
+  S.dailyFocusTasks.push({id: task.id, title: val});
   input.value='';
   saveState();
   renderDlFocus();
@@ -1518,7 +1523,7 @@ $('dl-skip').onclick = ()=>{
 $('dl-start').onclick = ()=>{
   // auto-focus first focus task
   if(S.dailyFocusTasks.length > 0){
-    const existing = S.tasks.find(t=>t.title===S.dailyFocusTasks[0].title && !t.completed);
+    const existing = S.tasks.find(t=>t.id===S.dailyFocusTasks[0].id && !t.completed);
     if(existing){
       S.timer.currentTaskId = existing.id;
       saveState();
