@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1d23"/>
+      <stop offset="100%" style="stop-color:#242830"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="36" fill="url(#bg)"/>
+  <rect x="6" y="6" width="180" height="180" rx="32" fill="none" stroke="#4ecdc4" stroke-width="4" opacity=".3"/>
+  <text x="96" y="132" font-size="100" text-anchor="middle">🌱</text>
+</svg>

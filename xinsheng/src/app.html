@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>新生 — 21天改变计划</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f5f0eb;--surface:#ffffff;--surface2:#e8e4de;--accent:#2d8f4e;--accent2:#e85d3a;--gold:#d4a843;--text:#2c2420;--dim:#8a7e72;--muted:#b8b0a6;--radius:16px}
+html{font-size:18px}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);line-height:1.8;overflow-x:hidden;font-size:.95rem;min-height:100vh}
+.hidden{display:none!important}
+
+/* HEADER */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem .8rem;background:var(--surface);position:sticky;top:0;z-index:10;min-height:52px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.header-left{display:flex;align-items:center;gap:.4rem}
+.header-icon{font-size:1.3rem}
+.header-title{font-weight:700;font-size:1rem;color:var(--accent)}
+.header-badge{background:var(--accent);color:#fff;font-size:.6rem;padding:.12rem .45rem;border-radius:99px;font-weight:600}
+.emergency-btn{background:var(--accent2);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:1.1rem;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(232,93,58,.3)}
+.emergency-btn:active{transform:scale(.92)}
+
+/* HOME PAGE */
+#app{padding:.6rem;max-width:480px;margin:0 auto;padding-bottom:2rem}
+.home-day-label{text-align:center;font-size:.8rem;color:var(--dim);margin-bottom:.2rem}
+.home-title{text-align:center;font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:.6rem}
+
+/* TREE */
+.tree-section{background:var(--surface);border-radius:var(--radius);padding:.8rem;margin-bottom:.6rem;text-align:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.tree-section svg{width:100%;max-width:180px;height:160px}
+.tree-streak{font-size:.8rem;color:var(--dim);margin-top:.1rem}
+.tree-streak strong{color:var(--accent);font-size:1rem}
+
+/* CHALLENGE CARD */
+.challenge-card{background:var(--surface);border-radius:var(--radius);padding:1rem;margin-bottom:.8rem;border-left:4px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.challenge-label{font-size:.7rem;color:var(--dim);font-weight:600;margin-bottom:.2rem;letter-spacing:1px}
+.challenge-text{font-size:1.05rem;color:var(--text);font-weight:500;line-height:1.5}
+.challenge-diff{font-size:.7rem;color:var(--dim);margin-top:.3rem}
+
+/* MAIN BUTTON */
+.checkin-btn{display:block;width:100%;padding:1rem;font-size:1.1rem;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;text-align:center;min-height:56px;margin-bottom:.8rem;box-shadow:0 4px 12px rgba(45,143,78,.25);font-family:inherit;letter-spacing:1px}
+.checkin-btn:active{transform:scale(.97);box-shadow:0 2px 6px rgba(45,143,78,.2)}
+
+/* FOOTER LINKS */
+.footer-links{display:flex;justify-content:space-around;padding:.3rem 0;gap:.3rem}
+.footer-link{background:var(--surface);border:1px solid var(--surface2);border-radius:12px;padding:.6rem .8rem;font-size:.8rem;cursor:pointer;text-align:center;flex:1;color:var(--dim);font-family:inherit;min-height:44px}
+.footer-link:active{background:var(--surface2);transform:scale(.97)}
+
+/* MODAL */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease}
+.modal-overlay.centered{align-items:center}
+.modal-sheet{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;padding:1.2rem 1rem;padding-bottom:env(safe-area-inset-bottom,1.2rem);animation:slideUp .25s ease}
+.modal-centered{background:var(--surface);border-radius:var(--radius);width:92%;max-width:440px;max-height:85vh;overflow-y:auto;padding:1.4rem;animation:fadeIn .2s ease}
+.modal-title{font-size:1rem;font-weight:700;text-align:center;margin-bottom:.6rem;color:var(--text)}
+.modal-text{font-size:.88rem;color:var(--text);line-height:1.7;margin-bottom:.8rem;white-space:pre-wrap}
+.modal-close{display:block;width:100%;padding:.8rem;background:var(--surface2);border:none;border-radius:12px;font-size:.9rem;cursor:pointer;font-family:inherit;color:var(--text);text-align:center;margin-top:.5rem}
+.modal-close:active{opacity:.7}
+
+/* CHECKIN OPTIONS */
+.checkin-options{display:flex;flex-direction:column;gap:.4rem;margin:.6rem 0}
+.checkin-opt{background:var(--surface);border:2px solid var(--surface2);border-radius:12px;padding:.85rem;font-size:.88rem;cursor:pointer;text-align:center;font-family:inherit;color:var(--text);min-height:50px;transition:all .1s}
+.checkin-opt:active{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(.97)}
+.checkin-opt.success{border-color:var(--accent);background:var(--accent);color:#fff}
+.checkin-opt.tried{border-color:var(--gold);background:var(--gold);color:#fff}
+.checkin-opt.fail{border-color:var(--muted);background:var(--muted);color:#fff}
+.checkin-opt:disabled{opacity:.3;transform:none}
+
+/* FAMILY CONNECT */
+.family-section{background:var(--surface);border-radius:var(--radius);padding:1rem;margin-top:.6rem;border:1px solid var(--gold);text-align:center}
+.family-title{font-size:.9rem;font-weight:600;color:var(--gold);margin-bottom:.5rem}
+.family-btn{display:inline-block;padding:.7rem 1.2rem;background:var(--gold);color:#fff;border:none;border-radius:12px;font-size:.88rem;cursor:pointer;font-family:inherit;font-weight:600;margin:.3rem}
+.family-btn:active{opacity:.8}
+.family-skip{display:inline-block;padding:.5rem;background:none;border:none;color:var(--dim);font-size:.8rem;cursor:pointer;font-family:inherit}
+
+/* FEEDBACK */
+.feedback-text{font-size:.9rem;color:var(--text);line-height:1.7;margin-bottom:.6rem;white-space:pre-wrap}
+.feedback-text .highlight{color:var(--accent);font-weight:600}
+
+/* PROGRESS MODAL */
+.progress-stat{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--surface2);font-size:.85rem}
+.progress-stat:last-child{border-bottom:none}
+.progress-stat .label{color:var(--dim)}
+.progress-stat .value{font-weight:600;color:var(--text)}
+.progress-bar-bg{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin:.4rem 0}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .5s ease}
+
+/* EMERGENCY */
+#page-emergency{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:150;overflow-y:auto;padding:.6rem;display:none;flex-direction:column}
+#page-emergency.active{display:flex}
+.emerg-header{display:flex;align-items:center;justify-content:space-between;padding:.3rem 0;margin-bottom:.4rem}
+.emerg-title{font-size:1.1rem;font-weight:600;color:var(--accent2)}
+.emerg-close{background:none;border:none;color:var(--dim);font-size:1.2rem;cursor:pointer;font-family:inherit;padding:.3rem}
+.emerg-sub{text-align:center;color:var(--dim);font-size:.82rem;margin-bottom:.5rem}
+.emerg-btn{display:flex;align-items:center;gap:.6rem;background:var(--surface);border:1px solid var(--surface2);border-radius:var(--radius);padding:.9rem;font-size:.95rem;cursor:pointer;text-align:left;font-family:inherit;color:var(--text);line-height:1.4;min-height:56px;margin-bottom:.35rem;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.emerg-btn:active{transform:scale(.97);border-color:var(--accent2)}
+.emerg-icon{font-size:1.6rem;flex-shrink:0}
+.emerg-label{font-weight:600;font-size:.92rem}
+.emerg-desc{font-size:.78rem;color:var(--dim);margin-top:.05rem}
+.emerg-step{margin:.4rem 0}
+.emerg-tier-label{font-size:.75rem;color:var(--accent2);font-weight:600;margin-bottom:.2rem}
+.emerg-next-btn{display:block;width:100%;padding:.85rem;background:var(--accent2);color:#fff;border:none;border-radius:12px;font-size:.9rem;cursor:pointer;text-align:center;font-family:inherit;min-height:50px;margin:.5rem 0}
+.emerg-next-btn:active{opacity:.8}
+.emerg-chat{background:var(--surface);border-radius:var(--radius);padding:.8rem;margin:.3rem 0}
+.emerg-chat .msg{background:var(--surface2);border-radius:12px;padding:.7rem .9rem;margin-bottom:.3rem;font-size:.85rem;line-height:1.6;white-space:pre-wrap}
+.emerg-chat .msg.user{background:var(--accent);color:#fff}
+
+/* TOAST */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.88);color:#fff;padding:.6rem 1.2rem;border-radius:10px;font-size:.88rem;z-index:999;animation:fadeOut 2.8s ease forwards;white-space:nowrap;pointer-events:none;max-width:90%;text-align:center}
+@keyframes fadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
+@keyframes fadeIn{0%{opacity:0}100%{opacity:1}}
+@keyframes slideUp{0%{transform:translateY(30px);opacity:0}100%{transform:translateY(0);opacity:1}}
+
+/* WELCOME (S0) */
+.welcome-screen{text-align:center;padding:.8rem 0}
+.welcome-title{font-size:1.3rem;font-weight:700;color:var(--accent);margin-bottom:.3rem}
+.welcome-sub{color:var(--dim);font-size:.85rem;margin-bottom:.8rem;line-height:1.5}
+.welcome-start{display:block;width:100%;padding:1rem;font-size:1.1rem;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-family:inherit;min-height:56px;box-shadow:0 4px 12px rgba(45,143,78,.25)}
+.welcome-start:active{transform:scale(.97)}
+
+/* S0 CHAT */
+.s0-chat{background:var(--surface);border-radius:var(--radius);padding:.8rem;margin:.5rem 0;max-height:60vh;overflow-y:auto}
+.s0-msg{background:var(--surface2);border-radius:12px;padding:.7rem .9rem;margin-bottom:.4rem;font-size:.85rem;line-height:1.6;white-space:pre-wrap;animation:fadeIn .2s ease}
+.s0-msg.coach{border-bottom-left-radius:4px}
+.s0-msg.user{background:var(--accent);color:#fff;border-bottom-right-radius:4px;text-align:right}
+.s0-options{display:flex;flex-direction:column;gap:.3rem;margin:.3rem 0;animation:fadeIn .2s ease}
+.s0-opt{background:var(--surface);border:2px solid var(--surface2);border-radius:12px;padding:.8rem;font-size:.85rem;cursor:pointer;text-align:left;font-family:inherit;color:var(--text);min-height:46px}
+.s0-opt:active{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(.97)}
+.s0-opt:disabled{opacity:.3;transform:none}
+.s0-typing{align-self:flex-start;display:flex;gap:4px;padding:.5rem .8rem;background:var(--surface2);border-radius:12px;border-bottom-left-radius:4px;margin-bottom:.4rem;width:fit-content}
+.s0-typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bounce 1.4s infinite ease-in-out}
+.s0-typing span:nth-child(2){animation-delay:.2s}
+.s0-typing span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+.protector-input{display:flex;gap:.3rem;margin:.3rem 0}
+.protector-input input{flex:1;padding:.7rem;border:2px solid var(--surface2);border-radius:10px;font-size:.88rem;font-family:inherit;background:var(--surface);color:var(--text);outline:none}
+.protector-input input:focus{border-color:var(--accent)}
+.protector-input button{padding:.7rem 1rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:.88rem;cursor:pointer;font-family:inherit;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-left">
+    <span class="header-icon">🌱</span>
+    <span class="header-title">新生</span>
+    <span class="header-badge" id="h-badge"></span>
+  </div>
+  <button class="emergency-btn" id="h-emergency" title="紧急救援">🆘</button>
+</div>
+
+<div id="app"></div>
+
+<!-- EMERGENCY PAGE -->
+<div id="page-emergency">
+  <div class="emerg-header">
+    <span class="emerg-title">🆘 现在需要什么？</span>
+    <button class="emerg-close" id="emerg-close">✕</button>
+  </div>
+  <div id="emerg-content"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STORAGE LAYER
+// ═══════════════════════════════════════
+(function(){
+var K = 'xsheng_v6'
+function def() {
+  return {
+    phase: 's0', s0Complete: false, s0Node: null,
+    day: 1, checkinHistory: [], lastCheckinType: null, lastCheckinDay: 0,
+    consecutiveSuccess: 0, difficulty: 'easy', treeGrowth: 0,
+    protectorName: '', protectorSet: false, totalCheckins: 0, created: Date.now()
+  }
+}
+function load() {
+  try {
+    var r = localStorage.getItem(K)
+    if (r) { var o = JSON.parse(r); if (o && typeof o === 'object') return o }
+  } catch(e) {}
+  return def()
+}
+function save(o) {
+  try { localStorage.setItem(K, JSON.stringify(o)) } catch(e) {}
+}
+function reset() {
+  try { localStorage.removeItem(K) } catch(e) {}
+  return def()
+}
+window.STORE = {
+  get: load, save: save, reset: reset,
+  update: function(fn) { var o = load(); fn(o); save(o); return o }
+}
+})();
+
+// ═══════════════════════════════════════
+// S0 — 首次激活对话（20节点）
+// ═══════════════════════════════════════
+var S0 = [
+  {
+    id: 'welcome',
+    coach: '你好，老哥/老姐。感谢你愿意花时间跟我聊聊。我不是医生，也不是老师，就是一个想帮你的朋友。在开始之前，我想先了解你这个人——不是你的习惯，是你这个人。你小时候在哪儿长大的？',
+    opts: [
+      { t: '🏠 农村，小时候吃过苦', n: 'childhood_rural' },
+      { t: '🏙️ 城里，普普通通', n: 'childhood_city' },
+      { t: '❓ 不太想回忆', n: 'childhood_skip' }
+    ]
+  },
+  {
+    id: 'childhood_rural',
+    coach: '农村长大的孩子，都吃过苦。下地干活、割猪草、挑水——可就是那样的日子，养出了咱们这代人最硬的骨头。那时候虽然穷，但心里踏实。你那时候最开心的事是什么？',
+    opts: [
+      { t: '🎣 和小伙伴去河边摸鱼', n: 'happy_memory' },
+      { t: '🏃 满村跑着玩', n: 'happy_memory' },
+      { t: '🍚 过年才能吃上肉', n: 'happy_memory' },
+      { t: '📚 喜欢读书', n: 'happy_memory' }
+    ]
+  },
+  {
+    id: 'childhood_city',
+    coach: '城里长大的孩子，条件好一些，但也有自己的难处。家里地方小，兄弟姐妹挤一张床。那时候的快乐很简单，跟现在不一样。你最怀念小时候的什么？',
+    opts: [
+      { t: '🎮 和小伙伴一起玩', n: 'happy_memory' },
+      { t: '🍦 攒钱买零食', n: 'happy_memory' },
+      { t: '📺 看电视是最开心的事', n: 'happy_memory' },
+      { t: '📖 喜欢看书学习', n: 'happy_memory' }
+    ]
+  },
+  {
+    id: 'childhood_skip',
+    coach: '行，不想说就不说。咱们换一个——你这一辈子，有没有一件事让你特别自豪的？把孩子养大？工作上做出过成绩？还是帮过别人？每个人心里都有一件得意的事。',
+    opts: [
+      { t: '💪 把孩子培养成人', n: 'proud_child' },
+      { t: '🏢 工作上出过成绩', n: 'proud_work' },
+      { t: '❤️ 帮过别人', n: 'proud_help' },
+      { t: '😔 好像没什么自豪的', n: 'proud_none' }
+    ]
+  },
+  {
+    id: 'happy_memory',
+    coach: '那种简单的快乐，现在想想心里都暖。那时候没有手机，没有电视，但有的是真真切切的日子。后来日子好了，反而有些东西不见了。你觉得是什么变了？',
+    opts: [
+      { t: '😔 快乐少了，压力大了', n: 'happiness_lost' },
+      { t: '📱 太依赖手机了', n: 'phone_dep' },
+      { t: '🍺 心里有事就靠烟酒', n: 'smoke_dep' }
+    ]
+  },
+  {
+    id: 'happiness_lost',
+    coach: '人长大了，背的东西多了，快乐的门槛也高了。你已经很久没有好好看看自己了。你知道你什么时候最容易想抽烟/喝酒/刷手机吗？',
+    opts: [
+      { t: '🍚 吃完饭', n: 'trigger_after' },
+      { t: '😤 心情不好', n: 'trigger_after' },
+      { t: '👥 跟人一起的时候', n: 'trigger_after' },
+      { t: '😐 没事干无聊', n: 'trigger_after' }
+    ]
+  },
+  {
+    id: 'phone_dep',
+    coach: '手机这个东西太厉害了，专门偷人的时间。你本来就想看两分钟，一抬头俩小时过去了。它比烟酒还难防。你知道你什么时候最容易拿起手机？或者你最想改的是烟还是酒还是手机？',
+    opts: [
+      { t: '🚬 最想改抽烟', n: 'focus_smoke' },
+      { t: '🍺 最想改喝酒', n: 'focus_alcohol' },
+      { t: '📱 最想改刷手机', n: 'focus_phone' },
+      { t: '🍚 饭后最想来一根', n: 'trigger_after' }
+    ]
+  },
+  {
+    id: 'smoke_dep',
+    coach: '烟酒是咱们这代人学会的"解压方式"。以前有什么事忍忍就过去了。后来上了年纪，心里的事多了，就开始靠这些。我理解你。你不是离不开烟酒，你是离不开"那个放松的感觉"。但你最想改的是哪个？',
+    opts: [
+      { t: '🚬 抽烟', n: 'focus_smoke' },
+      { t: '🍺 喝酒', n: 'focus_alcohol' },
+      { t: '📱 刷手机', n: 'focus_phone' }
+    ]
+  },
+  {
+    id: 'trigger_after',
+    coach: '你心里其实明白自己的习惯。你只是不知道怎么改。很多人改不成，不是因为没毅力——是因为方法不对。你试过戒烟/戒酒/戒手机吗？',
+    opts: [
+      { t: '💪 试过好多次', n: 'tried_many' },
+      { t: '😅 试过但没坚持住', n: 'tried_many' },
+      { t: '🤷 没认真试过', n: 'tried_none' },
+      { t: '📱 最想改的问题', n: 'focus_choose' }
+    ]
+  },
+  {
+    id: 'tried_many',
+    coach: '试过好多次就对了！你知道为什么吗？每次尝试都在你脑子里留下了一条新路的痕迹。就像走路，走多了就是大路。你不是失败了，你是在铺路。你最想改什么？',
+    opts: [
+      { t: '🚬 抽烟', n: 'focus_smoke' },
+      { t: '🍺 喝酒', n: 'focus_alcohol' },
+      { t: '📱 刷手机', n: 'focus_phone' }
+    ]
+  },
+  {
+    id: 'tried_none',
+    coach: '那你想试试吗？不是让你"永远戒掉"——是21天，每天做一件很小的事。21天你愿意试试吗？',
+    opts: [
+      { t: '✅ 21天可以试试', n: 'focus_ask' },
+      { t: '🤔 我先想想', n: 'focus_ask' },
+      { t: '🚬 其实我最想改的是……', n: 'focus_choose' }
+    ]
+  },
+  {
+    id: 'focus_smoke',
+    coach: '行，那咱们就专注在抽烟上。你一天大概抽多少？',
+    opts: [
+      { t: '📊 半包以下（<10根）', n: 'focus_set', e: 'setFocus("smoke","light")' },
+      { t: '📊 一包左右（10-20根）', n: 'focus_set', e: 'setFocus("smoke","medium")' },
+      { t: '📊 一包以上（>20根）', n: 'focus_set', e: 'setFocus("smoke","heavy")' },
+      { t: '🤷 没数过', n: 'focus_set', e: 'setFocus("smoke","medium")' }
+    ]
+  },
+  {
+    id: 'focus_alcohol',
+    coach: '行，那咱们专注在喝酒上。你一般多久喝一次？',
+    opts: [
+      { t: '📊 每天都要喝', n: 'focus_set', e: 'setFocus("alcohol","heavy")' },
+      { t: '📊 一周几次', n: 'focus_set', e: 'setFocus("alcohol","medium")' },
+      { t: '📊 偶尔喝一点', n: 'focus_set', e: 'setFocus("alcohol","light")' }
+    ]
+  },
+  {
+    id: 'focus_phone',
+    coach: '行，那咱们专注在手机上。你每天大概刷多久？',
+    opts: [
+      { t: '📊 3小时以上', n: 'focus_set', e: 'setFocus("phone","heavy")' },
+      { t: '📊 1-3小时', n: 'focus_set', e: 'setFocus("phone","medium")' },
+      { t: '📊 不到1小时', n: 'focus_set', e: 'setFocus("phone","light")' }
+    ]
+  },
+  {
+    id: 'focus_ask',
+    coach: '你抽烟、喝酒、刷手机——最想改的是哪个？选一个咱们重点对付的。',
+    opts: [
+      { t: '🚬 抽烟', n: 'focus_smoke' },
+      { t: '🍺 喝酒', n: 'focus_alcohol' },
+      { t: '📱 刷手机', n: 'focus_phone' }
+    ]
+  },
+  {
+    id: 'focus_set',
+    coach: '好，清楚了。你心里有在乎的人吧？你孩子？老伴？孙子？如果你改变了，你希望谁先注意到？',
+    opts: [
+      { t: '👶 孩子/孙子', n: 'family_whom' },
+      { t: '👩 老伴', n: 'family_whom' },
+      { t: '😔 其实也没人在乎', n: 'family_whom' }
+    ]
+  },
+  {
+    id: 'family_whom',
+    coach: '你知道你为什么想改吗？不是因为你自己受不了——是因为你看见他们看你的眼神了。他们担心你，只是不敢说。你改，就是为了他们。为了能多陪他们几年。你愿意为了他们试21天吗？',
+    opts: [
+      { t: '💪 愿意，为了他们', n: 'commit' },
+      { t: '😢 你说到我心坎里了', n: 'commit' },
+      { t: '🤔 我试试', n: 'commit' }
+    ]
+  },
+  {
+    id: 'commit',
+    coach: '好！那咱们就说定了。在这21天里，你每天早上、中午、傍晚、晚上各签到一次——每次只用10秒钟。不需要戒，只需要每天来完成小挑战。你能找一个家人来监督你吗？比如老伴、儿子、女儿——谁来提醒你、鼓励你？',
+    opts: [
+      { t: '👤 有，我来设置', n: 'protector' },
+      { t: '🙋 我自己就行', n: 'protector_skip' }
+    ]
+  },
+  {
+    id: 'protector',
+    coach: '他/她怎么称呼你？比如"儿子"、"老伴"、"闺女"——输入的称呼会在每天的报告中用到。',
+    opts: [],
+    input: { label: '称呼（如：儿子/女儿/老伴）', key: 'protectorName' }
+  },
+  {
+    id: 'protector_set',
+    coach: '好的，记住了。以后每天的完成情况可以告诉他/她。',
+    opts: [
+      { t: '✅ 好的，明天开始', n: 'done' }
+    ]
+  },
+  {
+    id: 'protector_skip',
+    coach: '行，你自己也可以。以后如果你想设置家人监督，随时可以。',
+    opts: [
+      { t: '✅ 好的，明天开始', n: 'done' }
+    ]
+  },
+  {
+    id: 'done',
+    coach: '好！明天开始第一天。你不用戒、不用停——第一个挑战很简单：每次你想抽烟/喝酒/刷手机之前，先深呼吸3次。就这么简单。明天早上见！',
+    opts: []
+  }
+];
+
+// ═══════════════════════════════════════
+// 21天 3+1 微签到
+// ═══════════════════════════════════════
+var DAYS = {}
+var CHALLENGES = {}
+
+function initChallenges() {
+  var c = [
+    { easy:'想抽之前先深呼吸1次', normal:'深呼吸3次', hard:'深呼吸5次' },
+    { easy:'饭后别坐下，站3分钟', normal:'饭后走3分钟', hard:'饭后走10分钟' },
+    { easy:'想抽时先喝一口水', normal:'喝一杯水再决定', hard:'喝一杯水，等5分钟' },
+    { easy:'把烟/酒放远一点', normal:'放另一个房间', hard:'交给家人保管一天' },
+    { easy:'记1次今天抽的时间', normal:'记3次', hard:'每次抽都记下来' },
+    { easy:'吃几颗花生代替一次', normal:'用口香糖代替一次', hard:'用口香糖代替每一次' },
+    { easy:'今天少抽1根', normal:'上午不碰', hard:'选一个时段完全不碰' },
+    { easy:'饭后立即离开饭桌', normal:'饭后去洗碗', hard:'饭后出门走5分钟' },
+    { easy:'想抽时做3次深呼吸', normal:'站起来伸懒腰', hard:'出门走一圈' },
+    { easy:'今天少抽2根', normal:'比昨天少3根', hard:'今天少一半' },
+    { easy:'用散步代替1次', normal:'用散步代替3次', hard:'想抽时先走5分钟' },
+    { easy:'准备一句拒绝的话', normal:'对一个人说"不"', hard:'在饭桌上拒绝一次' },
+    { easy:'今天少刷10分钟手机', normal:'设30分钟无手机', hard:'设1小时无手机' },
+    { easy:'写一句话总结', normal:'写一段话给家人', hard:'写信并发给家人' },
+    { easy:'小声说"我在改变"', normal:'告诉家人"我在改"', hard:'主动分享你的方法' },
+    { easy:'为身体做一件小事', normal:'做三件小事', hard:'坚持一整天对身体好' },
+    { easy:'在心里教别人一次', normal:'告诉一个人方法', hard:'帮一个人开始改变' },
+    { easy:'闭上眼睛20秒想未来', normal:'写下一句话', hard:'写下完整的未来画面' },
+    { easy:'对自己说"辛苦了"', normal:'对身体说"谢谢"', hard:'为身体做一件好事' },
+    { easy:'写下"自由"两个字', normal:'写下你的自由定义', hard:'把自由宣言发出去' },
+    { easy:'对自己说"我做到了"', normal:'告诉家人"我做到了"', hard:'和家人一起庆祝' }
+  ]
+  for (var i = 0; i < c.length; i++) {
+    CHALLENGES[i + 1] = c[i]
+  }
+}
+initChallenges()
+
+// 构建21天 — 每个day独立定义以支持不同格式
+DAYS[1] = {
+  morning:{text:'今天是你新生活的第一天。记住：每次想抽烟/喝酒/刷手机之前，先深呼吸1次。只要1次。做到了就是胜利。',btn:'记住了 ✅'},
+  noon:{text:'到现在为止，想抽烟/喝酒/刷手机的冲动来过了吗？',btns:['来过 🔥','没来 💪']},
+  evening:{text:'今天整体感觉怎么样？',btns:['还行 👍','有点难 😰']},
+  night:{question:'今天的挑战——深呼吸，你做到了吗？',btns:['做到了 ✅','试了没坚持 😅','没做 ❌']}
+}
+DAYS[2] = {
+  morning:{text:'昨天感觉怎么样？今天挑战升级：饭后不要马上坐下——站起来，至少站3分钟。让身体动一动。',btn:'记住了 ✅'},
+  noon:{text:'中午了，饭后站了吗？',btns:['站了 ✅','忘了 ❌']},
+  evening:{text:'下午感觉如何？有没有特别想的时候？',btns:['还好 👍','挺难熬的 😰']},
+  night:{question:'饭后站起来今天做到了吗？',btns:['做到了 ✅','试了没坚持 😅','没做 ❌']}
+}
+DAYS[3] = {
+  morning:{text:'今天挑战：想抽烟/喝酒/刷手机的时候，先喝一口水。就一口。然后深呼吸一次，再决定。',btn:'记住了 ✅'},
+  noon:{text:'喝水替代试了吗？',btns:['试了 ✅','还没试 ❌']},
+  evening:{text:'下午有没有"手自动伸出去"的时候？',btns:['有，但停住了 💪','有，直接做了 😅','没有 👍']},
+  night:{question:'今天喝水替代用得怎么样？',btns:['用了，管用 ✅','试了但最后还是抽了 😅','没试 ❌']}
+}
+DAYS[4] = {
+  morning:{text:'今天挑战：把烟/酒放到远一点的地方——另一个房间、抽屉里、或者交给家人。距离产生克制。',btn:'记住了 ✅'},
+  noon:{text:'今天把东西放远了吗？',btns:['放了 ✅','忘了 ❌']},
+  evening:{text:'放远之后，拿的时候是不是麻烦了一些？',btns:['是，懒得去拿了 👍','还是去拿了 😅']},
+  night:{question:'今天的"物理隔离"效果怎么样？',btns:['有效 ✅','试了但没用 😅','没试 ❌']}
+}
+DAYS[5] = {
+  morning:{text:'今天挑战：记录一次——你今天什么时候想抽烟/喝酒/刷手机。只记一次就行。在手机里写个时间。',btn:'记住了 ✅'},
+  noon:{text:'今天有记吗？',btns:['记了 ✅','忘了 ❌']},
+  evening:{text:'有没有发现自己什么规律？',btns:['发现了一点 👍','还没注意 🤔']},
+  night:{question:'今天记录了吗？有什么发现？',btns:['记了，有发现 ✅','记了但没发现什么 ✅','没记 ❌']}
+}
+DAYS[6] = {
+  morning:{text:'今天挑战：用口香糖或瓜子、花生代替一次。嘴巴有事做，手有事拿——大脑就被"骗"过去了。',btn:'记住了 ✅'},
+  noon:{text:'零食替代试了吗？',btns:['试了 ✅','还没 ❌']},
+  evening:{text:'嘴巴闲的时候是不是特别想来一根？',btns:['是，好想 😰','还好 👍']},
+  night:{question:'零食替代用得怎么样？',btns:['有用 ✅','试了但还是抽了 😅','没试 ❌']}
+}
+DAYS[7] = {
+  morning:{text:'今天是一周了！挑战：上午先不碰。就一个上午。你的目标不是"全天不碰"——是到中午12点。',btns:['能做到 💪','可能有点难 😬']},
+  noon:{text:'上午坚持得怎么样？',btns:['做到了 ✅','没坚持住 😅']},
+  evening:{text:'一个上午不碰，感觉怎么样？',btns:['做到了！感觉很好 ✅','坚持了大半天 ✅','没做到 ❌']},
+  night:{question:'今天整体感觉怎么样？',btns:['很好 ✅','一般 😅','放弃了 ❌']}
+}
+DAYS[8] = {
+  morning:{text:'今天挑战：饭后立即离开饭桌——去洗碗、去阳台、去上厕所。关键是"不坐回老位置"。',btn:'记住了 ✅'},
+  noon:{text:'今天饭后离开了吗？',btns:['离开了 ✅','忘了 ❌']},
+  evening:{text:'饭后那段时间是最难的，你过得怎么样？',btns:['熬过去了 👍','没忍住 😅']},
+  night:{question:'饭后离开饭桌，做到了吗？',btns:['做到了 ✅','试了没坚持 😅','没试 ❌']}
+}
+DAYS[9] = {
+  morning:{text:'今天挑战：每次想抽/喝/刷之前，先做三次深呼吸。吸气4秒，呼气6秒。给自己15秒钟的"暂停"。',btn:'记住了 ✅'},
+  noon:{text:'深呼吸暂停试了吗？',btns:['试了 ✅','忘了 ❌']},
+  evening:{text:'15秒暂停，你觉得有用吗？',btns:['有用 👍','没用 😅']},
+  night:{question:'深呼吸暂停，今天用了几次？',btns:['用了3次以上 ✅','用了1-2次 ✅','没用 ❌']}
+}
+DAYS[10] = {
+  morning:{text:'今天挑战：比昨天少碰一点。想一想昨天碰了多少次，今天的目标是少3次。不多，就3次。',btns:['目标记住了 ✅','有点难 😬']},
+  noon:{text:'比昨天少，你做到了吗？',btns:['做到了 👍','没做到 😅']},
+  evening:{text:'下午过得怎么样？还好吗？',btns:['还好 👍','有点难 😰']},
+  night:{question:'今天比昨天少了吗？',btns:['少了 ✅','一样多 😅','反而多了 ❌']}
+}
+DAYS[11] = {
+  morning:{text:'今天挑战：想抽/喝/刷的时候，不坐下——站起来，走几步。哪怕只在房间里走一圈。换个姿势，换个状态。',btns:['好，我记住了 ✅']},
+  noon:{text:'站起来走，试了吗？',btns:['试了 ✅','忘了 ❌']},
+  evening:{text:'站起来走走有用吗？',btns:['有用 👍','没用 😅']},
+  night:{question:'今天站起来几次？',btns:['3次以上 ✅','1-2次 ✅','0次 ❌']}
+}
+DAYS[12] = {
+  morning:{text:'今天挑战：准备一句拒绝的话——如果有人劝你喝酒/抽烟，你笑着说"医生不让喝了"或"开车来的"。先练熟。',btns:['记住了 ✅']},
+  noon:{text:'今天有遇到劝酒/劝烟吗？',btns:['有，成功拒绝了 💪','有，没说出口 😅','没有遇到']},
+  evening:{text:'有没有练一下拒绝的话？',btns:['练了 👍','还没练 😅']},
+  night:{question:'把拒绝的话练了几遍？',btns:['练了3遍以上 ✅','练了1遍 ✅','没练 ❌']}
+}
+DAYS[13] = {
+  morning:{text:'今天挑战：选一个固定的30分钟，把手机放到另一个房间。这30分钟不看手机。做别的事——吃饭、聊天、发呆都行。',btns:['好，我试试 ✅']},
+  noon:{text:'今天设了无手机时段吗？',btns:['设了 ✅','没有 ❌']},
+  evening:{text:'不看手机的30分钟感觉怎么样？',btns:['很好，很安静 👍','有点煎熬 😅','没设 ❌']},
+  night:{question:'无手机时段做到了吗？',btns:['做到了 ✅','只坚持了一部分 😅','没做 ❌']}
+}
+DAYS[14] = {
+  morning:{text:'两周了！今天不做新挑战——给自己写一句话：14天来你最大的变化是什么？哪怕只是一件小事。',btns:['我写了 ✅','还没写 ❌']},
+  noon:{text:'你想到了什么变化？',btns:['有变化 💪','好像没什么 😅']},
+  evening:{text:'心里有答案了吗？',btns:['有了 👍','还在想 🤔']},
+  night:{question:'写好了吗？你最大的变化是？',btns:['写了，看到了自己的变化 ✅','想写但写不出来 😅','没写 ❌']}
+}
+DAYS[15] = {
+  morning:{text:'如果有人问你"最近在忙什么"，你怎么回答？今天试试说一句："我在为自己做点事。" 说给自己听。',btns:['我说了 ✅','说不出口 😅']},
+  noon:{text:'说出来的感觉怎么样？',btns:['挺好的 👍','别扭 😅']},
+  evening:{text:'再说一遍给自己听？',btns:['说了 👍','还没 😅']},
+  night:{question:'今天你告诉自己"我在为自己做点事"了吗？',btns:['说了，心里热乎的 ✅','在心里说了 ✅','没说 ❌']}
+}
+DAYS[16] = {
+  morning:{text:'今天为你最在乎的家人做一件小事——倒杯茶、打个电话、说句"你辛苦了"。用行动告诉他们你在乎他们。',btn:'记住了 ✅'},
+  noon:{text:'今天为家人做什么了吗？',btns:['做了 ✅','还没 ❌']},
+  evening:{text:'家人有什么反应？',btns:['他们很开心 😊','没什么反应 😐']},
+  night:{question:'今天为家人做的事，让你感觉怎么样？',btns:['很好，心里踏实 ✅','做了但感觉一般 😅','没做 ❌']}
+}
+DAYS[17] = {
+  morning:{text:'今天把你14天学到的一件事，告诉一个也在挣扎的朋友。不用长篇大论，一句话就行："饭后走一走，真的有用。"',btns:['我分享了 ✅','不好意思说 😅']},
+  noon:{text:'分享后对方怎么说？',btns:['很受触动 😊','没什么反应 😐']},
+  evening:{text:'准备一下说什么了吗？',btns:['准备好了 👍','还在想 🤔']},
+  night:{question:'今天分享了吗？',btns:['分享了，感觉很好 ✅','想分享但没找到人 😅','没分享 ❌']}
+}
+DAYS[18] = {
+  morning:{text:'今天闭上眼睛20秒，想象21天后的你——气色好了，不咳了，家人看你的眼神不一样了。看到了吗？',btns:['看到了 ✅','看不到 😅']},
+  noon:{text:'你想象中21天后的你是什么样？',btns:['挺好的 👍','有点模糊 🤔']},
+  evening:{text:'再闭上眼睛想一次？',btns:['好的 👍','算了 😅']},
+  night:{question:'今天看到了未来的自己吗？',btns:['看到了，很清晰 ✅','看到了一点 ✅','没看到 ❌']}
+}
+DAYS[19] = {
+  morning:{text:'今天为你的身体做一件小事——喝杯温水、伸个懒腰、泡个脚、早点睡。在心里对你自己说一句："辛苦了。"',btns:['做了 ✅','忘了 ❌']},
+  noon:{text:'你的身体有什么感觉？',btns:['舒服多了 👍','没什么感觉 😐']},
+  evening:{text:'再做一件小事对身体好？',btns:['好的 👍','算了 😅']},
+  night:{question:'今天好好对待自己了吗？',btns:['做了，身体很舒服 ✅','做了一件小事 ✅','没做 ❌']}
+}
+DAYS[20] = {
+  morning:{text:'明天是最后一天了！今天写下一个词——"自由"对你来说意味着什么？是早上起来不咳嗽？是想不抽就能不抽？写下来。',btns:['我写了 ✅','还没想好 🤔']},
+  noon:{text:'你写的自由是什么？',btns:['想不抽就能不抽 💪','早上起来不咳了 🙏','心里不慌了 🧘']},
+  evening:{text:'你的自由已经写好了吗？',btns:['写好了 👍','还在想 🤔']},
+  night:{question:'自由的定义写好了吗？',btns:['写好了，这是我的自由 ✅','想了但没写下来 😅','没写 ❌']}
+}
+DAYS[21] = {
+  morning:{text:'恭喜你！今天是你新生的第一天！对自己说："我是一个对自己负责的人。" 然后把这句话告诉一个人。你做到了！',btns:['我说了！我是一个对自己负责的人 💪']},
+  noon:{text:'告诉家人了吗？',btns:['告诉了，他们为我骄傲 😊','还没说 😅']},
+  evening:{text:'再对自己说一遍？',btns:['说！我是对自己负责的人 💪']},
+  night:{question:'最后一天，对自己说那句话了吗？',btns:['说了！我是对自己负责的人 ✅','在心里说了 ✅','说不出口 😅']}
+}
+
+// ═══════════════════════════════════════
+// ENGINE
+// ═══════════════════════════════════════
+var $ = function(id) { return document.getElementById(id) }
+var state = STORE.get()
+var focus = null // set during S0
+
+function save() { STORE.save(state) }
+
+// ─── TTS ───
+var ttsEnabled = true
+function speak(text) {
+  if (!ttsEnabled || !('speechSynthesis' in window)) return
+  window.speechSynthesis.cancel()
+  var u = new SpeechSynthesisUtterance(text)
+  u.lang = 'zh-CN'
+  u.rate = 0.85
+  u.pitch = 1.0
+  u.volume = 1.0
+  try { window.speechSynthesis.speak(u) } catch(e) {}
+}
+
+// ─── TOAST ───
+function showToast(msg) {
+  var el = document.querySelector('.toast')
+  if (el) el.remove()
+  var t = document.createElement('div')
+  t.className = 'toast'
+  t.textContent = msg
+  document.body.appendChild(t)
+  setTimeout(function() { if (t.parentNode) t.remove() }, 2800)
+}
+
+// ─── MODAL ───
+function showModal(html, centered) {
+  var overlay = document.createElement('div')
+  overlay.className = 'modal-overlay' + (centered ? ' centered' : '')
+  var sheet = document.createElement('div')
+  sheet.className = centered ? 'modal-centered' : 'modal-sheet'
+  sheet.innerHTML = html
+  overlay.appendChild(sheet)
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove()
+  })
+  document.body.appendChild(overlay)
+  return { overlay: overlay, sheet: sheet, close: function() { overlay.remove() } }
+}
+
+// ─── RENDER HOME ───
+function renderHome() {
+  var app = $('app')
+  var d = state.day
+  var dayData = DAYS[d]
+  var c = CHALLENGES[d]
+  if (!dayData) { renderComplete(); return }
+  
+  var diffLabels = { easy: '入门版', normal: '标准版', hard: '进阶版' }
+  var diff = state.difficulty || 'easy'
+  var challenge = c ? c[diff] : ''
+  
+  var checkedInToday = state.lastCheckinDay === d
+  var checkinBtnText = checkedInToday ? '继续签到 📋' : '开始签到 📋'
+  
+  app.innerHTML =
+    '<div class="home-day-label">第 ' + d + ' / 21 天</div>' +
+    '<div class="home-title">🌱 新生</div>' +
+    '<div class="tree-section" id="tree-home">' +
+      renderTreeSVG(state.treeGrowth) +
+      '<div class="tree-streak">已坚持 <strong>' + state.consecutiveSuccess + '</strong> 天</div>' +
+    '</div>' +
+    '<div class="challenge-card">' +
+      '<div class="challenge-label">🎯 今日挑战</div>' +
+      '<div class="challenge-text">' + challenge + '</div>' +
+      '<div class="challenge-diff">' + diffLabels[diff] + '</div>' +
+    '</div>' +
+    '<button class="checkin-btn" id="checkin-btn">' + checkinBtnText + '</button>' +
+    '<div class="footer-links">' +
+      '<button class="footer-link" id="progress-link">📊 进度</button>' +
+      (state.protectorSet ? '<button class="footer-link" id="family-link">👤 给家人</button>' : '<button class="footer-link" id="family-link">👤 设置守护人</button>') +
+      '<button class="footer-link" id="about-link">ℹ️ 关于</button>' +
+    '</div>'
+  
+  $('checkin-btn').onclick = startCheckin
+  $('tree-home').onclick = showProgressModal
+  $('progress-link').onclick = showProgressModal
+  $('family-link').onclick = showFamilyConnect
+  $('about-link').onclick = showAbout
+  updateBadge()
+}
+
+// ─── TREE SVG ───
+function renderTreeSVG(growth) {
+  var pct = Math.min(growth, 100)
+  var crownSize = Math.min(10 + pct * 0.4, 50)
+  var crownOpacity = Math.min(0.3 + pct * 0.006, 0.9)
+  var leafCount = Math.floor(pct / 10)
+  var buds = Math.floor(pct / 25)
+  
+  var svg = '<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg">'
+  svg += '<ellipse cx="60" cy="155" rx="40" ry="6" fill="#d4c8a8"/>'
+  
+  // trunk
+  var trunkH = 30 + pct * 0.6
+  svg += '<rect x="56" y="' + (155 - trunkH) + '" width="8" height="' + trunkH + '" rx="3" fill="#8a7e72"/>'
+  
+  // branches appear after 20%
+  if (pct >= 20) {
+    var bh = 155 - trunkH
+    svg += '<line x1="60" y1="' + (bh + 20) + '" x2="40" y2="' + (bh + 5) + '" stroke="#8a7e72" stroke-width="3" stroke-linecap="round"/>'
+    svg += '<line x1="60" y1="' + (bh + 10) + '" x2="80" y2="' + (bh - 5) + '" stroke="#8a7e72" stroke-width="3" stroke-linecap="round"/>'
+  }
+  
+  // crown
+  var cy = 155 - trunkH - 10
+  if (cy < 20) cy = 20
+  svg += '<ellipse cx="60" cy="' + cy + '" rx="' + Math.min(15 + pct * 0.3, 38) + '" ry="' + Math.min(10 + pct * 0.2, 28) + '" fill="rgba(45,143,78,' + crownOpacity + ')"/>'
+  
+  // leaves/blooms
+  for (var i = 0; i < leafCount && i < 8; i++) {
+    var angle = (i / 8) * Math.PI * 2
+    var r = Math.min(15 + pct * 0.15, 30)
+    var lx = 60 + Math.cos(angle) * r * 0.8
+    var ly = cy - Math.sin(angle) * r * 0.6
+    svg += '<circle cx="' + lx + '" cy="' + ly + '" r="3" fill="#d4a843"/>'
+  }
+  
+  // buds
+  for (var i = 0; i < buds && i < 3; i++) {
+    svg += '<circle cx="' + (50 + i * 12) + '" cy="' + (cy + 5) + '" r="2.5" fill="#e85d3a" opacity="0.7"/>'
+  }
+  
+  svg += '<text x="60" y="172" text-anchor="middle" fill="#8a7e72" font-size="9">第 ' + state.day + ' 天</text>'
+  svg += '</svg>'
+  return svg
+}
+
+// ─── CHECKIN FLOW ───
+function startCheckin() {
+  var d = state.day
+  var dayData = DAYS[d]
+  if (!dayData) { renderComplete(); return }
+  
+  // If night already completed today, all done
+  if (state.lastCheckinDay === d && state.lastCheckinType === 'night') {
+    showToast('今天的签到全部完成，明天继续！🎉')
+    return
+  }
+  
+  var types = ['morning','noon','evening','night']
+  var lastType = state.lastCheckinType
+  
+  var idx = 0
+  if (state.lastCheckinDay === d && lastType) {
+    idx = types.indexOf(lastType) + 1
+  }
+  if (idx >= types.length) { showToast('今天的签到都完成了！'); return }
+  
+  var type = types[idx]
+  showCheckinModal(type, dayData)
+}
+
+function showCheckinModal(type, dayData) {
+  var content
+  var isNight = type === 'night'
+  
+  if (type === 'morning') {
+    if (dayData.morning.btns) {
+      var btns = dayData.morning.btns.map(function(b) {
+        return '<button class="checkin-opt success" data-result="done">' + b + '</button>'
+      }).join('')
+      content =
+        '<div class="modal-title">🌅 早上签到</div>' +
+        '<div class="modal-text">' + dayData.morning.text + '</div>' +
+        '<div class="checkin-options">' + btns + '</div>'
+    } else {
+      content =
+        '<div class="modal-title">🌅 早上签到</div>' +
+        '<div class="modal-text">' + dayData.morning.text + '</div>' +
+        '<div class="checkin-options">' +
+          '<button class="checkin-opt success" data-result="done">' + (dayData.morning.btn || '记住了 ✅') + '</button>' +
+        '</div>'
+    }
+  } else if (type === 'noon') {
+    var btns = dayData.noon.btns.map(function(b, i) {
+      return '<button class="checkin-opt" data-result="' + (i === 0 ? 'good' : 'bad') + '">' + b + '</button>'
+    }).join('')
+    content =
+      '<div class="modal-title">☀️ 中午签到</div>' +
+      '<div class="modal-text">' + dayData.noon.text + '</div>' +
+      '<div class="checkin-options">' + btns + '</div>'
+  } else if (type === 'evening') {
+    var btns = dayData.evening.btns.map(function(b, i) {
+      return '<button class="checkin-opt" data-result="' + (i === 0 ? 'good' : 'bad') + '">' + b + '</button>'
+    }).join('')
+    content =
+      '<div class="modal-title">🌆 傍晚签到</div>' +
+      '<div class="modal-text">' + dayData.evening.text + '</div>' +
+      '<div class="checkin-options">' + btns + '</div>'
+  } else {
+    var btns = dayData.night.btns.map(function(b, i) {
+      var cls = ['success','tried','fail'][i] || ''
+      return '<button class="checkin-opt ' + cls + '" data-result="' + (i === 0 ? 'success' : i === 1 ? 'tried' : 'fail') + '">' + b + '</button>'
+    }).join('')
+    content =
+      '<div class="modal-title">🌙 晚间报告</div>' +
+      '<div class="modal-text">' + dayData.night.question + '</div>' +
+      '<div class="checkin-options">' + btns + '</div>'
+  }
+  
+  var m = showModal(content, true)
+  
+  m.sheet.querySelectorAll('.checkin-opt').forEach(function(btn) {
+    btn.onclick = function() {
+      var result = btn.dataset.result
+      m.close()
+      handleCheckin(type, result, dayData)
+    }
+  })
+}
+
+function handleCheckin(type, result, dayData) {
+  state.lastCheckinType = type
+  state.lastCheckinDay = state.day
+  state.totalCheckins++
+  
+  if (type === 'night') {
+    var success = result === 'success' || result === 'tried'
+    var isSuccess = result === 'success'
+    
+    state.checkinHistory.push({
+      day: state.day,
+      type: 'night',
+      success: isSuccess,
+      timestamp: Date.now()
+    })
+    
+    if (isSuccess) {
+      state.consecutiveSuccess++
+      state.treeGrowth = Math.min(state.treeGrowth + 10, 100)
+    } else if (result === 'tried') {
+      state.treeGrowth = Math.min(state.treeGrowth + 3, 100)
+      state.consecutiveSuccess = 0
+    } else {
+      state.consecutiveSuccess = 0
+    }
+    
+    save()
+    showNightFeedback(isSuccess || result === 'tried')
+  } else {
+    state.checkinHistory.push({
+      day: state.day,
+      type: type,
+      result: result,
+      timestamp: Date.now()
+    })
+    save()
+    renderHome()
+    showToast(type === 'morning' ? '今天的挑战记住了！💪' : '已记录！👍')
+  }
+}
+
+function showNightFeedback(didWell) {
+  var protectorName = state.protectorName || '家人'
+  
+  var text = didWell
+    ? '🎉 好！你今天又完成了一天。你做到了！'
+    : '💪 没关系，明天继续。你已经比昨天多坚持了一天。'
+  
+  var feedbackText = didWell
+    ? '连续 ' + state.consecutiveSuccess + ' 天达成。你的' + protectorName + '会为你骄傲的。'
+    : '偶尔做不到是正常的。重要的是你还在坚持。明天再来。'
+  
+  // Check difficulty adaptation
+  var recent = state.checkinHistory.filter(function(c) { return c.type === 'night' }).slice(-3)
+  var recentSuccess = recent.filter(function(c) { return c.success }).length
+  
+  if (didWell && recentSuccess >= 3 && state.difficulty !== 'hard') {
+    state.difficulty = 'hard'
+    feedbackText += '\n\n🔥 你已经连续成功3天了！明天挑战升级。'
+  } else if (didWell && recentSuccess >= 2 && state.difficulty === 'easy') {
+    state.difficulty = 'normal'
+    feedbackText += '\n\n👍 你做得很好！明天挑战升级到标准版。'
+  } else if (!didWell && state.consecutiveSuccess === 0 && state.difficulty !== 'easy' && state.day > 1) {
+    var fails = recent.filter(function(c) { return !c.success }).length
+    if (fails >= 3) {
+      state.difficulty = 'easy'
+      feedbackText += '\n\n😊 咱们把难度降低一点，让你更容易成功。'
+    }
+  }
+  
+  if (didWell) {
+    state.day++
+    if (state.day > 21) state.day = 21
+  }
+  
+  save()
+  
+  // Always move to next day on night report if success
+  if (didWell && state.day < 21) {
+    // already advanced
+  }
+  
+  // Show feedback then family connect
+  var m = showModal(
+    '<div class="modal-text">' + text + '</div>' +
+    '<div class="modal-text" style="color:var(--dim);font-size:.82rem">' + feedbackText + '</div>' +
+    '<button class="checkin-opt success" id="night-ok-btn">好的 🙏</button>',
+    true
+  )
+  
+  $('night-ok-btn').onclick = function() {
+    m.close()
+    if (didWell && state.protectorSet) {
+      showFamilyPrompt()
+    } else if (state.day <= 21) {
+      renderHome()
+    } else {
+      renderComplete()
+    }
+  }
+}
+
+function showFamilyPrompt() {
+  var protectorName = state.protectorName || '家人'
+  var m = showModal(
+    '<div class="family-section" style="border:none;padding:0">' +
+      '<div class="family-title">📤 告诉' + protectorName + '？</div>' +
+      '<div class="modal-text" style="font-size:.82rem;color:var(--dim)">复制消息去微信粘贴，告诉' + protectorName + '你今天完成了。</div>' +
+      '<button class="family-btn" id="copy-msg-btn">📋 复制消息去微信</button>' +
+      '<br><button class="family-skip" id="skip-family-btn">算了，明天再说</button>' +
+    '</div>',
+    true
+  )
+  
+  var msg = '我今天完成了新生的第 ' + state.day + ' 天练习 ✅ 一切安好。'
+  
+  $('copy-msg-btn').onclick = function() {
+    copyToClipboard(msg)
+    showToast('已复制！去微信粘贴发给' + protectorName + '吧 📤')
+    m.close()
+    setTimeout(function() {
+      renderHome()
+      showToast('记得去微信粘贴给' + protectorName + '哦 💌')
+    }, 500)
+  }
+  
+  $('skip-family-btn').onclick = function() {
+    m.close()
+    renderHome()
+  }
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(function() { fallbackCopy(text) })
+  } else {
+    fallbackCopy(text)
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.opacity = '0'
+  document.body.appendChild(ta)
+  ta.select()
+  try { document.execCommand('copy') } catch(e) {}
+  document.body.removeChild(ta)
+}
+
+// ─── FAMILY CONNECT ───
+function showFamilyConnect() {
+  if (!state.protectorSet) {
+    // Prompt to set protector
+    var m = showModal(
+      '<div class="modal-title">👤 设置守护人</div>' +
+      '<div class="modal-text">设置一个家人来接收你的每日进展。他/她会为你骄傲的。</div>' +
+      '<div class="protector-input">' +
+        '<input type="text" id="protector-input" placeholder="称呼（如：儿子/女儿/老伴）" maxlength="10">' +
+        '<button id="protector-save-btn">保存</button>' +
+      '</div>' +
+      '<button class="modal-close" id="protector-skip">跳过</button>',
+      true
+    )
+    
+    $('protector-save-btn').onclick = function() {
+      var name = $('protector-input').value.trim()
+      if (name) {
+        state.protectorName = name
+        state.protectorSet = true
+        save()
+        m.close()
+        renderHome()
+        showToast('已设置 ' + name + ' 为守护人 💚')
+      }
+    }
+    
+    $('protector-skip').onclick = function() { m.close() }
+    return
+  }
+  
+  var protectorName = state.protectorName || '家人'
+  var m = showModal(
+    '<div class="modal-title">👤 告诉' + protectorName + '</div>' +
+    '<div class="modal-text">复制下面的消息，去微信粘贴给' + protectorName + '，让他们知道你的进展。</div>' +
+    '<div style="background:var(--surface2);border-radius:10px;padding:.8rem;margin:.5rem 0;font-size:.82rem;line-height:1.6">' +
+      '我今天完成了新生的第 ' + state.day + ' 天 ✅ 一切安好。' +
+    '</div>' +
+    '<button class="family-btn" style="width:100%" id="fam-copy-btn">📋 复制去微信</button>' +
+    '<button class="modal-close" id="fam-close-btn">关闭</button>',
+    true
+  )
+  
+  $('fam-copy-btn').onclick = function() {
+    copyToClipboard('我今天完成了新生的第 ' + state.day + ' 天 ✅ 一切安好。')
+    showToast('已复制！去微信粘贴给' + protectorName + '吧 📤')
+    m.close()
+  }
+  $('fam-close-btn').onclick = function() { m.close() }
+}
+
+// ─── PROGRESS MODAL ───
+function showProgressModal() {
+  var total = state.totalCheckins
+  var daysDone = state.checkinHistory.filter(function(c) { return c.type === 'night' }).length
+  var successDays = state.checkinHistory.filter(function(c) { return c.type === 'night' && c.success }).length
+  var pct = Math.round((state.day / 21) * 100)
+  
+  var m = showModal(
+    '<div class="modal-title">📊 你的进度</div>' +
+    '<div style="margin:.5rem 0">' + renderTreeSVG(state.treeGrowth) + '</div>' +
+    '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>' +
+    '<div class="progress-stat"><span class="label">完成天数</span><span class="value">第 ' + state.day + ' / 21 天</span></div>' +
+    '<div class="progress-stat"><span class="label">连续达成</span><span class="value">' + state.consecutiveSuccess + ' 天 🔥</span></div>' +
+    '<div class="progress-stat"><span class="label">总签到次数</span><span class="value">' + total + ' 次</span></div>' +
+    '<div class="progress-stat"><span class="label">晚间报告完成</span><span class="value">' + daysDone + ' 天</span></div>' +
+    '<div class="progress-stat"><span class="label">成功天数</span><span class="value">' + successDays + ' 天</span></div>' +
+    '<div class="progress-stat"><span class="label">成长值</span><span class="value">' + state.treeGrowth + ' / 100 🌱</span></div>' +
+    '<button class="modal-close" id="progress-close">关闭</button>',
+    true
+  )
+  $('progress-close').onclick = function() { m.close() }
+}
+
+// ─── ABOUT ───
+function showAbout() {
+  showModal(
+    '<div class="modal-title">🌱 关于新生</div>' +
+    '<div class="modal-text" style="font-size:.82rem;line-height:1.7">' +
+      '新生是一个21天行为改变计划，专为中国中老年朋友设计。\n\n' +
+      '基于行为科学和认知行为疗法，通过每天4次微签到（每次10秒），帮助你逐步改变习惯。\n\n' +
+      '每天：\n' +
+      '🌅 早上 — 记住今日挑战\n' +
+      '☀️ 中午 — 快速检查\n' +
+      '🌆 傍晚 — 了解状态\n' +
+      '🌙 晚间 — 反馈并进步\n\n' +
+      '难度会根据你的表现自动调整。' +
+    '</div>' +
+    '<button class="modal-close" id="about-close">知道了</button>',
+    true
+  )
+  $('about-close').onclick = function() { document.querySelector('.modal-overlay').remove() }
+}
+
+// ─── COMPLETE ───
+function renderComplete() {
+  var app = $('app')
+  app.innerHTML =
+    '<div style="text-align:center;padding:2rem 1rem">' +
+      '<div style="font-size:3rem;margin-bottom:.5rem">🎉</div>' +
+      '<div style="font-size:1.2rem;font-weight:700;color:var(--accent);margin-bottom:.5rem">21天完成！</div>' +
+      '<div class="modal-text" style="font-size:.9rem">你做到了。你不是原来的你了。\n你是一个"能完成一件事"的人了。</div>' +
+      '<div style="margin:1rem 0">' + renderTreeSVG(100) + '</div>' +
+      '<button class="checkin-btn" id="restart-btn">🔄 再开始一轮</button>' +
+    '</div>'
+  $('restart-btn').onclick = function() {
+    STORE.reset()
+    state = STORE.get()
+    renderHome()
+  }
+}
+
+// ─── EMERGENCY ───
+var EMERGENCY_ITEMS = [
+  {
+    icon:'🚬', label:'想抽烟', desc:'渴求感通常只持续10-20分钟',
+    tiers:[
+      {level:1, label:'第一步：深呼吸', coach:'闭上眼睛，深呼吸3次。\n\n吸——呼——\n吸——呼——\n吸——呼——', action:'我做了深呼吸'},
+      {level:2, label:'第二步：分散注意力', coach:'做一件需要动手的事：\n\n• 嚼口香糖\n• 盘手串\n• 叠衣服\n• 在纸上画圈\n\n做3分钟。', action:'我坚持了3分钟'},
+      {level:3, label:'第三步：联系家人', coach:'给你最在乎的人发一条消息：\n\n"我想你了，你在干嘛？"\n\n说出来就好。', action:'我发了一条消息'}
+    ]
+  },
+  {
+    icon:'🍺', label:'想喝酒', desc:'先喝一杯水，等5分钟',
+    tiers:[
+      {level:1, label:'第一步：喝水', coach:'去倒一杯水。\n\n不是酒，是水。\n\n喝完这杯水。\n\n然后等3分钟。', action:'我喝了水，等了3分钟'},
+      {level:2, label:'第二步：换一个说法', coach:'如果有人劝你喝酒，准备好一句话：\n\n"开车来的"\n"医生不让喝了"\n"在吃中药"\n\n选一个，练习说一遍。', action:'我准备好了拒绝的话'},
+      {level:3, label:'第三步：打电话', coach:'给家人打个电话。\n\n聊什么都行。\n\n3分钟就够了。', action:'我打了电话'}
+    ]
+  },
+  {
+    icon:'📱', label:'想刷手机', desc:'先站起来，离开座位',
+    tiers:[
+      {level:1, label:'第一步：物理隔离', coach:'把手机放在另一个房间。\n\n然后走到窗边。\n\n看窗外30秒。\n\n只看着。', action:'我放下手机看了窗外'},
+      {level:2, label:'第二步：问自己', coach:'问自己一个问题：\n\n"我现在真正需要的是什么？"\n\n是休息？是放松？还是逃避什么？', action:'我想了这个问题'},
+      {level:3, label:'第三步：做一件事', coach:'去做一件一直想做但"没时间"做的事：\n\n• 给老朋友打个电话\n• 整理个抽屉\n• 听一首老歌\n\n5分钟就好。', action:'我做事去了'}
+    ]
+  },
+  {
+    icon:'😤', label:'心情很差', desc:'先停下来，深呼吸',
+    tiers:[
+      {level:1, label:'第一步：5-4-3-2-1', coach:'把注意力拉回当下：\n\n• 说出5样你看到的东西\n• 说出4样你摸到的东西\n• 说出3种你听到的声音\n• 说出2种你闻到的气味\n• 说出1种你能尝到的味道\n\n做完这个练习。', action:'我做完了5-4-3-2-1'},
+      {level:2, label:'第二步：照顾身体', coach:'做一件对身体好的小事：\n\n• 喝一杯温水\n• 用冷水洗脸\n• 出门晒1分钟太阳\n\n身体好了，情绪才会好。', action:'我做了'},
+      {level:3, label:'第三步：对自己说', coach:'对自己说一句话：\n\n"这种感觉会过去的。我不需要伤害自己。"\n\n说一遍。', action:'我对自己说了'}
+    ]
+  }
+]
+
+function showEmergencyPage() {
+  var el = $('page-emergency')
+  el.classList.add('active')
+  var content = $('emerg-content')
+  content.innerHTML =
+    '<div class="emerg-sub">选一个你现在的感受</div>'
+  EMERGENCY_ITEMS.forEach(function(item) {
+    var btn = document.createElement('button')
+    btn.className = 'emerg-btn'
+    btn.innerHTML = '<span class="emerg-icon">' + item.icon + '</span><div><div class="emerg-label">' + item.label + '</div><div class="emerg-desc">' + item.desc + '</div></div>'
+    btn.onclick = function() { showEmergencyTiers(item) }
+    content.appendChild(btn)
+  })
+}
+
+function hideEmergency() {
+  $('page-emergency').classList.remove('active')
+}
+
+function showEmergencyTiers(item) {
+  var content = $('emerg-content')
+  content.innerHTML = ''
+  var header = document.createElement('div')
+  header.className = 'emerg-chat'
+  header.innerHTML = '<div class="msg" style="font-weight:600;color:var(--accent2)">🆘 ' + item.icon + ' ' + item.label + '</div><div class="msg" style="color:var(--dim);font-size:.8rem">' + item.desc + '</div>'
+  content.appendChild(header)
+  
+  var idx = 0
+  function nextTier() {
+    if (idx >= item.tiers.length) {
+      var done = document.createElement('div')
+      done.className = 'emerg-chat'
+      done.innerHTML = '<div class="msg" style="color:var(--gold);text-align:center;font-weight:500">✅ 你完成了所有步骤。\n\n记住这个感觉——你靠自己撑过来了。</div>'
+      content.appendChild(done)
+      var back = document.createElement('button')
+      back.className = 'emerg-next-btn'
+      back.textContent = '🆘 还需要其他帮助吗？'
+      back.onclick = showEmergencyPage
+      content.appendChild(back)
+      return
+    }
+    var tier = item.tiers[idx]
+    var chat = document.createElement('div')
+    chat.className = 'emerg-chat'
+    chat.innerHTML = '<div class="msg"><span class="emerg-tier-label">' + tier.label + '</span>\n' + tier.coach + '</div>'
+    content.appendChild(chat)
+    
+    var btn = document.createElement('button')
+    btn.className = 'emerg-next-btn'
+    btn.textContent = '✅ ' + tier.action
+    btn.onclick = function() {
+      btn.disabled = true
+      btn.textContent = '✓ 完成'
+      btn.style.opacity = '0.6'
+      idx++
+      setTimeout(nextTier, 400)
+    }
+    content.appendChild(btn)
+    
+    if (ttsEnabled) speak(tier.coach)
+    content.scrollTop = content.scrollHeight
+  }
+  nextTier()
+}
+
+// ─── S0 FLOW ───
+function startS0() {
+  var app = $('app')
+  app.innerHTML =
+    '<div class="home-day-label">初次见面</div>' +
+    '<div class="home-title">🌱 新生</div>' +
+    '<div class="s0-chat" id="s0-chat"></div>'
+  
+  state.s0Node = null
+  save()
+  showS0Node(S0[0])
+}
+
+function showS0Node(node) {
+  if (!node) {
+    finishS0()
+    return
+  }
+  state.s0Node = node.id
+  save()
+  
+  var chat = $('s0-chat')
+  
+  // Typing indicator
+  var typing = document.createElement('div')
+  typing.className = 's0-typing'
+  typing.innerHTML = '<span></span><span></span><span></span>'
+  chat.appendChild(typing)
+  chat.scrollTop = chat.scrollHeight
+  
+  var delay = Math.max(500, Math.min(2000, (node.coach || '').length * 15))
+  
+  setTimeout(function() {
+    if (typing.parentNode) typing.remove()
+    
+    var msg = document.createElement('div')
+    msg.className = 's0-msg coach'
+    msg.textContent = node.coach
+    chat.appendChild(msg)
+    chat.scrollTop = chat.scrollHeight
+    
+    if (ttsEnabled) speak(node.coach)
+    
+    // Special: input mode (protector name)
+    if (node.input) {
+      var inputDiv = document.createElement('div')
+      inputDiv.className = 'protector-input'
+      var inp = document.createElement('input')
+      inp.type = 'text'
+      inp.placeholder = node.input.label
+      inp.maxLength = 10
+      var btn = document.createElement('button')
+      btn.textContent = '确定'
+      btn.onclick = function() {
+        var val = inp.value.trim()
+        if (!val) { showToast('请输入' + node.input.label); return }
+        state[node.input.key] = val
+        if (node.input.key === 'protectorName') state.protectorSet = true
+        save()
+        
+        var userMsg = document.createElement('div')
+        userMsg.className = 's0-msg user'
+        userMsg.textContent = val
+        chat.appendChild(userMsg)
+        chat.scrollTop = chat.scrollHeight
+        
+        inputDiv.remove()
+        var nextNode = S0[getS0Index('protector_set')]
+        setTimeout(function() { showS0Node(nextNode) }, 500)
+      }
+      inputDiv.appendChild(inp)
+      inputDiv.appendChild(btn)
+      chat.appendChild(inputDiv)
+      inp.focus()
+      return
+    }
+    
+    // Options
+    if (node.opts && node.opts.length) {
+      setTimeout(function() {
+        var optDiv = document.createElement('div')
+        optDiv.className = 's0-options'
+        node.opts.forEach(function(opt) {
+          var b = document.createElement('button')
+          b.className = 's0-opt'
+          b.textContent = opt.t
+          b.onclick = function() {
+            // Disable all buttons
+            optDiv.querySelectorAll('.s0-opt').forEach(function(bb) { bb.disabled = true })
+            
+            var userMsg = document.createElement('div')
+            userMsg.className = 's0-msg user'
+            userMsg.textContent = opt.t
+            chat.appendChild(userMsg)
+            chat.scrollTop = chat.scrollHeight
+            
+            // Execute effect if any
+            if (opt.e) {
+              try { new Function(opt.e)() } catch(e) {}
+            }
+            
+            if (opt.n) {
+              var nextNode = getS0ById(opt.n)
+              if (nextNode) setTimeout(function() { showS0Node(nextNode) }, 500)
+              else finishS0()
+            } else {
+              finishS0()
+            }
+          }
+          optDiv.appendChild(b)
+        })
+        chat.appendChild(optDiv)
+        chat.scrollTop = chat.scrollHeight
+      }, 400)
+    } else {
+      // No options -> auto finish
+      setTimeout(finishS0, 1500)
+    }
+  }, delay)
+}
+
+function getS0ById(id) {
+  for (var i = 0; i < S0.length; i++) {
+    if (S0[i].id === id) return S0[i]
+  }
+  return null
+}
+
+function getS0Index(id) {
+  for (var i = 0; i < S0.length; i++) {
+    if (S0[i].id === id) return i
+  }
+  return -1
+}
+
+function finishS0() {
+  state.phase = 'daily'
+  state.s0Complete = true
+  state.day = 1
+  state.difficulty = 'easy'
+  state.treeGrowth = 5 // Starting growth
+  save()
+  renderHome()
+  showToast('🎉 明天开始第一天的挑战！')
+}
+
+// ─── SET FOCUS (called from S0) ───
+function setFocus(f, level) {
+  focus = f + ':' + level
+}
+
+// ─── INIT ───
+function initUI() {
+  state = STORE.get()
+  
+  // Emergency button
+  $('h-emergency').onclick = showEmergencyPage
+  $('emerg-close').onclick = hideEmergency
+  
+  // Route based on state
+  if (state.phase === 's0' && !state.s0Complete) {
+    startS0()
+  } else {
+    renderHome()
+  }
+}
+
+function updateBadge() {
+  var b = $('h-badge')
+  if (state.phase === 's0' && !state.s0Complete) {
+    b.textContent = '新朋友'
+  } else if (state.day <= 21) {
+    b.textContent = '第' + state.day + '天'
+  } else {
+    b.textContent = '完成'
+  }
+}
+
+// ─── SW REGISTRATION ───
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js', { scope: '/xinsheng/' })
+  })
+}
+
+// ─── START ───
+initUI()
+</script>
+</body>
+</html>
