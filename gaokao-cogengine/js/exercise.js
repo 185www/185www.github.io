@@ -49,21 +49,24 @@ const ExerciseEngine = {
     });
 
     if (!passed) {
+      const ex = this.currentExercise;
+      const steps = this.steps;
+      const results = this.stepResults;
+      const failedIdx = this.currentStepIndex;
       this.currentExercise = null;
       this.steps = null;
+      this.currentStepIndex = 0;
+      this.stepResults = [];
       this.exerciseResult = {
-        type: this.currentExercise?.template || 'unknown',
-        title: this.currentExercise?.title || '',
+        type: ex?.template || 'unknown',
+        title: ex?.title || '',
         passed: false,
-        failedStep: this.currentStepIndex + 1,
-        totalSteps: this.steps?.length || 0,
-        stepResults: this.stepResults,
+        failedStep: failedIdx + 1,
+        totalSteps: steps?.length || 0,
+        stepResults: results,
         failedAnswer: answer,
         expectedAnswer: expected
       };
-      this.currentStepIndex = 0;
-      this.stepResults = [];
-      this.steps = null;
       return {
         status: 'failed',
         result: this.exerciseResult

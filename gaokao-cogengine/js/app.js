@@ -223,9 +223,21 @@ const App = {
     this._currentExerciseIndex = exerciseIndex;
 
     const stepData = ExerciseEngine.start(ex);
-    if (!stepData) return;
+    if (!stepData) {
+      this._showFeedback('暂时无法加载该练习', 'error');
+      return;
+    }
 
     this.currentView = 'exercise';
+    this._renderExerciseStep();
+  },
+
+  renderExercise(app) {
+    if (!this._currentExerciseData || !ExerciseEngine.getCurrentStep()) {
+      this.currentView = 'exercises';
+      this.render();
+      return;
+    }
     this._renderExerciseStep();
   },
 
@@ -238,8 +250,6 @@ const App = {
       this._finishExercise();
       return;
     }
-
-    const template = ExerciseTemplates[ex.template];
     let inputHtml = '';
     if (stepData.type === 'fill-blank') {
       inputHtml = `

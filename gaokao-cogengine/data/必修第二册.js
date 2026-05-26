@@ -820,6 +820,3 @@ const 必修第二册 = {
   ]
 };
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = 必修第二册;
-}

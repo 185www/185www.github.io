@@ -13,7 +13,11 @@ const Store = {
   },
 
   saveRecords(records) {
-    localStorage.setItem(this.KEYS.RECORDS, JSON.stringify(records));
+    try {
+      localStorage.setItem(this.KEYS.RECORDS, JSON.stringify(records));
+    } catch (e) {
+      console.warn('Failed to save records:', e.message);
+    }
   },
 
   updateRecord(exerciseId, result) {
