@@ -1,4 +1,4 @@
-var CACHE = 'xsheng-v1'
+var CACHE = 'xsheng-v2'
 var ASSETS = ['/xinsheng/app.html', '/xinsheng/icon.svg', '/xinsheng/manifest.json']
 
 self.addEventListener('install', function(e){
