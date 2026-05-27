@@ -1,2 +1,6 @@
-exclude:
-  - gaokao-cogengine
+defaults:
+  -
+    scope:
+      path: "gaokao-cogengine"
+    values:
+      layout: null
