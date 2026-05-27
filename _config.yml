@@ -1,6 +1,0 @@
-defaults:
-  -
-    scope:
-      path: "gaokao-cogengine"
-    values:
-      layout: null
