@@ -1497,15 +1497,27 @@ $('dl-skip').onclick = ()=>{
 };
 
 $('dl-start').onclick = ()=>{
+  // convert focus tasks to GTD inbox tasks
+  S.dailyFocusTasks.forEach(item=>{
+    const title = item.title.trim();
+    if(!title) return;
+    const existing = S.tasks.find(t=>t.title===title && !t.completed);
+    if(!existing){
+      createTask(title, {area:'inbox'});
+    }
+  });
   // auto-focus first focus task
   if(S.dailyFocusTasks.length > 0){
-    const existing = S.tasks.find(t=>t.title===S.dailyFocusTasks[0].title && !t.completed);
-    if(existing){
-      S.timer.currentTaskId = existing.id;
-      saveState();
+    const firstTask = S.tasks.find(t=>t.title===S.dailyFocusTasks[0].title && !t.completed);
+    if(firstTask){
+      S.timer.currentTaskId = firstTask.id;
       updateActiveTaskDisplay();
     }
   }
+  S.dailyFocusTasks = [];
+  saveState();
+  renderTasks();
+  updateDoneToday();
   $('daily-launch-overlay').hidden = true;
   toast('今天也要加油！🍅');
 };
