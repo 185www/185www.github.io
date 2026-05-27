@@ -1,6 +1,6 @@
 defaults:
   -
     scope:
-      path: "gctest"
+      path: "gaokao-cogengine"
     values:
       layout: null
