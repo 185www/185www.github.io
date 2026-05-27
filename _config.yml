@@ -1,0 +1,10 @@
+# Disable Jekyll features that interfere with plain HTML sites
+theme: null
+plugins: []
+markdown: none
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: none
+      permalink: pretty
