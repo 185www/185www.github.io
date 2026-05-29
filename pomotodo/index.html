@@ -45,12 +45,15 @@
       <button class="btn-timer secondary" id="btn-skip" title="跳过">⏭</button>
     </div>
     <div class="timer-active-task" id="timer-active-task"></div>
+    <div class="score-display" id="score-display"><span class="score-num">0</span><span class="score-label">分</span><span class="level-badge">Lv.1 入门学徒</span></div>
     <div class="daily-goal-bar-wrap" id="daily-goal-bar-wrap">
       <div class="daily-goal-header"><span>🍅 今日目标</span><span class="daily-goal-text" id="daily-goal-text">0 / 6</span></div>
-      <div class="daily-goal-track"><div class="daily-goal-fill" id="daily-goal-fill"></div></div>
+      <div class="daily-goal-track"><div class="daily-goal-fill" id="daily-goal-fill"></div><div class="yesterday-ghost-line" id="yesterday-ghost-line" hidden></div></div>
+      <div class="yesterday-hint" id="yesterday-hint" hidden></div>
       <div class="daily-goal-celebration" id="daily-goal-celebration" hidden>🎉 今日目标达成！</div>
       <div class="streak-mini" id="streak-mini" hidden>🔥 连续专注 <strong id="streak-mini-num">0</strong> 天</div>
     </div>
+    <div class="momentum-feed-wrap"><h4 class="feed-heading">📰 成就动态</h4><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div>
     <div class="done-today"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3><ul class="done-list" id="done-list"></ul></div>
   </section>
   <section class="panel panel-tasks">
@@ -203,7 +206,7 @@
   </div>
 </div>
 <div class="modal-overlay" id="modal-complete" hidden>
-  <div class="modal-box"><h3>🍅 番茄完成！</h3><p class="modal-sub" id="modal-sub"></p><div class="modal-tasks" id="modal-tasks"></div>
+  <div class="modal-box"><h3>🍅 番茄完成！</h3><p class="modal-sub" id="modal-sub"></p><div class="modal-score-info" id="modal-score-info"></div><div class="modal-level-progress" id="modal-level-progress"></div><div class="modal-goal-reached" id="modal-goal-reached" hidden></div><div class="modal-tasks" id="modal-tasks"></div>
     <div class="modal-actions"><button class="btn-sm" id="modal-skip">跳过</button><button class="btn-sm btn-primary" id="modal-confirm">确认</button></div>
   </div>
 </div>
@@ -222,7 +225,7 @@
 </div>
 <!-- ==================== V5 OVERLAYS ==================== -->
 <div class="modal-overlay" id="modal-abandon-confirm" hidden>
-  <div class="modal-box"><h3>⚠️ 确认放弃？</h3><p>你已经专注了 <strong id="abandon-minutes">0</strong> 分钟</p><p class="modal-sub">放弃这个番茄将不会记录本次专注</p>
+  <div class="modal-box"><h3>⚠️ 确认放弃？</h3><p>你已经专注了 <strong id="abandon-minutes">0</strong> 分钟</p><p class="abandon-score-info" id="abandon-score-info" hidden>💔 放弃将损失本次番茄的 <strong>10分</strong></p><p class="abandon-streak-warn" id="abandon-streak-warn" hidden>⚠️ 今天还没有完成番茄，放弃可能中断连续记录！</p><p class="modal-sub">放弃这个番茄将不会记录本次专注</p>
     <div class="modal-actions"><button class="btn-sm btn-primary" id="abandon-continue">继续专注</button><button class="btn-sm btn-danger" id="abandon-confirm">放弃</button></div>
   </div>
 </div>
@@ -252,6 +255,7 @@
   <div class="daily-review-card"><h3>🌙 今日回顾</h3>
     <div class="dr-stats"><div class="dr-stat"><span id="dr-pomo">0</span><span>个番茄</span></div><div class="dr-stat"><span id="dr-mins">0</span><span>分钟专注</span></div></div>
     <div class="dr-compare" id="dr-compare"><p>📊 比昨日 <span id="dr-diff-pomo">0</span> 个番茄</p></div>
+    <div class="dr-score-section" id="dr-score-section" hidden></div>
     <div class="dr-tomorrow"><h4>💡 明日建议</h4><p id="dr-suggestion"></p></div>
     <div class="dr-actions"><button class="btn-sm" id="dr-skip">跳过</button><button class="btn-sm btn-primary" id="dr-done">好的，晚安</button></div>
   </div>
@@ -303,9 +307,10 @@
   </div>
 </div>
 <div class="welcome-back" id="welcome-back" hidden>👋 欢迎回来，继续专注！</div>
+<div class="streak-crisis-banner" id="streak-crisis-banner" hidden>⚠️ 你的连续专注记录面临中断风险！今天至少完成1个番茄来保持 🔥<strong id="streak-crisis-num">0</strong> 天连续</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=5"></script>
+<script src="./app.js?v=6"></script>
 </body>
 </html>

@@ -447,3 +447,69 @@ ul{list-style:none}
 .streak-mini strong{font-size:14px}
 /* focus-mode-full hide streak mini */
 .work-view.focus-mode-full .streak-mini{display:block;color:var(--text2)}
+
+/* ===== MDA GAMIFICATION STYLES ===== */
+/* A) Score Display */
+.score-display{text-align:center;font-size:13px;margin:6px 0;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.score-num{font-size:22px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums}
+.score-label{font-size:12px;color:var(--text2)}
+.level-badge{font-size:11px;background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff;padding:2px 10px;border-radius:12px;font-weight:600;white-space:nowrap}
+
+/* C) Yesterday Ghost Line on Daily Goal */
+.daily-goal-track{position:relative}
+.yesterday-ghost-line{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--blue);border-radius:2px;transform:translateX(-50%);opacity:0.7;z-index:2;pointer-events:none}
+.yesterday-ghost-line::after{content:'昨天';position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--blue);white-space:nowrap;font-weight:600}
+.yesterday-hint{font-size:11px;color:var(--blue);margin-top:2px;text-align:center}
+
+/* D) Streak Crisis Warning Banner */
+.streak-crisis-banner{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:998;background:linear-gradient(90deg,#e74c3c,#e67e22);color:#fff;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(231,76,60,0.4);animation:crisisPulse 2s ease-in-out infinite;max-width:90vw;text-align:center}
+@keyframes crisisPulse{0%,100%{box-shadow:0 4px 20px rgba(231,76,60,0.4)}50%{box-shadow:0 4px 30px rgba(231,76,60,0.7),0 0 0 4px rgba(231,76,60,0.2)}}
+.streak-crisis-banner strong{font-size:18px}
+
+/* E) Momentum Feed */
+.momentum-feed-wrap{margin-top:8px;padding:8px 0;border-top:1px solid var(--border)}
+.feed-heading{font-size:13px;color:var(--text2);margin-bottom:6px}
+.momentum-feed{display:flex;flex-direction:column;gap:4px;max-height:90px;overflow-y:auto}
+.feed-item{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:var(--surface2);border-radius:var(--radius-xs);font-size:12px;animation:feedSlideIn 0.3s ease}
+@keyframes feedSlideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.feed-msg{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed-time{font-size:10px;color:var(--text3);flex-shrink:0;margin-left:8px}
+.feed-empty{color:var(--text3);font-style:italic;justify-content:center}
+
+/* F) Smart Abandon Messages */
+.abandon-score-info{font-size:13px;color:var(--red);margin:4px 0;font-weight:600}
+.abandon-streak-warn{font-size:13px;color:var(--orange);margin:4px 0;font-weight:600;animation:abandonWarnPulse 1.5s ease-in-out infinite}
+@keyframes abandonWarnPulse{0%,100%{opacity:1}50%{opacity:0.6}}
+
+/* H) Completion Modal Enhancement */
+.modal-score-info{display:flex;align-items:center;gap:8px;padding:8px 0;flex-wrap:wrap;justify-content:center}
+.modal-score-pts{font-size:20px;font-weight:700;color:var(--green)}
+.modal-score-total{font-size:13px;color:var(--text2)}
+.modal-level-badge{font-size:11px;background:linear-gradient(135deg,#f39c12,#e74c3c);color:#fff;padding:2px 8px;border-radius:10px;font-weight:600}
+.modal-level-progress{padding:4px 0}
+.modal-level-bar{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:4px}
+.modal-level-fill{height:100%;background:linear-gradient(90deg,var(--primary),#f39c12);border-radius:4px;transition:width 0.5s ease}
+.modal-level-text{font-size:11px;color:var(--text2)}
+.modal-goal-reached{font-size:15px;font-weight:700;color:var(--green);text-align:center;margin:6px 0;animation:goalCelebBounce 0.6s ease}
+@keyframes goalCelebBounce{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+
+/* I) Daily Review Enhancement */
+.dr-score-section{padding:10px;background:var(--surface2);border-radius:var(--radius-sm);margin:8px 0}
+.dr-stat-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.dr-stat-row:last-child{border-bottom:none}
+.dr-stat-row span{color:var(--text2)}
+.dr-stat-row strong{font-weight:600}
+.dr-score-val{color:var(--green);font-size:15px}
+.dr-compare-score strong{color:var(--primary)}
+
+/* Focus mode hide MDA elements */
+.work-view.focus-mode .momentum-feed-wrap{display:none}
+.work-view.focus-mode .score-display{font-size:12px;margin:4px 0}
+.work-view.focus-mode .score-num{font-size:18px}
+.work-view.focus-mode-full .momentum-feed-wrap{display:none}
+.work-view.focus-mode-full .score-display{font-size:14px;margin:8px 0}
+.work-view.focus-mode-full .score-num{font-size:24px}
+.work-view.focus-mode-full .level-badge{font-size:13px;padding:3px 14px}
+
+/* Stats: distraction count card */
+.stat-card-distraction .stat-val{color:var(--orange)}

@@ -1,4 +1,4 @@
-/* Pomotodo V5 — app.js */
+/* Pomotodo V6 — app.js — MDA Gamification */
 (function(){
 'use strict';
 
@@ -25,7 +25,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4)) return d;
+      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5)) return d;
     }
   }catch(e){}
   return freshState();
@@ -33,7 +33,7 @@ function loadState(){
 
 function freshState(){
   return {
-    version:4,
+    version:5,
     settings:{...defaultSettings},
     tasks:[],
     projects:[],
@@ -46,6 +46,13 @@ function freshState(){
     _lastVisitDate:null,
     _reviewedDates:{},
     _lastWeeklyReviewDate:null,
+    score:0,
+    distractionCount:0,
+    milestones:[],
+    _awayTimestamp:null,
+    _yesterdayPomoCount:-1,
+    _todayExceededYesterday:false,
+    _prevLevel:1,
     timer:{
       mode:'work',
       phase:'idle',
@@ -121,6 +128,157 @@ function requestNotify(title, body){
   if(!S.settings.notify) return;
   if(Notification.permission==='granted'){
     new Notification(title, {body, icon:'./icons/icon-192.png'});
+  }
+}
+
+/* ============= MDA GAMIFICATION HELPERS ============= */
+const LEVELS = [
+  {min:0, max:99, level:1, title:'入门学徒'},
+  {min:100, max:299, level:2, title:'专注学生'},
+  {min:300, max:599, level:3, title:'效率达人'},
+  {min:600, max:999, level:4, title:'时间大师'},
+  {min:1000, max:Infinity, level:5, title:'传奇学霸'},
+];
+const MILESTONE_STREAKS = [7,14,30,66];
+const MILESTONE_MSGS = {
+  7:'🏆 7天连续！习惯正在形成！',
+  14:'🥈 14天！你已经在超越大多数人了！',
+  30:'🥇 30天！你是真正的专注战士！',
+  66:'👑 66天！习惯已经巩固！你是传奇！',
+};
+const MILESTONE_CONFETTI = {
+  7:{count:80,colors:['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6']},
+  14:{count:120,colors:['#e74c3c','#f39c12','#e67e22','#2ecc71','#1abc9c','#9b59b6','#e91e63','#3498db']},
+  30:{count:180,colors:['#e74c3c','#f39c12','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e91e63','#ff6b6b']},
+  66:{count:250,colors:['#FFD700','#FFA500','#FF6347','#DC143C','#FF4500','#FFD700','#ADFF2F','#00CED1','#FF69B4','#9400D3']},
+};
+
+function getLevelInfo(score){
+  const s = Math.max(0, score||0);
+  for(let i=LEVELS.length-1;i>=0;i--){
+    if(s>=LEVELS[i].min) return LEVELS[i];
+  }
+  return LEVELS[0];
+}
+
+function addScore(pts){
+  const prevLevel = getLevelInfo(S.score||0);
+  S.score = Math.max(0, (S.score||0) + pts);
+  const newLevel = getLevelInfo(S.score);
+  if(newLevel.level > prevLevel.level){
+    addMilestone('⬆️ 升级为 Lv.'+newLevel.level+' '+newLevel.title+'！');
+    toast('🎉 升级！Lv.'+newLevel.level+' '+newLevel.title, 4000);
+    if(S.settings.celebration) showCelebration();
+    S._prevLevel = newLevel.level;
+  }
+  saveState();
+  renderScoreDisplay();
+  updateMomentumFeed();
+}
+
+function addMilestone(msg){
+  if(!S.milestones) S.milestones=[];
+  S.milestones.push({msg, time:isoNow()});
+  if(S.milestones.length>50) S.milestones=S.milestones.slice(-50);
+  saveState();
+}
+
+function checkMilestones(streak){
+  if(!S.milestones) S.milestones=[];
+  MILESTONE_STREAKS.forEach(s=>{
+    if(streak===s){
+      const key = 'streak_'+s;
+      if(!S.milestones.find(m=>m.msg===MILESTONE_MSGS[s])){
+        S.score = (S.score||0) + 200;
+        addMilestone(MILESTONE_MSGS[s]);
+        toast(MILESTONE_MSGS[s], 5000);
+        const conf = MILESTONE_CONFETTI[s]||{count:100,colors:['#e74c3c','#3498db','#2ecc71','#f1c40f']};
+        showCelebrationCustom(conf.count, conf.colors);
+      }
+    }
+  });
+}
+
+function showCelebrationCustom(count, colors){
+  const overlay = $('celebration-overlay');
+  if(!overlay) return;
+  overlay.hidden = false;
+  const container = qs('.confetti-container');
+  if(!container) return;
+  container.innerHTML = '';
+  for(let i=0;i<count;i++){
+    const c = document.createElement('div');
+    c.className='confetti';
+    c.style.left=Math.random()*100+'%';
+    c.style.background=colors[Math.floor(Math.random()*colors.length)];
+    c.style.width=(6+Math.random()*10)+'px';
+    c.style.height=(6+Math.random()*10)+'px';
+    c.style.animationDuration=(2+Math.random()*4)+'s';
+    c.style.animationDelay=Math.random()*2+'s';
+    container.appendChild(c);
+  }
+  setTimeout(()=>{ overlay.hidden=true; }, 5000);
+}
+
+function renderScoreDisplay(){
+  const el = $('score-display');
+  if(!el) return;
+  const info = getLevelInfo(S.score||0);
+  el.innerHTML = '<span class="score-num">'+Math.max(0,S.score||0)+'</span><span class="score-label">分</span>' +
+    '<span class="level-badge">Lv.'+info.level+' '+info.title+'</span>';
+}
+
+function updateMomentumFeed(){
+  const el = $('momentum-feed');
+  if(!el) return;
+  if(!S.milestones || S.milestones.length===0){
+    el.innerHTML='<div class="feed-item feed-empty">开始你的第一个番茄吧！</div>';
+    return;
+  }
+  const last3 = S.milestones.slice(-3).reverse();
+  el.innerHTML = last3.map(m=>{
+    const t = m.time ? new Date(m.time) : null;
+    const timeStr = t ? (t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')) : '';
+    return '<div class="feed-item"><span class="feed-msg">'+escHtml(m.msg)+'</span><span class="feed-time">'+timeStr+'</span></div>';
+  }).join('');
+}
+
+function showStreakCrisisWarning(){
+  const el = $('streak-crisis-banner');
+  if(!el) return;
+  const today = todayStr();
+  const todayData = S.pomodoroHistory[today];
+  if(todayData && todayData.count>0) { el.hidden=true; return; }
+  // Calculate streak including yesterday
+  let streakFromYesterday = 0;
+  const d = new Date();
+  for(let i=1;i<366;i++){
+    const p = new Date(d);
+    p.setDate(p.getDate()-i);
+    const ds = dateStr(p);
+    const data = S.pomodoroHistory[ds];
+    if(data && data.count>0){ streakFromYesterday++; } else { break; }
+  }
+  if(streakFromYesterday>0){
+    el.hidden=false;
+    $('streak-crisis-num').textContent = streakFromYesterday;
+  }else{
+    el.hidden=true;
+  }
+}
+
+function checkYesterdayCompetition(count){
+  const today = todayStr();
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yStr = dateStr(y);
+  const yCount = (S.pomodoroHistory[yStr]||{}).count||0;
+  if(S._yesterdayPomoCount<0) S._yesterdayPomoCount = yCount;
+  if(yCount>0 && count>yCount && !S._todayExceededYesterday){
+    S._todayExceededYesterday = true;
+    addMilestone('🔥 超越昨天！今天已完成 '+count+' 个番茄（昨天 '+yCount+' 个）');
+    toast('🔥 超越昨天！', 3000);
+    saveState();
+    updateMomentumFeed();
   }
 }
 
@@ -307,6 +465,23 @@ function updateDailyGoal(){
   fill.classList.toggle('goal-reached', count >= goal);
   celebration.hidden = count < goal;
 
+  // MDA: yesterday ghost on daily goal bar
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yStr = dateStr(y);
+  const yCount = (S.pomodoroHistory[yStr]||{}).count||0;
+  const yesterdayGhost = $('yesterday-ghost-line');
+  if(yesterdayGhost && yCount > 0){
+    const yPct = Math.min(100, (yCount/goal)*100);
+    yesterdayGhost.style.left = yPct+'%';
+    yesterdayGhost.hidden = false;
+    const yesterdayHint = $('yesterday-hint');
+    if(yesterdayHint) yesterdayHint.hidden = false;
+  } else {
+    if(yesterdayGhost) yesterdayGhost.hidden = true;
+    const yesterdayHint = $('yesterday-hint');
+    if(yesterdayHint) yesterdayHint.hidden = true;
+  }
+
   // streak mini
   const sr = $('streak-mini');
   const srNum = $('streak-mini-num');
@@ -367,6 +542,7 @@ function onTimerComplete(){
 function recordPomodoro(){
   const today = todayStr();
   if(!S.pomodoroHistory[today]) S.pomodoroHistory[today] = {count:0,focusMins:0};
+  const prevCount = S.pomodoroHistory[today].count;
   S.pomodoroHistory[today].count++;
   S.pomodoroHistory[today].focusMins += S.timer.total/60;
   S.timer.intervalsCompleted++;
@@ -403,8 +579,42 @@ function recordPomodoro(){
     }, 2000);
   }
 
+  // === MDA: Score +10 for completing a tomato ===
+  addScore(10);
+
+  const count = S.pomodoroHistory[today].count;
+  const goal = S.settings.dailyGoal || 6;
+
+  // MDA: First tomato of today
+  if(prevCount === 0 && count === 1){
+    addMilestone('🍅 完成了今天的第1个番茄！保持动力！');
+  }
+
+  // MDA: Daily goal reached bonus
+  if(count === goal && prevCount < goal){
+    addScore(50);
+    addMilestone('🎉 今日目标达成！+50分奖励！太棒了！');
+  }
+
+  // MDA: Streak milestones
+  const streak = calcStreak();
+  checkMilestones(streak);
+
+  // MDA: Yesterday self competition
+  checkYesterdayCompetition(count);
+
+  // MDA: Milestone feed for 3rd, 5th, 10th tomato
+  if(count === 3) addMilestone('🍅 今天已完成3个番茄！继续保持！');
+  if(count === 5) addMilestone('🍅 今天已完成5个番茄！效率很高！');
+  if(count === 10) addMilestone('🔥 今天已完成10个番茄！超级专注！');
+
+  // MDA: Hide streak crisis warning
+  const crisisEl = $('streak-crisis-banner');
+  if(crisisEl) crisisEl.hidden = true;
+
   // update daily goal and show bounce animation
   updateDailyGoal();
+  updateMomentumFeed();
   const ring = qs('.ring-fill');
   if(ring) ring.classList.add('pomo-bounce');
 }
@@ -412,7 +622,42 @@ function recordPomodoro(){
 function showCompletionModal(){
   const sub = $('modal-sub');
   const tasks = $('modal-tasks');
+  const scoreInfo = $('modal-score-info');
+  const levelProgress = $('modal-level-progress');
+
   sub.textContent = '已完成第 '+S.timer.intervalsCompleted+' 个番茄';
+
+  // MDA: Show score and level info in completion modal
+  if(scoreInfo){
+    const info = getLevelInfo(S.score||0);
+    scoreInfo.innerHTML = '<span class="modal-score-pts">+10分</span>' +
+      '<span class="modal-score-total">总分：'+Math.max(0,S.score||0)+'分</span>' +
+      '<span class="modal-level-badge">Lv.'+info.level+' '+info.title+'</span>';
+    scoreInfo.hidden = false;
+  }
+  if(levelProgress){
+    const info = getLevelInfo(S.score||0);
+    const pct = info.max===Infinity ? 100 : Math.min(100, ((S.score||0)-info.min)/(info.max-info.min)*100);
+    levelProgress.innerHTML = '<div class="modal-level-bar"><div class="modal-level-fill" style="width:'+pct+'%"></div></div>' +
+      '<span class="modal-level-text">距离 Lv.'+(info.level+1)+' 还需 '+Math.max(0,Math.min(info.max-(S.score||0), info.max===Infinity?0:info.max-(S.score||0)))+' 分</span>';
+    levelProgress.hidden = false;
+  }
+
+  // MDA: Check if goal was just reached
+  const today = todayStr();
+  const data = S.pomodoroHistory[today] || {count:0};
+  const goal = S.settings.dailyGoal || 6;
+  if(data.count === goal){
+    const goalMsg = $('modal-goal-reached');
+    if(goalMsg){
+      goalMsg.textContent = '🎉 今日目标达成！+50分奖励！';
+      goalMsg.hidden = false;
+    }
+  } else {
+    const goalMsg = $('modal-goal-reached');
+    if(goalMsg) goalMsg.hidden = true;
+  }
+
   tasks.innerHTML = '';
   // show completed tasks today
   getTodayDone().forEach(t=>{
@@ -477,11 +722,25 @@ $('btn-skip').onclick = ()=>{
   if(S.settings.interruptConfirm){
     const elapsed = S.timer.total - S.timer.remaining;
     $('abandon-minutes').textContent = Math.round(elapsed/60);
+    // MDA: Smart abandon message
+    const abandonScore = $('abandon-score-info');
+    if(abandonScore) abandonScore.hidden = false;
+    const abandonStreak = $('abandon-streak-warn');
+    if(abandonStreak){
+      const today = todayStr();
+      const todayData = S.pomodoroHistory[today];
+      const todayHasPomo = todayData && todayData.count > 0;
+      if(!todayHasPomo){
+        abandonStreak.hidden = false;
+      } else {
+        abandonStreak.hidden = true;
+      }
+    }
     $('modal-abandon-confirm').hidden = false;
   }else{
     abandonPomo();
   }
-};
+}
 
 $('abandon-continue').onclick = ()=>{ $('modal-abandon-confirm').hidden = true; };
 
@@ -1681,18 +1940,44 @@ function showDailyReview(){
     $('dr-compare').hidden = true;
   }
 
+  // MDA: Score & Level section in daily review
+  const drScore = $('dr-score-section');
+  if(drScore){
+    const info = getLevelInfo(S.score||0);
+    const scoreEarned = data.count * 10;
+    const goalBonus = (data.count >= (S.settings.dailyGoal||6)) ? 50 : 0;
+    const totalEarned = scoreEarned + goalBonus;
+    drScore.innerHTML = '<div class="dr-stat-row"><span>今日得分</span><strong class="dr-score-val">+'+totalEarned+'分</strong></div>' +
+      '<div class="dr-stat-row"><span>累计总分</span><strong>'+Math.max(0,S.score||0)+'分</strong></div>' +
+      '<div class="dr-stat-row"><span>当前等级</span><strong>Lv.'+info.level+' '+info.title+'</strong></div>';
+    if(yData){
+      const yScoreEarned = yData.count * 10 + ((yData.count >= (S.settings.dailyGoal||6)) ? 50 : 0);
+      const scoreDiff = totalEarned - yScoreEarned;
+      const diffSign = scoreDiff >= 0 ? '+' : '';
+      drScore.innerHTML += '<div class="dr-stat-row dr-compare-score"><span>与昨日对比</span><strong>'+(scoreDiff>=0?'🔥':'')+' '+diffSign+scoreDiff+'分</strong></div>';
+    }
+    drScore.hidden = false;
+  }
+
   // goal completion rate
   const goal = S.settings.dailyGoal || 6;
   const rate = Math.min(100, Math.round((data.count/goal)*100));
 
-  // suggestion
+  // MDA: encouraging message based on performance
   const unfinished = S.tasks.filter(t=>!t.completed && (t.area==='next'||t.area==='inbox'));
   let suggestion = '今日完成 '+data.count+'/'+goal+' 个番茄，目标完成率 '+rate+'%。';
-  if(unfinished.length > 0){
-    suggestion += ' 明天可以优先处理 "';
-    suggestion += unfinished[0].title;
-    suggestion += '" 等 ' + unfinished.length + ' 个待办。';
-  }else{
+  if(data.count >= goal){
+    suggestion = '🎉 太棒了！今日超额完成目标！你获得了 '+(data.count*10+50)+' 分，继续保持！';
+  } else if(data.count >= goal/2){
+    suggestion = '💪 不错！完成了目标的一半以上，明天争取达标！';
+  } else if(data.count > 0){
+    suggestion = '🌱 今天做了 '+data.count+' 个番茄，每个番茄都是进步。明天加油！';
+  } else {
+    suggestion = '🌅 今天还没开始，没关系，明天是新的一天！';
+  }
+  if(unfinished.length > 0 && data.count < goal){
+    suggestion += ' 明天可以优先处理 "' + unfinished[0].title + '" 等 ' + unfinished.length + ' 个待办。';
+  } else if(unfinished.length === 0){
     suggestion += ' 所有任务都完成了，好好休息！';
   }
   $('dr-suggestion').textContent = suggestion;
@@ -2534,6 +2819,18 @@ function migrateData(){
     S.version=4;
     saveState();
   }
+  // MDA: v4 → v5 migration
+  if(S.version===4){
+    S.score = S.score||0;
+    S.distractionCount = S.distractionCount||0;
+    S.milestones = S.milestones||[];
+    S._awayTimestamp = S._awayTimestamp||null;
+    S._yesterdayPomoCount = S._yesterdayPomoCount !== undefined ? S._yesterdayPomoCount : -1;
+    S._todayExceededYesterday = S._todayExceededYesterday||false;
+    S._prevLevel = S._prevLevel||1;
+    S.version=5;
+    saveState();
+  }
 }
 
 /* ============= INIT ============= */
@@ -2571,6 +2868,15 @@ function initApp(){
   if(S._lastVisitDate===undefined) S._lastVisitDate=null;
   if(S._lastWeeklyReviewDate===undefined) S._lastWeeklyReviewDate=null;
 
+  // MDA: ensure gamification fields
+  if(S.score===undefined) S.score=0;
+  if(S.distractionCount===undefined) S.distractionCount=0;
+  if(S.milestones===undefined) S.milestones=[];
+  if(S._awayTimestamp===undefined) S._awayTimestamp=null;
+  if(S._yesterdayPomoCount===undefined) S._yesterdayPomoCount=-1;
+  if(S._todayExceededYesterday===undefined) S._todayExceededYesterday=false;
+  if(S._prevLevel===undefined) S._prevLevel=1;
+
   // if timer was running on page unload, reset to idle (can't track wall-clock time)
   if(S.timer.phase==='running') S.timer.phase='idle';
 
@@ -2594,6 +2900,11 @@ function initApp(){
   updateModeBtns();
   updateActiveTaskDisplay();
   updateDailyGoal();
+
+  // MDA: render score display
+  renderScoreDisplay();
+  updateMomentumFeed();
+  showStreakCrisisWarning();
 
   // daily review (end of day check) - show if switching days
   checkDailyReview();
@@ -2675,11 +2986,20 @@ function stopTitleFlash(){
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden){
     saveState();
-    if(S.timer.phase === 'running') hiddenSince = Date.now();
+    if(S.timer.phase === 'running'){
+      hiddenSince = Date.now();
+      S._awayTimestamp = hiddenSince;
+      saveState();
+    }
   }else{
     if(hiddenSince && S.timer.phase === 'running'){
       const elapsed = Math.floor((Date.now() - hiddenSince) / 1000);
       if(elapsed >= 120){
+        // MDA: Distraction Tax — deduct 2 points
+        addScore(-2);
+        S.distractionCount = (S.distractionCount||0) + 1;
+        saveState();
+        toast('⚠️ 专注中断 -2分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
         const notice = document.createElement('div');
         notice.className = 'distraction-notice';
         notice.textContent = '👋 欢迎回来，继续专注！切走超过2分钟了哦';
@@ -2693,6 +3013,7 @@ document.addEventListener('visibilitychange', ()=>{
       }
     }
     hiddenSince = null;
+    S._awayTimestamp = null;
     stopTitleFlash();
     updateTimerDisplay();
     updateTimerBtn();
