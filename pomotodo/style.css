@@ -513,3 +513,86 @@ ul{list-style:none}
 
 /* Stats: distraction count card */
 .stat-card-distraction .stat-val{color:var(--orange)}
+
+/* ===== MDA V2 ENHANCEMENT STYLES ===== */
+/* Calendar heatmap levels */
+.cal-day.cal-level-0{background:var(--surface)}
+.cal-day.cal-level-1{background:#d4edda}
+.cal-day.cal-level-2{background:#a3e4b2}
+.cal-day.cal-level-3{background:#5cc97a}
+.cal-day.cal-level-4{background:#27ae60;color:#fff}
+[data-theme=dark] .cal-day.cal-level-1{background:#1a3a1a}
+[data-theme=dark] .cal-day.cal-level-2{background:#2a5a2a}
+[data-theme=dark] .cal-day.cal-level-3{background:#3a7a3a}
+[data-theme=dark] .cal-day.cal-level-4{background:#4a9a4a;color:#fff}
+.cal-day .cal-pomo-count{font-size:9px;color:var(--text2);font-weight:600;line-height:1}
+.cal-day.cal-level-4 .cal-pomo-count{color:rgba(255,255,255,0.9)}
+.cal-day.cal-streak{box-shadow:inset 0 0 0 2px var(--orange)}
+.cal-day.cal-goal::after{content:'✓';position:absolute;top:2px;right:2px;font-size:8px;color:var(--green);font-weight:700}
+.cal-monthly-summary{display:flex;gap:12px;flex-wrap:wrap;padding:10px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow)}
+.cal-summary-item{text-align:center;flex:1;min-width:70px}
+.cal-summary-val{font-size:20px;font-weight:700;color:var(--primary)}
+.cal-summary-lbl{font-size:11px;color:var(--text2)}
+
+/* Stats Level Section */
+.stats-level-section{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.level-card{text-align:center}
+.level-current{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;font-size:16px;font-weight:600}
+.level-icon{font-size:32px}
+.level-xp-bar{height:12px;background:var(--surface2);border-radius:6px;overflow:hidden;position:relative;margin:8px 0 4px}
+.level-xp-fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--red));border-radius:6px;transition:width 0.8s ease}
+.level-xp-text{font-size:11px;color:var(--text2)}
+
+/* Stats Records */
+.stats-records{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.stats-records h3{font-size:15px;margin-bottom:8px}
+.records-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+.record-card{text-align:center;padding:12px 8px;background:var(--surface2);border-radius:var(--radius-sm)}
+.record-val{font-size:22px;font-weight:700;color:var(--primary)}
+.record-lbl{font-size:11px;color:var(--text2);margin-top:2px}
+.record-date{font-size:10px;color:var(--text3);margin-top:2px}
+.chart-toggle-btn{padding:3px 10px;font-size:11px;border-radius:10px;background:var(--surface2);margin-left:6px}
+.chart-toggle-btn.active{background:var(--primary);color:#fff}
+
+/* Stats Achievements */
+.stats-achievements{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.stats-achievements h3{font-size:15px;margin-bottom:8px}
+.achievements-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.achievement-badge{display:flex;align-items:center;gap:6px;padding:8px;border-radius:var(--radius-sm);font-size:12px;background:var(--surface2);transition:all 0.3s}
+.achievement-badge.earned{background:linear-gradient(135deg,#fff3cd,#ffeeba);border:1px solid #ffc107}
+[data-theme=dark] .achievement-badge.earned{background:linear-gradient(135deg,#3a2a0a,#4a3a1a);border-color:#b8860b}
+.achievement-badge.locked{opacity:0.4;filter:grayscale(1)}
+.achievement-badge .ach-icon{font-size:20px}
+.achievement-badge .ach-name{font-weight:600}
+
+/* Stats Insights */
+.stats-insights{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.stats-insights h3{font-size:15px;margin-bottom:8px}
+.insights-list{display:flex;flex-direction:column;gap:6px}
+.insight-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);font-size:13px}
+.insight-item .insight-icon{font-size:18px;flex-shrink:0}
+.insight-item .insight-text{flex:1}
+.insight-item .insight-val{font-weight:700;color:var(--primary)}
+
+/* Settings record */
+.sett-record{font-size:15px;color:var(--primary);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* GTD Workflow Enhancement */
+.task-aging{font-size:9px;padding:1px 5px;border-radius:8px;font-weight:600;flex-shrink:0}
+.task-aging.warn{background:var(--orange);color:#fff}
+.task-aging.urgent{background:var(--red);color:#fff}
+.task-quick-focus{font-size:12px;padding:2px 6px;background:var(--primary);color:#fff;border-radius:10px;cursor:pointer;flex-shrink:0;opacity:0;transition:opacity 0.2s}
+.task-item:hover .task-quick-focus{opacity:1}
+.task-focus-star{font-size:11px;flex-shrink:0}
+
+/* Score display toggle */
+.score-display.hidden-score{visibility:hidden;height:0;margin:0;overflow:hidden}
+
+/* Chart toggle responsive */
+@media(max-width:640px){
+  .achievements-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+  .records-grid{grid-template-columns:repeat(2,1fr)}
+  .cal-monthly-summary{gap:8px}
+  .cal-summary-item{min-width:60px}
+  .cal-summary-val{font-size:16px}
+}

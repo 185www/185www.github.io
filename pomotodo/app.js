@@ -11,7 +11,9 @@ const defaultSettings = {
   autoBreak:true, autoWork:false, restGuide:true, focusMode:true,
   celebration:true, interruptConfirm:true,
   sound:true, volume:0.7, notify:false, wakelock:false,
-  theme:'light', dailyGoal:6
+  theme:'light', dailyGoal:6,
+  distractionPenalty:2, distractionThreshold:120, titleFlash:true, distractionNotice:true,
+  showScore:true, achievementNotify:true, streakCrisis:true
 };
 
 let S = loadState();
@@ -246,6 +248,7 @@ function updateMomentumFeed(){
 function showStreakCrisisWarning(){
   const el = $('streak-crisis-banner');
   if(!el) return;
+  if(S.settings.streakCrisis === false){ el.hidden=true; return; }
   const today = todayStr();
   const todayData = S.pomodoroHistory[today];
   if(todayData && todayData.count>0) { el.hidden=true; return; }
@@ -953,17 +956,32 @@ function renderTasks(){
     tasks = tasks.filter(t=>t.completed);
   }
 
-  // sort: incomplete first, priority asc, due asc
+  // sort: overdue first, today next, priority asc, due asc, age desc for inbox
+  const now = new Date();
+  const todayDate = todayStr();
   tasks.sort((a,b)=>{
     if(a.completed!==b.completed) return a.completed ? 1 : -1;
+    // Overdue tasks first
+    const aOverdue = !a.completed && a.due && new Date(a.due)<now;
+    const bOverdue = !b.completed && b.due && new Date(b.due)<now;
+    if(aOverdue!==bOverdue) return aOverdue ? -1 : 1;
+    // Today tasks next
+    const aToday = !a.completed && a.due && dateStr(new Date(a.due))===todayDate;
+    const bToday = !b.completed && b.due && dateStr(new Date(b.due))===todayDate;
+    if(aToday!==bToday) return aToday ? -1 : 1;
+    // Priority asc (1=high, 4=low)
     if(a.priority!==b.priority) return a.priority-b.priority;
+    // Due date asc
     if(a.due && b.due) return new Date(a.due)-new Date(b.due);
     if(a.due) return -1;
     if(b.due) return 1;
+    // For inbox: older first
+    if(area==='inbox' && a.createdAt && b.createdAt) return new Date(a.createdAt)-new Date(b.createdAt);
     return 0;
   });
 
   list.innerHTML = '';
+  const now = new Date();
   tasks.forEach(t=>{
     const item = document.createElement('li');
     item.className = 'task-item' + (t.completed ? ' completed' : '');
@@ -972,6 +990,30 @@ function renderTasks(){
     const hasChildren = t.subtasks && t.subtasks.length > 0;
 
     const prioEmoji = ['','🔴','🟠','🟡','⚪'][t.priority]||'⚪';
+
+    // Aging indicator for inbox tasks
+    let agingHtml = '';
+    if(area==='inbox' && !t.completed && t.createdAt){
+      const ageMs = now - new Date(t.createdAt).getTime();
+      const ageDays = ageMs / 86400000;
+      if(ageDays >= 7){
+        agingHtml = '<span class="task-aging urgent">紧急</span>';
+      } else if(ageDays >= 3){
+        agingHtml = '<span class="task-aging warn">老化</span>';
+      }
+    }
+
+    // Quick focus button for next area tasks
+    let quickFocusHtml = '';
+    if(area==='next' && !t.completed){
+      quickFocusHtml = '<button class="task-quick-focus" data-action="quick-focus" title="快速专注">🍅</button>';
+    }
+
+    // Daily focus star
+    let focusStarHtml = '';
+    if(!t.completed && S.dailyFocusTasks && S.dailyFocusTasks.some(f=>f.id===t.id)){
+      focusStarHtml = '<span class="task-focus-star">⭐</span>';
+    }
 
     let extraMeta = '';
     if(area==='waiting'){
@@ -982,8 +1024,11 @@ function renderTasks(){
     item.innerHTML = `
       <div class="task-check ${t.completed?'checked':''}" data-action="toggle">${t.completed?'✓':''}</div>
       <span class="task-prio">${prioEmoji}</span>
+      ${focusStarHtml}
       ${area==='inbox' && !t.completed ? '<span class="task-clarify-btn" data-action="clarify">🧹</span>' : ''}
       <span class="task-text">${escHtml(t.title)}${hasChildren?' <span class="task-sub-indicator">📋</span>':''}</span>
+      ${agingHtml}
+      ${quickFocusHtml}
       <div class="task-meta">
         ${t.completedPomodoros ? '<span class="task-pomo">🍅'+t.completedPomodoros+'</span>' : ''}
         ${t.tags && t.tags.length ? t.tags.map(tg=>'<span class="task-tag">#'+escHtml(tg)+'</span>').join('') : ''}
@@ -1004,7 +1049,19 @@ function renderTasks(){
         openClarify(t.id);
         return;
       }
-      if(!e.target.closest('.task-check') && !e.target.closest('.task-clarify-btn')){
+      if(action==='quick-focus'){
+        e.stopPropagation();
+        S.timer.currentTaskId = t.id;
+        saveState();
+        updateActiveTaskDisplay();
+        navigateTo('work');
+        if(S.timer.phase==='idle'){
+          setTimerMode('work');
+          startTimer();
+        }
+        return;
+      }
+      if(!e.target.closest('.task-check') && !e.target.closest('.task-clarify-btn') && !e.target.closest('.task-quick-focus')){
         openDetail(t.id);
       }
     };
@@ -2040,6 +2097,7 @@ function renderCalendar(){
   $('cal-month').textContent = calViewDate.getFullYear()+'年'+(calViewDate.getMonth()+1)+'月';
   if(calMode==='month'){
     renderMonthGrid();
+    renderCalendarMonthlySummary();
     $('cal-dayview').style.display='none';
     $('cal-day-tasks').hidden=true;
   }else{
@@ -2056,6 +2114,18 @@ function renderMonthGrid(){
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const daysInPrev = new Date(year, month, 0).getDate();
+  const goal = S.settings.dailyGoal || 6;
+
+  // Pre-calculate streak chain for current month
+  const streakDays = new Set();
+  const d = new Date();
+  for(let i=0;i<366;i++){
+    const p = new Date(d);
+    p.setDate(p.getDate()-i);
+    const ds = dateStr(p);
+    const data = S.pomodoroHistory[ds];
+    if(data && data.count>0){ streakDays.add(ds); } else { break; }
+  }
 
   grid.innerHTML = '';
   const today = todayStr();
@@ -2069,7 +2139,18 @@ function renderMonthGrid(){
     const cell = document.createElement('div');
     cell.className='cal-day other-month';
     cell.textContent = d;
-    if(count>0) cell.innerHTML += '<span class="cal-dot completed"></span>';
+    if(count>0){
+      const level = count===1?1:count<=3?2:count<=6?3:4;
+      cell.classList.add('cal-level-'+level);
+      const cntEl = document.createElement('span');
+      cntEl.className='cal-pomo-count';
+      cntEl.textContent = count;
+      cell.appendChild(cntEl);
+      if(streakDays.has(ds)) cell.classList.add('cal-streak');
+      if(count >= goal) cell.classList.add('cal-goal');
+    } else {
+      cell.classList.add('cal-level-0');
+    }
     cell.onclick = ()=>selectDate(dt);
     cell.ondblclick = (e)=>{ e.stopPropagation(); switchToDayView(dt); };
     grid.appendChild(cell);
@@ -2085,9 +2166,16 @@ function renderMonthGrid(){
     if(ds===today) cell.classList.add('today');
     cell.textContent = d;
     if(count>0){
-      const dot = document.createElement('span');
-      dot.className='cal-dot completed';
-      cell.appendChild(dot);
+      const level = count===1?1:count<=3?2:count<=6?3:4;
+      cell.classList.add('cal-level-'+level);
+      const cntEl = document.createElement('span');
+      cntEl.className='cal-pomo-count';
+      cntEl.textContent = count;
+      cell.appendChild(cntEl);
+      if(streakDays.has(ds)) cell.classList.add('cal-streak');
+      if(count >= goal) cell.classList.add('cal-goal');
+    } else {
+      cell.classList.add('cal-level-0');
     }
     cell.onclick = ()=>selectDate(dt);
     cell.ondblclick = (e)=>{ e.stopPropagation(); switchToDayView(dt); };
@@ -2098,7 +2186,6 @@ function renderMonthGrid(){
   const totalCells = firstDay+daysInMonth;
   const remaining = (7 - totalCells % 7) % 7;
   if(remaining>0){
-    // need a separate row
     for(let d=1;d<=remaining;d++){
       const dt = new Date(year, month+1, d);
       const ds = dateStr(dt);
@@ -2106,12 +2193,62 @@ function renderMonthGrid(){
       const cell = document.createElement('div');
       cell.className='cal-day other-month';
       cell.textContent = d;
-      if(count>0) cell.innerHTML += '<span class="cal-dot completed"></span>';
+      if(count>0){
+        const level = count===1?1:count<=3?2:count<=6?3:4;
+        cell.classList.add('cal-level-'+level);
+        const cntEl = document.createElement('span');
+        cntEl.className='cal-pomo-count';
+        cntEl.textContent = count;
+        cell.appendChild(cntEl);
+        if(streakDays.has(ds)) cell.classList.add('cal-streak');
+        if(count >= goal) cell.classList.add('cal-goal');
+      } else {
+        cell.classList.add('cal-level-0');
+      }
       cell.onclick = ()=>selectDate(dt);
       cell.ondblclick = (e)=>{ e.stopPropagation(); switchToDayView(dt); };
       grid.appendChild(cell);
     }
   }
+}
+
+function renderCalendarMonthlySummary(){
+  const el = $('cal-monthly-summary');
+  if(!el) return;
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  let totalPomos = 0;
+  let activeDays = 0;
+  let bestDay = 0;
+  let bestDayDate = '';
+  let monthStreak = 0;
+  const goal = S.settings.dailyGoal || 6;
+
+  for(let d=1;d<=daysInMonth;d++){
+    const ds = dateStr(new Date(year, month, d));
+    const count = (S.pomodoroHistory[ds]||{}).count||0;
+    totalPomos += count;
+    if(count>0) activeDays++;
+    if(count > bestDay){ bestDay = count; bestDayDate = (month+1)+'/'+d; }
+    if(count >= goal) monthStreak++;
+  }
+  const avg = activeDays > 0 ? (totalPomos/activeDays).toFixed(1) : '0';
+  // calculate active streak in the month
+  let streakInMonth = 0;
+  const today = todayStr();
+  for(let d=daysInMonth;d>=1;d--){
+    const ds = dateStr(new Date(year, month, d));
+    if(ds > today) continue;
+    const count = (S.pomodoroHistory[ds]||{}).count||0;
+    if(count>0) streakInMonth++;
+    else break;
+  }
+  el.innerHTML =
+    '<div class="cal-summary-item"><div class="cal-summary-val">'+totalPomos+'</div><div class="cal-summary-lbl">本月🍅</div></div>'+
+    '<div class="cal-summary-item"><div class="cal-summary-val">'+avg+'</div><div class="cal-summary-lbl">日均</div></div>'+
+    '<div class="cal-summary-item"><div class="cal-summary-val">'+bestDay+'</div><div class="cal-summary-lbl">最佳('+bestDayDate+')</div></div>'+
+    '<div class="cal-summary-item"><div class="cal-summary-val">'+streakInMonth+'</div><div class="cal-summary-lbl">连续🔥</div></div>';
 }
 
 function switchToDayView(dt){
@@ -2218,19 +2355,20 @@ $('cal-day-prev').onclick = ()=>{ calViewDate.setDate(calViewDate.getDate()-1); 
 $('cal-day-next').onclick = ()=>{ calViewDate.setDate(calViewDate.getDate()+1); renderDayView(); };
 
 /* ============= STATS ============= */
+let monthlyChartInstance = null;
+let chartToggleMode = 'bar'; // bar or line
+
 function renderStats(){
   const today = todayStr();
   const td = S.pomodoroHistory[today] || {count:0,focusMins:0};
   // week
   let weekCount = 0;
   const now = new Date();
-  const dayOfWeek = now.getDay() || 7; // Mon=1...Sun=7
   for(let i=0;i<7;i++){
     const d = new Date(now);
     d.setDate(d.getDate()-i);
     const ds = dateStr(d);
-    const c = (S.pomodoroHistory[ds]||{}).count||0;
-    weekCount += c;
+    weekCount += (S.pomodoroHistory[ds]||{}).count||0;
   }
   // total
   let total = 0;
@@ -2249,8 +2387,227 @@ function renderStats(){
   renderTagBars();
   // daily focus
   renderDailyFocus();
-  // chart
+  // weekly chart
   renderWeeklyChart();
+  // monthly chart
+  renderMonthlyChart();
+  // level section
+  renderLevelSection();
+  // records
+  renderRecords();
+  // achievements
+  renderAchievements();
+  // insights
+  renderInsights();
+}
+
+function renderLevelSection(){
+  const score = Math.max(0, S.score||0);
+  const info = getLevelInfo(score);
+  const icons = ['','🌱','📚','⚡','👑','🌟'];
+  const icon = icons[info.level] || '🌱';
+  const el_icon = $('level-icon');
+  const el_name = $('level-name');
+  const el_fill = $('level-xp-fill');
+  const el_text = $('level-xp-text');
+  if(el_icon) el_icon.textContent = icon;
+  if(el_name) el_name.textContent = 'Lv.'+info.level+' '+info.title;
+  const pct = info.max===Infinity ? 100 : Math.min(100, ((score-info.min)/(info.max-info.min))*100);
+  if(el_fill) el_fill.style.width = pct+'%';
+  const nextXP = info.max===Infinity ? 'MAX' : (info.max - score);
+  if(el_text) el_text.textContent = info.max===Infinity ? 'MAX XP' : score+'/'+info.max+' XP';
+}
+
+function renderRecords(){
+  // Best single day
+  let bestDayCount = 0;
+  let bestDayDate = '';
+  // Best single week
+  let bestWeekCount = 0;
+  // Total focus minutes
+  let totalMins = 0;
+  // Longest streak (full calc)
+  let longestStreak = 0;
+  let tempStreak = 0;
+
+  const allDates = Object.keys(S.pomodoroHistory).sort();
+  allDates.forEach(ds=>{
+    const d = S.pomodoroHistory[ds];
+    if(d && d.count>0){
+      totalMins += (d.focusMins||0);
+      if(d.count > bestDayCount){ bestDayCount = d.count; bestDayDate = ds; }
+      tempStreak++;
+      if(tempStreak > longestStreak) longestStreak = tempStreak;
+    } else {
+      tempStreak = 0;
+    }
+  });
+
+  // Calculate best week by sliding window
+  const dateArr = allDates.map(d=>new Date(d).getTime()).sort((a,b)=>a-b);
+  for(let i=0;i<dateArr.length;i++){
+    let weekSum = 0;
+    const endTs = dateArr[i] + 7*86400000;
+    for(let j=i;j<dateArr.length && dateArr[j]<endTs;j++){
+      const ds = dateStr(new Date(dateArr[j]));
+      weekSum += (S.pomodoroHistory[ds]||{}).count||0;
+    }
+    if(weekSum > bestWeekCount) bestWeekCount = weekSum;
+  }
+
+  const hours = (totalMins/60).toFixed(1)+'h';
+  const elBD = $('rec-best-day');
+  const elBDD = $('rec-best-day-date');
+  const elBW = $('rec-best-week');
+  const elTH = $('rec-total-hours');
+  const elBS = $('rec-best-streak');
+  if(elBD) elBD.textContent = bestDayCount;
+  if(elBDD) elBDD.textContent = bestDayDate || '';
+  if(elBW) elBW.textContent = bestWeekCount;
+  if(elTH) elTH.textContent = hours;
+  if(elBS) elBS.textContent = longestStreak;
+
+  // Also update settings records
+  const sBD = $('sett-rec-best-day');
+  const sBS = $('sett-rec-streak');
+  const sTH = $('sett-rec-hours');
+  const sSC = $('sett-rec-score');
+  if(sBD) sBD.textContent = bestDayCount;
+  if(sBS) sBS.textContent = longestStreak;
+  if(sTH) sTH.textContent = hours;
+  if(sSC) sSC.textContent = Math.max(0, S.score||0);
+}
+
+function renderMonthlyChart(){
+  const canvas = $('chart-monthly');
+  if(!canvas) return;
+  if(monthlyChartInstance){ monthlyChartInstance.destroy(); monthlyChartInstance=null; }
+  if(typeof Chart==='undefined') return;
+
+  // Bind toggle buttons
+  const barBtn = $('chart-toggle-bar');
+  const lineBtn = $('chart-toggle-line');
+  if(barBtn) barBtn.onclick = ()=>{ chartToggleMode='bar'; if(barBtn) barBtn.classList.add('active'); if(lineBtn) lineBtn.classList.remove('active'); renderMonthlyChart(); };
+  if(lineBtn) lineBtn.onclick = ()=>{ chartToggleMode='line'; if(lineBtn) lineBtn.classList.add('active'); if(barBtn) barBtn.classList.remove('active'); renderMonthlyChart(); };
+
+  const now = new Date();
+  const labels = [];
+  const data = [];
+  const days = chartToggleMode==='line' ? 30 : 7;
+  for(let i=days-1;i>=0;i--){
+    const d = new Date(now);
+    d.setDate(d.getDate()-i);
+    labels.push((d.getMonth()+1)+'/'+d.getDate());
+    const ds = dateStr(d);
+    data.push((S.pomodoroHistory[ds]||{}).count||0);
+  }
+  monthlyChartInstance = new Chart(canvas, {
+    type: chartToggleMode,
+    data:{
+      labels,
+      datasets:[{
+        label:'番茄数',
+        data,
+        backgroundColor: chartToggleMode==='bar' ? 'rgba(231,76,60,0.6)' : 'rgba(231,76,60,0.1)',
+        borderColor:'#e74c3c',
+        borderWidth:2,
+        borderRadius: chartToggleMode==='bar'?4:0,
+        fill: chartToggleMode==='line',
+        tension:0.3,
+        pointRadius: chartToggleMode==='line'?3:0,
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.06)'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+function renderAchievements(){
+  const grid = $('achievements-grid');
+  if(!grid) return;
+  const ACHIEVEMENTS = [
+    {icon:'🍅', name:'第一个番茄', check:()=>Object.values(S.pomodoroHistory).some(d=>(d.count||0)>0)},
+    {icon:'📈', name:'Lv.2 达成', check:()=>(S.score||0)>=100},
+    {icon:'🔥', name:'7天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('7天连续'))},
+    {icon:'🥈', name:'14天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('14天'))},
+    {icon:'🥇', name:'30天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('30天'))},
+    {icon:'👑', name:'66天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('66天'))},
+    {icon:'🎯', name:'目标达成', check:()=>{ const g=S.settings.dailyGoal||6; return Object.values(S.pomodoroHistory).some(d=>(d.count||0)>=g); }},
+    {icon:'⚡', name:'Lv.3 达成', check:()=>(S.score||0)>=300},
+    {icon:'💯', name:'100个番茄', check:()=>{ let t=0; Object.values(S.pomodoroHistory).forEach(d=>{t+=(d.count||0);}); return t>=100; }},
+    {icon:'📚', name:'Lv.4 达成', check:()=>(S.score||0)>=600},
+    {icon:'🌟', name:'Lv.5 达成', check:()=>(S.score||0)>=1000},
+    {icon:'🏆', name:'500个番茄', check:()=>{ let t=0; Object.values(S.pomodoroHistory).forEach(d=>{t+=(d.count||0);}); return t>=500; }},
+  ];
+  grid.innerHTML = ACHIEVEMENTS.map(a=>{
+    const earned = a.check();
+    return '<div class=\"achievement-badge '+(earned?'earned':'locked')+'\"><span class=\"ach-icon\">'+a.icon+'</span><span class=\"ach-name\">'+a.name+'</span></div>';
+  }).join('');
+}
+
+function renderInsights(){
+  const el = $('insights-list');
+  if(!el) return;
+  const items = [];
+  const now = new Date();
+
+  // Best day of week
+  const weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+  const weekdayTotals = [0,0,0,0,0,0,0];
+  const weekdayCounts = [0,0,0,0,0,0,0];
+  Object.keys(S.pomodoroHistory).forEach(ds=>{
+    const d = new Date(ds);
+    const day = d.getDay();
+    const c = (S.pomodoroHistory[ds]||{}).count||0;
+    if(c>0){ weekdayTotals[day]+=c; weekdayCounts[day]++; }
+  });
+  let bestDayIdx = -1;
+  let bestDayAvg = 0;
+  weekdayCounts.forEach((cnt,i)=>{
+    const avg = cnt>0 ? weekdayTotals[i]/cnt : 0;
+    if(avg > bestDayAvg){ bestDayAvg = avg; bestDayIdx = i; }
+  });
+  if(bestDayIdx >= 0){
+    items.push({icon:'📅', text:'最高效的日子', val:weekdayNames[bestDayIdx]+' ('+bestDayAvg.toFixed(1)+'🍅/天)'});
+  }
+
+  // Average daily pomos (last 7 days)
+  let weekTotal = 0;
+  for(let i=0;i<7;i++){
+    const d = new Date(now); d.setDate(d.getDate()-i);
+    weekTotal += (S.pomodoroHistory[dateStr(d)]||{}).count||0;
+  }
+  items.push({icon:'📊', text:'近7天日均', val:(weekTotal/7).toFixed(1)+'🍅'});
+
+  // Productivity trend (this week vs last week)
+  let thisWeek = 0, lastWeek = 0;
+  for(let i=0;i<7;i++){
+    const d1 = new Date(now); d1.setDate(d1.getDate()-i);
+    thisWeek += (S.pomodoroHistory[dateStr(d1)]||{}).count||0;
+    const d2 = new Date(now); d2.setDate(d2.getDate()-i-7);
+    lastWeek += (S.pomodoroHistory[dateStr(d2)]||{}).count||0;
+  }
+  const diff = thisWeek - lastWeek;
+  const trendIcon = diff > 0 ? '📈' : diff < 0 ? '📉' : '➡️';
+  const trendText = diff > 0 ? '+'+diff : String(diff);
+  items.push({icon:trendIcon, text:'本周vs上周', val:trendText+'🍅'});
+
+  // Focus efficiency (completed sessions vs total started)
+  const totalSessions = (S.sessions||[]).filter(s=>s.type==='work').length;
+  const completedSessions = (S.sessions||[]).filter(s=>s.type==='work'&&s.completed).length;
+  const effPct = totalSessions > 0 ? Math.round(completedSessions/totalSessions*100) : 0;
+  items.push({icon:'🎯', text:'专注完成率', val:effPct+'%'});
+
+  el.innerHTML = items.map(it=>
+    '<div class=\"insight-item\"><span class=\"insight-icon\">'+it.icon+'</span><span class=\"insight-text\">'+it.text+'</span><span class=\"insight-val\">'+it.val+'</span></div>'
+  ).join('');
 }
 
 function renderStreak(){
@@ -2469,11 +2826,56 @@ function loadSettings(){
   $('range-val').textContent = Math.round(s.volume*100)+'%';
   $('opt-notify').checked = s.notify;
   $('opt-wakelock').checked = s.wakelock;
+  // anti-addiction settings
+  if($('opt-distraction-penalty')) $('opt-distraction-penalty').value = s.distractionPenalty||2;
+  if($('opt-distraction-threshold')) $('opt-distraction-threshold').value = s.distractionThreshold||120;
+  if($('opt-title-flash')) $('opt-title-flash').checked = s.titleFlash!==false;
+  if($('opt-distraction-notice')) $('opt-distraction-notice').checked = s.distractionNotice!==false;
+  // display preferences
+  if($('opt-show-score')) $('opt-show-score').checked = s.showScore!==false;
+  if($('opt-achievement-notify')) $('opt-achievement-notify').checked = s.achievementNotify!==false;
+  if($('opt-streak-crisis')) $('opt-streak-crisis').checked = s.streakCrisis!==false;
+  // apply score visibility
+  applyScoreVisibility();
   // theme
   applyTheme(s.theme);
   qsa('.t-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.theme===s.theme);
   });
+  // render settings records
+  renderSettingsRecords();
+}
+
+function applyScoreVisibility(){
+  const el = $('score-display');
+  if(!el) return;
+  if(S.settings.showScore===false){
+    el.classList.add('hidden-score');
+  }else{
+    el.classList.remove('hidden-score');
+  }
+}
+
+function renderSettingsRecords(){
+  // These will be populated when renderRecords() is called from renderStats()
+  // or we can calculate them here directly
+  let bestDayCount = 0;
+  let longestStreak = 0;
+  let totalMins = 0;
+  let tempStreak = 0;
+  Object.keys(S.pomodoroHistory||{}).sort().forEach(ds=>{
+    const d = S.pomodoroHistory[ds];
+    if(d && d.count>0){
+      totalMins += (d.focusMins||0);
+      if(d.count > bestDayCount) bestDayCount = d.count;
+      tempStreak++;
+      if(tempStreak > longestStreak) longestStreak = tempStreak;
+    }else{ tempStreak=0; }
+  });
+  const sBD=$('sett-rec-best-day'); if(sBD) sBD.textContent=bestDayCount;
+  const sBS=$('sett-rec-streak'); if(sBS) sBS.textContent=longestStreak;
+  const sTH=$('sett-rec-hours'); if(sTH) sTH.textContent=(totalMins/60).toFixed(1)+'h';
+  const sSC=$('sett-rec-score'); if(sSC) sSC.textContent=Math.max(0,S.score||0);
 }
 
 $('opt-volume').oninput = function(){
@@ -2508,6 +2910,25 @@ bindSettingToggle('opt-celebration','celebration');
 bindSettingToggle('opt-interrupt-confirm','interruptConfirm');
 bindSettingToggle('opt-sound','sound');
 bindSettingToggle('opt-wakelock','wakelock');
+bindSettingToggle('opt-title-flash','titleFlash');
+bindSettingToggle('opt-distraction-notice','distractionNotice');
+bindSettingToggle('opt-show-score','showScore');
+bindSettingToggle('opt-achievement-notify','achievementNotify');
+bindSettingToggle('opt-streak-crisis','streakCrisis');
+
+// Anti-addiction number inputs
+if($('opt-distraction-penalty')){
+  $('opt-distraction-penalty').onchange = function(){
+    const v = parseInt(this.value);
+    if(v>=0 && v<=50){ S.settings.distractionPenalty = v; saveState(); }
+  };
+}
+if($('opt-distraction-threshold')){
+  $('opt-distraction-threshold').onchange = function(){
+    const v = parseInt(this.value);
+    if(v>=30 && v<=600){ S.settings.distractionThreshold = v; saveState(); }
+  };
+}
 
 $('opt-daily-goal').onchange = function(){
   S.settings.dailyGoal = parseInt(this.value) || 6;
@@ -2724,7 +3145,7 @@ function updateDoneToday(){
 
 /* ============= SETTINGS APPLY ============= */
 function applySettings(){
-  // nothing immediate needed
+  applyScoreVisibility();
 }
 
 /* ============= KEYBOARD SHORTCUTS ============= */
@@ -2994,17 +3415,21 @@ document.addEventListener('visibilitychange', ()=>{
   }else{
     if(hiddenSince && S.timer.phase === 'running'){
       const elapsed = Math.floor((Date.now() - hiddenSince) / 1000);
-      if(elapsed >= 120){
-        // MDA: Distraction Tax — deduct 2 points
-        addScore(-2);
+      const threshold = S.settings.distractionThreshold || 120;
+      const penalty = S.settings.distractionPenalty || 2;
+      if(elapsed >= threshold){
+        // MDA: Distraction Tax — configurable penalty
+        addScore(-penalty);
         S.distractionCount = (S.distractionCount||0) + 1;
         saveState();
-        toast('⚠️ 专注中断 -2分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
-        const notice = document.createElement('div');
-        notice.className = 'distraction-notice';
-        notice.textContent = '👋 欢迎回来，继续专注！切走超过2分钟了哦';
-        document.body.appendChild(notice);
-        setTimeout(()=>{ if(notice.parentNode) notice.remove(); }, 4000);
+        toast('⚠️ 专注中断 -'+penalty+'分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
+        if(S.settings.distractionNotice !== false){
+          const notice = document.createElement('div');
+          notice.className = 'distraction-notice';
+          notice.textContent = '👋 欢迎回来，继续专注！切走超过'+Math.floor(elapsed/60)+'分钟了哦';
+          document.body.appendChild(notice);
+          setTimeout(()=>{ if(notice.parentNode) notice.remove(); }, 4000);
+        }
         toast('⚠️ 你离开了 '+Math.floor(elapsed/60)+' 分钟');
       }else{
         const wb = $('welcome-back');
@@ -3018,9 +3443,9 @@ document.addEventListener('visibilitychange', ()=>{
     updateTimerDisplay();
     updateTimerBtn();
   }
-  // title flash when hidden and timer running
+  // title flash when hidden and timer running — respect titleFlash setting
   if(document.hidden && S.timer.phase === 'running'){
-    startTitleFlash();
+    if(S.settings.titleFlash !== false) startTitleFlash();
   }else{
     stopTitleFlash();
   }
