@@ -41,9 +41,16 @@
     <div class="timer-actions">
       <button class="btn-timer secondary" id="btn-reset" title="重置">↺</button>
       <button class="btn-timer primary" id="btn-start">▶ 开始专注</button>
+      <button class="btn-timer secondary" id="btn-focus-toggle" title="专注模式">🔍</button>
       <button class="btn-timer secondary" id="btn-skip" title="跳过">⏭</button>
     </div>
     <div class="timer-active-task" id="timer-active-task"></div>
+    <div class="daily-goal-bar-wrap" id="daily-goal-bar-wrap">
+      <div class="daily-goal-header"><span>🍅 今日目标</span><span class="daily-goal-text" id="daily-goal-text">0 / 6</span></div>
+      <div class="daily-goal-track"><div class="daily-goal-fill" id="daily-goal-fill"></div></div>
+      <div class="daily-goal-celebration" id="daily-goal-celebration" hidden>🎉 今日目标达成！</div>
+      <div class="streak-mini" id="streak-mini" hidden>🔥 连续专注 <strong id="streak-mini-num">0</strong> 天</div>
+    </div>
     <div class="done-today"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3><ul class="done-list" id="done-list"></ul></div>
   </section>
   <section class="panel panel-tasks">
@@ -161,6 +168,7 @@
     <div class="sett-row"><label for="opt-long">长休息 (分钟)</label><input type="number" id="opt-long" class="sett-num" min="1" max="60" value="15"/></div>
     <div class="sett-row"><label for="opt-interval">长休息间隔</label><input type="number" id="opt-interval" class="sett-num" min="2" max="10" value="4"/></div>
     <div class="sett-row"><span>自动开始休息</span><label class="sw"><input type="checkbox" id="opt-auto-break" checked/><span class="sw-track"></span></label></div>
+    <div class="sett-row"><label for="opt-daily-goal">每日目标 (🍅)</label><input type="number" id="opt-daily-goal" class="sett-num" min="1" max="50" value="6"/></div>
     <div class="sett-row"><span>自动开始专注</span><label class="sw"><input type="checkbox" id="opt-auto-work"/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>休息引导</span><label class="sw"><input type="checkbox" id="opt-rest-guide" checked/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>专注模式</span><label class="sw"><input type="checkbox" id="opt-focus-mode" checked/><span class="sw-track"></span></label></div>
@@ -202,6 +210,14 @@
 <div class="onboarding-overlay" id="onboarding" hidden>
   <div class="onboarding-card"><div class="onboarding-dots" id="onboarding-dots"></div><div class="onboarding-body" id="onboarding-body"></div>
     <div class="onboarding-actions"><button class="btn-sm" id="onboarding-skip">跳过</button><button class="btn-sm btn-primary" id="onboarding-next">下一步</button></div>
+  </div>
+</div>
+<!-- ==================== TASK SELECTOR MODAL ==================== -->
+<div class="modal-overlay" id="modal-task-select" hidden>
+  <div class="modal-box"><h3>🎯 选择专注任务</h3>
+    <p class="modal-sub">从行动列表中选择一个任务来关联这个番茄钟</p>
+    <div class="ts-task-list" id="ts-task-list"></div>
+    <div class="modal-actions"><button class="btn-sm" id="ts-select-none">无关联任务 →</button></div>
   </div>
 </div>
 <!-- ==================== V5 OVERLAYS ==================== -->
@@ -286,6 +302,7 @@
     <div class="modal-actions"><button class="btn-sm" id="wr-skip">稍后再说</button></div>
   </div>
 </div>
+<div class="welcome-back" id="welcome-back" hidden>👋 欢迎回来，继续专注！</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
