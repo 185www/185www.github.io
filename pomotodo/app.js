@@ -1418,9 +1418,13 @@ $('modal-task-select').onclick = e=>{
 /* ============= TIMER CLICK HANDLERS ============= */
 $('btn-start').onclick = ()=>{
   if(S.timer.phase==='idle'){
-    if(S.timer.mode==='work' && !S.timer.currentTaskId){
-      showTaskSelector();
-      return;
+    if(S.timer.mode==='work'){
+      // always show task selector when starting a new work session
+      const hasTasks = S.tasks.some(t=>t.area==='next' && !t.completed);
+      if(hasTasks){
+        showTaskSelector();
+        return;
+      }
     }
     startTimer();
     if(S.settings.focusMode) applyFocusMode(true);
@@ -2168,6 +2172,7 @@ function loadSettings(){
   $('opt-short').value = s.shortBreak;
   $('opt-long').value = s.longBreak;
   $('opt-interval').value = s.longBreakInterval;
+  $('opt-daily-goal').value = s.dailyGoal || 6;
   $('opt-auto-break').checked = s.autoBreak;
   $('opt-auto-work').checked = s.autoWork;
   $('opt-rest-guide').checked = s.restGuide;
@@ -2488,6 +2493,7 @@ document.addEventListener('keydown', e=>{
       closeDetail();
       $('modal-complete').hidden = true;
       $('modal-abandon-confirm').hidden = true;
+      $('modal-task-select').hidden = true;
       $('rest-guide-overlay').hidden = true;
       $('daily-launch-overlay').hidden = true;
       $('daily-review-overlay').hidden = true;
@@ -2496,6 +2502,15 @@ document.addEventListener('keydown', e=>{
       $('modal-clarify').hidden = true;
       $('weekly-review-overlay').hidden = true;
       clarifyTaskId = null;
+      // exit focus mode on ESC
+      if(focusModeFull){
+        focusModeFull = false;
+        const btf = $('btn-focus-toggle');
+        if(btf) btf.classList.remove('active');
+        const wv = qs('.work-view');
+        if(wv) wv.classList.remove('focus-mode-full');
+        toast('🔍 已退出专注模式');
+      }
       break;
   }
 });

@@ -413,7 +413,8 @@ ul{list-style:none}
 .work-view.focus-mode-full .app-header{display:none}
 .work-view.focus-mode-full .app-footer{display:none}
 .work-view.focus-mode-full .panel-tasks{display:none}
-.work-view.focus-mode-full .daily-goal-bar-wrap{display:none}
+.work-view.focus-mode-full .daily-goal-bar-wrap{display:block;text-align:center}
+.work-view.focus-mode-full .daily-goal-header{justify-content:center;gap:8px}
 .work-view.focus-mode-full .done-today{display:none}
 .work-view.focus-mode-full .gtd-tabs,.work-view.focus-mode-full .task-input-wrap,.work-view.focus-mode-full .task-filters,.work-view.focus-mode-full .task-list{display:none}
 .work-view.focus-mode-full{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:0}
@@ -421,12 +422,14 @@ ul{list-style:none}
 .work-view.focus-mode-full .timer-ring-wrap{width:300px;height:300px}
 .work-view.focus-mode-full .timer-digits{font-size:64px}
 .work-view.focus-mode-full .timer-modes{display:none}
-.work-view.focus-mode-full .timer-actions{display:none}
+.work-view.focus-mode-full .timer-actions{display:flex;gap:8px;justify-content:center}
+.work-view.focus-mode-full #btn-focus-toggle{display:inline-flex;background:var(--green);color:#fff;border-radius:50%;width:48px;height:48px;font-size:22px;align-items:center;justify-content:center;position:fixed;top:16px;right:16px;z-index:999;box-shadow:0 2px 12px rgba(0,0,0,0.2)}
+.work-view.focus-mode-full #btn-reset,.work-view.focus-mode-full #btn-start,.work-view.focus-mode-full #btn-skip{display:none}
 .work-view.focus-mode-full .header-nav{display:none}
 .work-view.focus-mode-full .app-logo{display:none}
-.work-view.focus-mode-full .timer-cycle{font-size:16px}
-.work-view.focus-mode-full .timer-active-task{font-size:18px;margin-top:16px}
-.work-view.focus-mode-full .timer-active-task a{font-size:18px}
+.work-view.focus-mode-full .timer-cycle{font-size:16px;color:var(--text2)}
+.work-view.focus-mode-full .timer-active-task{font-size:20px;margin-top:20px;display:block}
+.work-view.focus-mode-full .timer-active-task a{font-size:20px;color:var(--text)}
 /* welcome back */
 .welcome-back{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:998;background:var(--green);color:#fff;padding:10px 24px;border-radius:20px;font-size:14px;font-weight:600;box-shadow:var(--shadow-lg);animation:welcomeIn 0.4s ease}
 @keyframes welcomeIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
