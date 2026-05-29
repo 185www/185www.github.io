@@ -7,8 +7,8 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#f8f5f0;--surface:#ffffff;--surface2:#efe8dd;--accent:#2d8f4e;--accent2:#e85d3a;--gold:#d4a843;--text:#2c2420;--dim:#9a8e82;--muted:#c8bfb4;--radius:20px}
-html{font-size:18px}
-body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;min-height:100vh;display:flex;flex-direction:column}
+html{font-size:18px;height:100%}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100%;display:flex;flex-direction:column}
 .hidden{display:none!important}
 
 /* HEADER */
@@ -21,7 +21,7 @@ body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;backg
 .header-about{background:none;border:none;color:var(--dim);font-size:1rem;cursor:pointer;font-family:inherit;padding:.2rem}
 
 /* APP - main container */
-#app{flex:1;display:flex;flex-direction:column;padding:.6rem .8rem;padding-bottom:2rem;max-width:420px;margin:0 auto;width:100%}
+#app{flex:1;min-height:0;display:flex;flex-direction:column;padding:.6rem .8rem;padding-bottom:2rem;max-width:420px;margin:0 auto;width:100%;overflow-y:auto}
 
 /* TREE - the core */
 .tree-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh}
@@ -102,6 +102,12 @@ body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;backg
 .emerg-go-btn{display:block;width:100%;padding:.8rem;background:var(--accent2);color:#fff;border:none;border-radius:12px;font-size:.85rem;cursor:pointer;font-family:inherit;text-align:center;margin:.3rem 0}
 .emerg-go-btn:active{opacity:.8}
 
+/* ERROR DISPLAY */
+#js-error{position:fixed;top:0;left:0;right:0;bottom:0;background:#fff8f0;z-index:999;padding:2rem 1rem;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#js-error.show{display:flex}
+#js-error h2{font-size:1.1rem;color:#e85d3a;margin-bottom:.5rem}
+#js-error p{font-size:.82rem;color:#5c4f46;line-height:1.6;max-width:340px;white-space:pre-wrap}
+
 /* INFO MODAL */
 .info-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease}
 .info-card{background:var(--surface);border-radius:var(--radius);width:86%;max-width:360px;padding:1.2rem;max-height:70vh;overflow-y:auto}
@@ -124,6 +130,8 @@ body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;backg
 </div>
 
 <div id="app"></div>
+
+<div id="js-error"><h2>⚠️ 出了点问题</h2><p id="js-error-msg"></p></div>
 
 <div id="page-emergency">
   <div class="emerg-header">
@@ -156,7 +164,14 @@ function def() {
 function load() {
   try {
     var r = localStorage.getItem(K)
-    if (r) { var o = JSON.parse(r); if (o && typeof o === 'object') return o }
+    if (r) {
+      var o = JSON.parse(r)
+      if (o && typeof o === 'object') {
+        var d = def()
+        for (var k in d) { if (o[k]===undefined) o[k]=d[k] }
+        return o
+      }
+    }
   } catch(e) {}
   return def()
 }
@@ -317,6 +332,7 @@ function showToast(msg, duration) {
 }
 
 function renderTreeSVG(growth) {
+  growth = Math.max(0, growth||0)
   var s = getTreeStage(growth)
   var color = growth>=70?'#2d8f4e':growth>=40?'#5cb85c':'#8fc77a'
   var svg = '<svg viewBox="0 0 120 160">'
@@ -349,6 +365,7 @@ function renderTreeSVG(growth) {
 }
 
 function getTreeStage(g) {
+  g = Math.max(0, g||0)
   if (g<=0) return {trunk:0,crown:0,leaves:0,flowers:0}
   if (g<10) return {trunk:12,crown:0,leaves:0,flowers:0}
   if (g<25) return {trunk:22,crown:8,leaves:0,flowers:0}
@@ -364,14 +381,17 @@ function getTreeStage(g) {
 // ╚═════════════════════════════════════╝
 function render() {
   var app = $('#app')
+  if (!app) { showError('页面容器未找到'); return }
   if (state.phase==='s0') { renderS0(); return }
   if (state.phase==='complete'||state.day>21) { renderComplete(); return }
+  if (!state.day||state.day<1) { renderS0(); return }
   renderTree()
   updateBadge()
 }
 
 function renderTree() {
   var app = $('#app')
+  if (!app) return
   var p = state.protectorName||'家人'
   var streak = state.consecutiveSuccess
   var doneMorning = state.morningDay===state.day
@@ -424,6 +444,7 @@ function renderS0() {
 function showS0Step(n) {
   s0Step = n
   var app = $('#app')
+  if (!app) { showError('页面容器(s0)未找到'); return }
   if (n===0) {
     app.innerHTML =
       '<div class="s0-wrap">' +
@@ -803,11 +824,24 @@ function updateBadge() {
   else b.textContent = '完成'
 }
 
+function showError(msg) {
+  var el = document.getElementById('js-error')
+  var me = document.getElementById('js-error-msg')
+  if (el) el.classList.add('show')
+  if (me) me.textContent = msg
+}
+
 function init() {
-  state = STORE.get()
-  $('#about-btn').onclick = showAbout
-  $('#emerg-close-btn').onclick = hideEmergency
-  render()
+  try {
+    state = STORE.get()
+    var ab = $('#about-btn')
+    if (ab) ab.onclick = showAbout
+    var eb = $('#emerg-close-btn')
+    if (eb) eb.onclick = hideEmergency
+    render()
+  } catch(e) {
+    showError('应用初始化失败\n\n'+e.message+'\n\n'+e.stack)
+  }
 }
 
 function showAbout() {
@@ -827,11 +861,15 @@ function showAbout() {
   overlay.onclick = function(e){ if(e.target===overlay) overlay.remove() }
 }
 
-// SW
+// SW — kill old caches, re-register fresh
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js',{scope:'/xinsheng/'})
+  caches.keys().then(function(ks){
+    return Promise.all(ks.map(function(k){return caches.delete(k)}))
   })
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(r){r.unregister()})
+  })
+  // No SW registration — avoid stale cache issues. Pure network is more reliable.
 }
 
 init()
