@@ -129,7 +129,7 @@ body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;backg
   </div>
 </div>
 
-<div id="app"></div>
+<div id="app"><div class="s0-wrap"><div class="s0-icon" style="font-size:2rem">🌱</div><div class="s0-title" style="font-size:.9rem;color:#9a8e82">加载中...</div></div></div>
 
 <div id="js-error"><h2>⚠️ 出了点问题</h2><p id="js-error-msg"></p></div>
 
@@ -381,7 +381,7 @@ function getTreeStage(g) {
 // ╚═════════════════════════════════════╝
 function render() {
   var app = $('#app')
-  if (!app) { showError('页面容器未找到'); return }
+  if (!app) { return }
   if (state.phase==='s0') { renderS0(); return }
   if (state.phase==='complete'||state.day>21) { renderComplete(); return }
   if (!state.day||state.day<1) { renderS0(); return }
@@ -861,18 +861,28 @@ function showAbout() {
   overlay.onclick = function(e){ if(e.target===overlay) overlay.remove() }
 }
 
-// SW — kill old caches, re-register fresh
-if ('serviceWorker' in navigator) {
-  caches.keys().then(function(ks){
-    return Promise.all(ks.map(function(k){return caches.delete(k)}))
-  })
-  navigator.serviceWorker.getRegistrations().then(function(regs){
-    regs.forEach(function(r){r.unregister()})
-  })
-  // No SW registration — avoid stale cache issues. Pure network is more reliable.
-}
+// SW cleanup — fresh start, no stale cache
+try {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      regs.forEach(function(r){r.unregister()})
+    })
+  }
+} catch(e) {}
+try {
+  if (typeof caches !== 'undefined') {
+    caches.keys().then(function(ks){
+      ks.forEach(function(k){caches.delete(k)})
+    })
+  }
+} catch(e) {}
 
-init()
+function boot() { init() }
+if (document.readyState==='loading') {
+  document.addEventListener('DOMContentLoaded', boot)
+} else {
+  boot()
+}
 </script>
 </body>
 </html>
