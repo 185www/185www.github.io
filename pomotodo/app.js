@@ -11,7 +11,7 @@ const defaultSettings = {
   autoBreak:true, autoWork:false, restGuide:true, focusMode:true,
   celebration:true, interruptConfirm:true,
   sound:true, volume:0.7, notify:false, wakelock:false,
-  theme:'light'
+  theme:'light', dailyGoal:6
 };
 
 let S = loadState();
@@ -290,6 +290,56 @@ function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* daily goal progress */
+function updateDailyGoal(){
+  const wrap = $('daily-goal-bar-wrap');
+  if(!wrap) return;
+  const today = todayStr();
+  const data = S.pomodoroHistory[today] || {count:0};
+  const goal = S.settings.dailyGoal || 6;
+  const count = data.count || 0;
+  const fill = $('daily-goal-fill');
+  const text = $('daily-goal-text');
+  const celebration = $('daily-goal-celebration');
+  const pct = Math.min(100, (count/goal)*100);
+  fill.style.width = pct+'%';
+  text.textContent = count+' / '+goal;
+  fill.classList.toggle('goal-reached', count >= goal);
+  celebration.hidden = count < goal;
+
+  // streak mini
+  const sr = $('streak-mini');
+  const srNum = $('streak-mini-num');
+  if(sr && srNum){
+    const cur = calcStreak();
+    if(cur > 0){
+      sr.hidden = false;
+      srNum.textContent = cur;
+    }else{
+      sr.hidden = true;
+    }
+  }
+}
+
+function calcStreak(){
+  let current = 0;
+  const d = new Date();
+  const today = todayStr();
+  if(!S.pomodoroHistory[today] || S.pomodoroHistory[today].count===0) return 0;
+  for(let i=0; i<366; i++){
+    const p = new Date(d);
+    p.setDate(p.getDate()-i);
+    const ds = dateStr(p);
+    const data = S.pomodoroHistory[ds];
+    if(data && data.count>0){
+      current++;
+    }else{
+      break;
+    }
+  }
+  return current;
+}
+
 /* timer complete */
 function onTimerComplete(){
   S.timer.phase='finished';
@@ -352,6 +402,11 @@ function recordPomodoro(){
       }
     }, 2000);
   }
+
+  // update daily goal and show bounce animation
+  updateDailyGoal();
+  const ring = qs('.ring-fill');
+  if(ring) ring.classList.add('pomo-bounce');
 }
 
 function showCompletionModal(){
@@ -407,6 +462,7 @@ function handleTimerFinish(){
   }
   updateDoneToday();
   renderTasks();
+  updateDailyGoal();
 }
 
 /* abandon confirm */
@@ -670,6 +726,7 @@ function renderTasks(){
       ${area==='inbox' && !t.completed ? '<span class="task-clarify-btn" data-action="clarify">🧹</span>' : ''}
       <span class="task-text">${escHtml(t.title)}${hasChildren?' <span class="task-sub-indicator">📋</span>':''}</span>
       <div class="task-meta">
+        ${t.completedPomodoros ? '<span class="task-pomo">🍅'+t.completedPomodoros+'</span>' : ''}
         ${t.tags && t.tags.length ? t.tags.map(tg=>'<span class="task-tag">#'+escHtml(tg)+'</span>').join('') : ''}
         ${t.project ? '<span class="task-project-dot" style="background:'+(getProjectColor(t.project)||'#888')+'"></span>' : ''}
         ${t.due ? '<span class="task-due'+(new Date(t.due)<new Date() && !t.completed?' overdue':'')+'">'+fmtDue(t.due)+'</span>' : ''}
@@ -1311,18 +1368,59 @@ function closeDetail(){
 $('detail-close').onclick = closeDetail;
 $('detail-overlay').onclick = closeDetail;
 
+/* ============= TASK SELECTOR ============= */
+function showTaskSelector(){
+  const overlay = $('modal-task-select');
+  const list = $('ts-task-list');
+  list.innerHTML = '';
+  const tasks = S.tasks.filter(t=>t.area==='next' && !t.completed)
+    .sort((a,b)=>a.priority-b.priority);
+  if(tasks.length===0){
+    list.innerHTML = '<div class="ts-empty">📭 行动列表为空，先添加一个行动任务吧</div>';
+  }else{
+    tasks.forEach(t=>{
+      const div = document.createElement('div');
+      div.className = 'ts-task-item';
+      const prioEmoji = ['','🔴','🟠','🟡','⚪'][t.priority]||'⚪';
+      const pomoStr = t.completedPomodoros ? '🍅'+t.completedPomodoros : '';
+      div.innerHTML = `<span class="ts-prio">${prioEmoji}</span><span class="ts-title">${escHtml(t.title)}</span><span class="ts-meta">${pomoStr}${t.tags&&t.tags.length?' #'+escHtml(t.tags[0]):''}</span>`;
+      div.onclick = ()=>{
+        qsa('.ts-task-item').forEach(x=>x.classList.remove('selected'));
+        div.classList.add('selected');
+        setTimeout(()=>{
+          S.timer.currentTaskId = t.id;
+          saveState();
+          updateActiveTaskDisplay();
+          overlay.hidden = true;
+          startTimer();
+          if(S.settings.focusMode) applyFocusMode(true);
+        }, 200);
+      };
+      list.appendChild(div);
+    });
+  }
+  overlay.hidden = false;
+}
+
+$('ts-select-none').onclick = ()=>{
+  S.timer.currentTaskId = null;
+  saveState();
+  updateActiveTaskDisplay();
+  $('modal-task-select').hidden = true;
+  startTimer();
+  if(S.settings.focusMode) applyFocusMode(true);
+};
+
+$('modal-task-select').onclick = e=>{
+  if(e.target === $('modal-task-select')) $('modal-task-select').hidden = true;
+};
+
 /* ============= TIMER CLICK HANDLERS ============= */
 $('btn-start').onclick = ()=>{
   if(S.timer.phase==='idle'){
-    // if mode is work and no active task and there's a last completed, suggest resumption
-    if(S.timer.mode==='work' && !S.timer.currentTaskId && S.lastCompletedTaskId){
-      const lastTask = findTask(S.lastCompletedTaskId);
-      if(lastTask && !lastTask.completed){
-        // auto-assign last task
-        S.timer.currentTaskId = lastTask.id;
-        saveState();
-        updateActiveTaskDisplay();
-      }
+    if(S.timer.mode==='work' && !S.timer.currentTaskId){
+      showTaskSelector();
+      return;
     }
     startTimer();
     if(S.settings.focusMode) applyFocusMode(true);
@@ -1402,6 +1500,18 @@ function applyFocusMode(on){
     wrap.classList.remove('focus-mode');
   }
 }
+
+/* ============= FOCUS MODE TOGGLE ============= */
+let focusModeFull = false;
+
+$('btn-focus-toggle').onclick = ()=>{
+  focusModeFull = !focusModeFull;
+  $('btn-focus-toggle').classList.toggle('active', focusModeFull);
+  const wrap = qs('.work-view');
+  if(!wrap) return;
+  wrap.classList.toggle('focus-mode-full', focusModeFull);
+  toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
+};
 
 /* ============= REST GUIDE ============= */
 function showRestGuide(){
@@ -1557,15 +1667,23 @@ function showDailyReview(){
   const yData = S.pomodoroHistory[yStr];
   if(yData){
     const diff = data.count - yData.count;
-    $('dr-diff-pomo').textContent = (diff>=0?'+':'')+diff;
+    const diffText = (diff>=0?'+':'')+diff;
+    $('dr-diff-pomo').textContent = diffText;
+    if(diff > 0) $('dr-compare').innerHTML = '<p>🔥 比昨天多了 '+diff+' 个！</p>';
+    else if(diff === 0) $('dr-compare').innerHTML = '<p>📊 和昨天持平</p>';
+    else $('dr-compare').innerHTML = '<p>📊 比昨日 '+diffText+' 个番茄</p>';
     $('dr-compare').hidden = false;
   }else{
     $('dr-compare').hidden = true;
   }
 
+  // goal completion rate
+  const goal = S.settings.dailyGoal || 6;
+  const rate = Math.min(100, Math.round((data.count/goal)*100));
+
   // suggestion
   const unfinished = S.tasks.filter(t=>!t.completed && (t.area==='next'||t.area==='inbox'));
-  let suggestion = '今天完成了 '+data.count+' 个番茄，共 '+Math.round(data.focusMins)+' 分钟。';
+  let suggestion = '今日完成 '+data.count+'/'+goal+' 个番茄，目标完成率 '+rate+'%。';
   if(unfinished.length > 0){
     suggestion += ' 明天可以优先处理 "';
     suggestion += unfinished[0].title;
@@ -2101,6 +2219,12 @@ bindSettingToggle('opt-interrupt-confirm','interruptConfirm');
 bindSettingToggle('opt-sound','sound');
 bindSettingToggle('opt-wakelock','wakelock');
 
+$('opt-daily-goal').onchange = function(){
+  S.settings.dailyGoal = parseInt(this.value) || 6;
+  saveState();
+  updateDailyGoal();
+};
+
 const settingsKeyMap = {work:'work', short:'shortBreak', long:'longBreak', interval:'longBreakInterval'};
 ['opt-work','opt-short','opt-long','opt-interval'].forEach(id=>{
   $(id).onchange = function(){
@@ -2277,7 +2401,10 @@ function navigateTo(view){
 
   if(view==='stats') renderStats();
   if(view==='calendar') renderCalendar();
-  if(view==='work') applyFocusMode(S.timer.phase==='running');
+  if(view==='work'){
+    applyFocusMode(S.timer.phase==='running');
+    updateDailyGoal();
+  }
 }
 
 qsa('.nav-btn').forEach(b=>{
@@ -2451,6 +2578,7 @@ function initApp(){
   updateTimerModeClass();
   updateModeBtns();
   updateActiveTaskDisplay();
+  updateDailyGoal();
 
   // daily review (end of day check) - show if switching days
   checkDailyReview();
@@ -2507,13 +2635,58 @@ if('serviceWorker' in navigator){
   });
 }
 
-// handle visibility change — persist timer state when page hides
+// handle visibility change — persist timer state + anti-distraction + welcome back
+let hiddenSince = null;
+let titleFlashInterval = null;
+const originalTitle = document.title;
+
+function startTitleFlash(){
+  if(titleFlashInterval) return;
+  let flash = false;
+  titleFlashInterval = setInterval(()=>{
+    flash = !flash;
+    document.title = flash ? '⚠️ 快回来！你还在专注中' : '🍅 Pomotodo';
+  }, 800);
+}
+
+function stopTitleFlash(){
+  if(titleFlashInterval){
+    clearInterval(titleFlashInterval);
+    titleFlashInterval = null;
+  }
+  document.title = originalTitle;
+}
+
 document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden && timerWorker){
+  if(document.hidden){
     saveState();
-  }else if(!document.hidden){
+    if(S.timer.phase === 'running') hiddenSince = Date.now();
+  }else{
+    if(hiddenSince && S.timer.phase === 'running'){
+      const elapsed = Math.floor((Date.now() - hiddenSince) / 1000);
+      if(elapsed >= 120){
+        const notice = document.createElement('div');
+        notice.className = 'distraction-notice';
+        notice.textContent = '👋 欢迎回来，继续专注！切走超过2分钟了哦';
+        document.body.appendChild(notice);
+        setTimeout(()=>{ if(notice.parentNode) notice.remove(); }, 4000);
+        toast('⚠️ 你离开了 '+Math.floor(elapsed/60)+' 分钟');
+      }else{
+        const wb = $('welcome-back');
+        wb.hidden = false;
+        setTimeout(()=>{ wb.hidden = true; }, 2500);
+      }
+    }
+    hiddenSince = null;
+    stopTitleFlash();
     updateTimerDisplay();
     updateTimerBtn();
+  }
+  // title flash when hidden and timer running
+  if(document.hidden && S.timer.phase === 'running'){
+    startTitleFlash();
+  }else{
+    stopTitleFlash();
   }
 });
 // also save on unload
