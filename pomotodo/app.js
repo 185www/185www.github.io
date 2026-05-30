@@ -17,6 +17,47 @@ const defaultSettings = {
 
 const GAOKAO_DATE = new Date(2026, 5, 7, 9, 0, 0); // June 7, 2026 09:00
 const ADHD_PROFILE = { inattention: 2.33, hyperactivity: 2.20, impulsivity: 1.25, totalScore: 37 };
+const GAOKAO_EXAM_SCHEDULE = {
+  '2026-06-07': [
+    {time:'09:00-11:30', subject:'语文', advice:'最后3天重点看古诗文默写+作文素材，不要刷新题'},
+    {time:'15:00-17:00', subject:'数学', advice:'最后3天只做选填+前2道大题，保持手感不钻难题'},
+  ],
+  '2026-06-08': [
+    {time:'09:00-11:30', subject:'理综/文综', advice:'最后3天回归课本，看错题本，不要做新卷'},
+    {time:'15:00-17:00', subject:'英语', advice:'最后3天每天做1篇完形+2篇阅读保持语感'},
+  ],
+};
+const PRE_EXAM_DAYS = ['2026-06-04','2026-06-05','2026-06-06'];
+const PRE_EXAM_BEDTIME = '22:30';
+const PRE_EXAM_WINDDOWN = 60; // 60 minutes before bedtime = 21:30
+const DEFAULT_DAILY_GOAL = 8;
+
+// Helper: get gaokao days remaining
+function gaokaoDaysRemaining(){
+  const now = new Date();
+  const examDay = new Date(2026, 5, 7);
+  examDay.setHours(0,0,0,0);
+  const today = new Date(now);
+  today.setHours(0,0,0,0);
+  return Math.max(0, Math.ceil((examDay - today) / 86400000));
+}
+
+// Helper: is today a pre-exam day (last 3 days)?
+function isPreExamDay(){
+  return PRE_EXAM_DAYS.includes(todayStr());
+}
+
+// Helper: get effective bedtime (special rules for last 3 days)
+function getEffectiveBedtime(){
+  if(isPreExamDay()) return PRE_EXAM_BEDTIME;
+  return S.settings.bedtime || '23:00';
+}
+
+// Helper: get effective winddown minutes
+function getEffectiveWinddown(){
+  if(isPreExamDay()) return PRE_EXAM_WINDDOWN;
+  return S.settings.winddownMinutes || 30;
+}
 
 let S = loadState();
 let timerWorker = null;
@@ -488,9 +529,57 @@ function updateGaokaoCountdown(){
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
-  el.textContent = days + '天 ' + hours + '时 ' + mins + '分';
+  const totalHours = Math.floor(diff / 3600000);
+
+  // Urgent format for last 7 days
+  if(days <= 7){
+    const label = $('gk-countdown-label');
+    const icon = qs('.gk-countdown-icon');
+    if(label) label.textContent = '距高考还有';
+    if(icon) icon.textContent = '🔥';
+    el.textContent = days + '天 ' + totalHours + '小时';
+    // Make countdown bar more urgent
+    const bar = $('gk-countdown');
+    if(bar && days <= 3){
+      bar.style.background = 'linear-gradient(90deg,#e74c3c,#c0392b)';
+      bar.style.animation = 'pulse 2s ease-in-out infinite';
+    }
+  }else{
+    el.textContent = days + '天 ' + hours + '时 ' + mins + '分';
+  }
+
+  // Update sprint plan display
+  updateSprintPlan();
 }
 setInterval(updateGaokaoCountdown, 60000);
+
+/* ============= V21: GAOKAO SPRINT PLAN ============= */
+function updateSprintPlan(){
+  const el = $('gk-schedule-text');
+  if(!el) return;
+  const daysLeft = gaokaoDaysRemaining();
+  if(daysLeft > 7){
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+
+  // Show today's recommended subject focus
+  const today = todayStr();
+  const examDayKeys = Object.keys(GAOKAO_EXAM_SCHEDULE);
+  const subjectAdvice = getTodaySubjectAdvice(daysLeft);
+  el.innerHTML = '<strong>今日重点：</strong>' + subjectAdvice;
+}
+
+function getTodaySubjectAdvice(daysLeft){
+  if(daysLeft <= 0) return '高考日！放松心态，正常发挥！';
+  if(daysLeft >= 5) return '全面复习，每天每个科目至少1个番茄。重点攻克薄弱环节。';
+  if(daysLeft === 4) return '🟢 <strong>调整日</strong>：全面回顾，每个科目均衡分配。开始调整作息，按高考时间表安排复习时段。';
+  if(daysLeft === 3) return '🟡 <strong>收尾日</strong>：只看不练——回顾错题本和笔记。不再做新题。晚上22:30强制入睡。';
+  if(daysLeft === 2) return '🟠 <strong>冲刺日</strong>：看公式/古诗文/单词等记忆性内容。下午做1套选择填空保持手感。22:30强制入睡！';
+  if(daysLeft === 1) return '🔴 <strong>考前日</strong>：只看错题本，不碰新内容。准备好准考证文具。最重要的是今晚22:30前入睡！';
+  return '保持节奏，相信自己！';
+}
 
 /* ============= V20: SUBJECT QUICK-ADD ============= */
 qsa('.subject-btn').forEach(btn=>{
@@ -542,9 +631,11 @@ function checkSleepTime(){
   const now = new Date();
   const hour = now.getHours();
   const minute = now.getMinutes();
-  const [bedH, bedM] = S.settings.bedtime.split(':').map(Number);
-  const [windH, windM] = [bedH, bedM - S.settings.winddownMinutes];
-  let windMinutes = bedM - S.settings.winddownMinutes;
+  // Use effective bedtime (special for pre-exam days)
+  const bedtime = getEffectiveBedtime();
+  const winddown = getEffectiveWinddown();
+  const [bedH, bedM] = bedtime.split(':').map(Number);
+  let windMinutes = bedM - winddown;
   let windHour = bedH;
   if(windMinutes < 0){ windHour--; windMinutes += 60; }
   
@@ -765,14 +856,25 @@ function logSleepToHistory(quality){
   const sleepHoursMap = {good: 7.5, ok: 6, bad: 4, late: 2};
   const hours = sleepHoursMap[quality] || 6;
   
-  // Estimate bedtime from dismiss history
-  const bedtime = S.settings.bedtime;
+  // FIX: Infer actual bedtime from dismiss history timestamps
+  let actualBedtime = S.settings.bedtime;
+  if(S._sleepDismissHistory && S._sleepDismissHistory.length > 0){
+    // Find the last dismiss timestamp from yesterday
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+    const yStr = dateStr(yesterday);
+    const yesterdayDismisses = S._sleepDismissHistory.filter(e => e.date === yStr);
+    if(yesterdayDismisses.length > 0){
+      const lastDismiss = yesterdayDismisses[yesterdayDismisses.length - 1];
+      const dismissTime = new Date(lastDismiss.timestamp);
+      actualBedtime = String(dismissTime.getHours()).padStart(2,'0') + ':' + String(dismissTime.getMinutes()).padStart(2,'0');
+    }
+  }
   
   // Remove existing entry for today
   S._sleepLog = S._sleepLog.filter(e => e.date !== today);
   S._sleepLog.push({
     date: today,
-    bedtime: bedtime,
+    bedtime: actualBedtime,
     quality: quality,
     actualSleepHours: hours,
     timestamp: now.toISOString()
@@ -1010,8 +1112,9 @@ function checkMorningSleep(){
   const hour = now.getHours();
   const [wakeH] = S.settings.waketime.split(':').map(Number);
   if(hour < wakeH || hour >= 22) return;
-  // Only show if user slept (has lastSleepDate from yesterday or before)
-  if(!S._lastSleepDate) return;
+  // FIX: Show morning check for ALL users (not just those with _lastSleepDate)
+  // First-time users should also see it to start building the habit
+  // _lastSleepDate only matters for showing "last night" comparison text
   
   // Show sleep debt info in morning check
   const debtEl = $('morning-sleep-debt');
@@ -1031,6 +1134,15 @@ function checkMorningSleep(){
     }
   }
   
+  // Update morning check subtitle for gaokao context
+  const subEl = qs('.morning-check-sub');
+  if(subEl){
+    const daysLeft = gaokaoDaysRemaining();
+    if(daysLeft <= 7){
+      subEl.textContent = '距高考 ' + daysLeft + ' 天！昨晚睡得好吗？（睡眠质量直接影响考场发挥）';
+    }
+  }
+
   setTimeout(()=>{
     $('morning-check-overlay').hidden = false;
   }, 1000);
@@ -1058,17 +1170,21 @@ qsa('.morning-opt-btn').forEach(btn=>{
     $('morning-motivation').textContent = motivations[quality] || motivations.ok;
     
     // Auto-adjust daily goal based on sleep quality + sleep debt
+    // But NEVER reduce below gaokao minimum (2 for last 7 days)
+    const minGoal = gaokaoDaysRemaining() <= 7 ? 2 : 4;
     if(quality === 'late'){
-      S.settings.dailyGoal = Math.max(2, Math.floor((S.settings.dailyGoal || 8) * 0.4));
+      S.settings.dailyGoal = Math.max(minGoal, Math.floor(DEFAULT_DAILY_GOAL * 0.4));
       addMilestone('😴 严重熬夜，今日目标已大幅降低为 ' + S.settings.dailyGoal + ' 个番茄');
     }else if(quality === 'bad'){
-      S.settings.dailyGoal = Math.max(3, Math.floor((S.settings.dailyGoal || 8) * 0.5));
+      S.settings.dailyGoal = Math.max(minGoal, Math.floor(DEFAULT_DAILY_GOAL * 0.5));
       addMilestone('😴 睡眠不足，今日目标已调整为 ' + S.settings.dailyGoal + ' 个番茄');
     }
+    // NOTE: If quality is 'good' or 'ok', we do NOT touch dailyGoal here.
+    // The daily goal will be auto-restored to DEFAULT_DAILY_GOAL by restoreDailyGoal() called in initApp.
     
     // Extra aggressive reduction if sleep debt > 3 hours
     if(sleepDebt > 3){
-      S.settings.dailyGoal = Math.max(2, Math.floor(S.settings.dailyGoal * 0.5));
+      S.settings.dailyGoal = Math.max(minGoal, Math.floor(S.settings.dailyGoal * 0.5));
       addMilestone('⚠️ 睡眠负债过高(' + sleepDebt.toFixed(1) + 'h)，目标再次降低至 ' + S.settings.dailyGoal + ' 个番茄');
     }
     
@@ -4092,10 +4208,28 @@ function migrateData(){
   }
 }
 
+/* ============= V21: DAILY GOAL AUTO-RESTORE ============= */
+function restoreDailyGoal(){
+  const today = todayStr();
+  // Restore daily goal to default every new day (prevent permanent reduction from sleep quality)
+  if(S._goalRestoreDate !== today){
+    // Only restore if it was previously reduced (don't override manual user changes above default)
+    if(S.settings.dailyGoal < DEFAULT_DAILY_GOAL){
+      S.settings.dailyGoal = DEFAULT_DAILY_GOAL;
+      saveState();
+      addMilestone('☀️ 新的一天开始！今日目标已恢复为 ' + DEFAULT_DAILY_GOAL + ' 个番茄');
+    }
+    S._goalRestoreDate = today;
+    saveState();
+  }
+}
+
 /* ============= INIT ============= */
 function initApp(){
   winddownShown = false;
   migrateData();
+  // V21: Restore daily goal on new day
+  restoreDailyGoal();
   // ensure S has proper timer object
   if(!S.timer) S.timer = freshState().timer;
   if(!S.pomodoroHistory) S.pomodoroHistory = {};
@@ -4142,6 +4276,12 @@ function initApp(){
   if(S._lastSleepQuality===undefined) S._lastSleepQuality=null;
   if(S._sleepEnforceActive===undefined) S._sleepEnforceActive=false;
   if(S._morningCheckDone===undefined) S._morningCheckDone=null;
+  if(S._sleepDismissHistory===undefined) S._sleepDismissHistory=[];
+  if(S._sleepLog===undefined) S._sleepLog=[];
+  if(S._breathingChallengeActive===undefined) S._breathingChallengeActive=false;
+  if(S._sleepLockdownActive===undefined) S._sleepLockdownActive=false;
+  if(S._adhdQuickStartShown===undefined) S._adhdQuickStartShown=null;
+  if(S._goalRestoreDate===undefined) S._goalRestoreDate=null;
 
   // if timer was running on page unload, reset to idle (can't track wall-clock time)
   if(S.timer.phase==='running') S.timer.phase='idle';
