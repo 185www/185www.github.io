@@ -3164,6 +3164,12 @@ function showCelebration(){
 /* ============= DAILY LAUNCH ============= */
 function showDailyLaunch(){
   const today = todayStr();
+  // BUG FIX: Reset daily focus tasks every new day so user can pick 3 new ones
+  if(S._dailyFocusDate !== today){
+    S.dailyFocusTasks = [];
+    S._dailyFocusDate = today;
+    saveState();
+  }
   // show yesterday's stats
   const y = new Date(); y.setDate(y.getDate()-1);
   const yStr = dateStr(y);
@@ -4270,6 +4276,7 @@ function initApp(){
   if(!S.pomodoroHistory) S.pomodoroHistory = {};
   if(!S.projects) S.projects = [];
   if(!S.dailyFocusTasks) S.dailyFocusTasks = [];
+  if(S._dailyFocusDate===undefined) S._dailyFocusDate=null;
   if(!S.sessions) S.sessions = [];
   if(!S.settings) S.settings = {...defaultSettings};
 
