@@ -359,10 +359,14 @@ function showStreakCrisisWarning(){
 
 function checkYesterdayCompetition(count){
   const today = todayStr();
-  const y = new Date(); y.setDate(y.getDate()-1);
-  const yStr = dateStr(y);
-  const yCount = (S.pomodoroHistory[yStr]||{}).count||0;
-  if(S._yesterdayPomoCount<0) S._yesterdayPomoCount = yCount;
+  // Reset flag for new day
+  if(S._competitionDate !== today){
+    S._competitionDate = today;
+    S._todayExceededYesterday = false;
+    const y = new Date(); y.setDate(y.getDate()-1);
+    S._yesterdayPomoCount = (S.pomodoroHistory[dateStr(y)]||{}).count||0;
+  }
+  const yCount = S._yesterdayPomoCount;
   if(yCount>0 && count>yCount && !S._todayExceededYesterday){
     S._todayExceededYesterday = true;
     addMilestone('🔥 超越昨天！今天已完成 '+count+' 个番茄（昨天 '+yCount+' 个）');
@@ -533,7 +537,7 @@ function updateGaokaoCountdown(){
 
   // Urgent format for last 7 days
   if(days <= 7){
-    const label = $('gk-countdown-label');
+    const label = qs('.gk-countdown-label');
     const icon = qs('.gk-countdown-icon');
     if(label) label.textContent = '距高考还有';
     if(icon) icon.textContent = '🔥';
@@ -555,18 +559,17 @@ setInterval(updateGaokaoCountdown, 60000);
 
 /* ============= V21: GAOKAO SPRINT PLAN ============= */
 function updateSprintPlan(){
+  const container = $('gk-schedule');
   const el = $('gk-schedule-text');
-  if(!el) return;
+  if(!container || !el) return;
   const daysLeft = gaokaoDaysRemaining();
   if(daysLeft > 7){
-    el.hidden = true;
+    container.hidden = true;
     return;
   }
-  el.hidden = false;
+  container.hidden = false;
 
   // Show today's recommended subject focus
-  const today = todayStr();
-  const examDayKeys = Object.keys(GAOKAO_EXAM_SCHEDULE);
   const subjectAdvice = getTodaySubjectAdvice(daysLeft);
   el.innerHTML = '<strong>今日重点：</strong>' + subjectAdvice;
 }
@@ -631,6 +634,12 @@ function checkSleepTime(){
   const now = new Date();
   const hour = now.getHours();
   const minute = now.getMinutes();
+  // FIX L4: Reset winddownShown on day boundary
+  const today = todayStr();
+  if(S._winddownDate !== today){
+    S._winddownDate = today;
+    winddownShown = false;
+  }
   // Use effective bedtime (special for pre-exam days)
   const bedtime = getEffectiveBedtime();
   const winddown = getEffectiveWinddown();
@@ -682,7 +691,7 @@ function updateWinddownProgress(){
   const now = new Date();
   const hour = now.getHours();
   const minute = now.getMinutes();
-  const [bedH, bedM] = S.settings.bedtime.split(':').map(Number);
+  const [bedH, bedM] = getEffectiveBedtime().split(':').map(Number);
   const bedtimeMinutes = bedH * 60 + bedM;
   const currentMinutes = hour * 60 + minute;
   let remaining = bedtimeMinutes - currentMinutes;
@@ -924,9 +933,17 @@ function updateSleepTimer(){
   if(!el || $('sleep-overlay').hidden) return;
   const [wakeH, wakeM] = S.settings.waketime.split(':').map(Number);
   const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const wakeMinutes = wakeH * 60 + wakeM;
+  const currentMinutes = hour * 60 + minute;
+  // FIX L5: If already past wake time, don't show countdown to "tomorrow"
+  if(currentMinutes >= wakeMinutes){
+    el.textContent = '已过起床时间';
+    return;
+  }
   const wake = new Date(now);
   wake.setHours(wakeH, wakeM, 0, 0);
-  if(wake <= now) wake.setDate(wake.getDate() + 1);
   const diff = wake - now;
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
@@ -1029,8 +1046,6 @@ function startBreathingChallenge(){
   let remaining = 60; // 60 seconds total
   const phases = ['吸气...', '屏住...', '呼气...']; // 4s each = 12s per cycle, 5 cycles = 60s
   const phaseDuration = 4;
-  let cycleCount = 0;
-  let phaseIdx = 0;
   
   breathingText.textContent = '准备...深呼吸开始！';
   breathingText.style.color = '#7c7cff';
@@ -1038,7 +1053,7 @@ function startBreathingChallenge(){
   breathingTimer = setInterval(()=>{
     remaining -= 0.5;
     const phaseInCycle = (60 - remaining) % (phaseDuration * 3);
-    phaseIdx = Math.floor(phaseInCycle / phaseDuration) % 3;
+    const phaseIdx = Math.floor(phaseInCycle / phaseDuration) % 3;
     
     if(remaining <= 0){
       clearInterval(breathingTimer);
@@ -1174,9 +1189,11 @@ qsa('.morning-opt-btn').forEach(btn=>{
     const minGoal = gaokaoDaysRemaining() <= 7 ? 2 : 4;
     if(quality === 'late'){
       S.settings.dailyGoal = Math.max(minGoal, Math.floor(DEFAULT_DAILY_GOAL * 0.4));
+      S._goalReducedBySleep = true;
       addMilestone('😴 严重熬夜，今日目标已大幅降低为 ' + S.settings.dailyGoal + ' 个番茄');
     }else if(quality === 'bad'){
       S.settings.dailyGoal = Math.max(minGoal, Math.floor(DEFAULT_DAILY_GOAL * 0.5));
+      S._goalReducedBySleep = true;
       addMilestone('😴 睡眠不足，今日目标已调整为 ' + S.settings.dailyGoal + ' 个番茄');
     }
     // NOTE: If quality is 'good' or 'ok', we do NOT touch dailyGoal here.
@@ -1185,6 +1202,7 @@ qsa('.morning-opt-btn').forEach(btn=>{
     // Extra aggressive reduction if sleep debt > 3 hours
     if(sleepDebt > 3){
       S.settings.dailyGoal = Math.max(minGoal, Math.floor(S.settings.dailyGoal * 0.5));
+      S._goalReducedBySleep = true;
       addMilestone('⚠️ 睡眠负债过高(' + sleepDebt.toFixed(1) + 'h)，目标再次降低至 ' + S.settings.dailyGoal + ' 个番茄');
     }
     
@@ -4211,11 +4229,12 @@ function migrateData(){
 /* ============= V21: DAILY GOAL AUTO-RESTORE ============= */
 function restoreDailyGoal(){
   const today = todayStr();
-  // Restore daily goal to default every new day (prevent permanent reduction from sleep quality)
   if(S._goalRestoreDate !== today){
-    // Only restore if it was previously reduced (don't override manual user changes above default)
-    if(S.settings.dailyGoal < DEFAULT_DAILY_GOAL){
+    // Only restore if the goal was reduced by the sleep system (flag _goalReducedBySleep)
+    // Do NOT override user's manual goal setting
+    if(S._goalReducedBySleep && S.settings.dailyGoal < DEFAULT_DAILY_GOAL){
       S.settings.dailyGoal = DEFAULT_DAILY_GOAL;
+      S._goalReducedBySleep = false;
       saveState();
       addMilestone('☀️ 新的一天开始！今日目标已恢复为 ' + DEFAULT_DAILY_GOAL + ' 个番茄');
     }
@@ -4282,6 +4301,9 @@ function initApp(){
   if(S._sleepLockdownActive===undefined) S._sleepLockdownActive=false;
   if(S._adhdQuickStartShown===undefined) S._adhdQuickStartShown=null;
   if(S._goalRestoreDate===undefined) S._goalRestoreDate=null;
+  if(S._goalReducedBySleep===undefined) S._goalReducedBySleep=false;
+  if(S._competitionDate===undefined) S._competitionDate=null;
+  if(S._winddownDate===undefined) S._winddownDate=null;
 
   // if timer was running on page unload, reset to idle (can't track wall-clock time)
   if(S.timer.phase==='running') S.timer.phase='idle';
