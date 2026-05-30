@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>霓虹进化：深渊突围 | Neon Evolution</title>
+<style>
+    body {
+        margin: 0; padding: 0;
+        background-color: #050508;
+        display: flex; justify-content: center; align-items: center;
+        height: 100vh; overflow: hidden;
+        font-family: 'Courier New', Courier, monospace;
+        color: #fff;
+    }
+    canvas {
+        background: #0a0a12;
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+        border: 1px solid #1a1a2e;
+        cursor: none; /* 隐藏鼠标，增强沉浸感 */
+    }
+    #ui-layer {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        pointer-events: none;
+        z-index: 10;
+    }
+    h1 { font-size: 48px; text-shadow: 0 0 20px #0ff, 0 0 40px #0ff; margin: 0; letter-spacing: 5px;}
+    p { font-size: 18px; color: #aaa; margin-top: 20px; letter-spacing: 2px;}
+    .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="ui-layer">
+    <h1 id="title">NEON EVOLUTION</h1>
+    <p id="subtitle">移动鼠标控制 | 点击/空格 发射激光<br>按任意键开始</p>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const uiLayer = document.getElementById('ui-layer');
+const titleEl = document.getElementById('title');
+const subtitleEl = document.getElementById('subtitle');
+
+// --- 游戏状态与全局变量 ---let gameState = 'START'; // START, PLAYING, GAMEOVER
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let shakeMagnitude = 0;
+let hueShift = 0;
+
+// --- 实体定义 ---
+const paddle = { w: 120, h: 15, x: 0, y: 560, speed: 8, color: '#0ff', laserMode: false, laserTimer: 0 };
+let balls = [];
+let bricks = [];
+let particles = [];
+let powerups = [];
+let lasers = [];
+
+// --- 初始化函数 ---
+function initGame() {
+    score = 0; combo = 0; maxCombo = 0;
+    paddle.x = canvas.width / 2 - paddle.w / 2;
+    paddle.w = 120;
+    paddle.laserMode = false;
+    balls = [{ x: canvas.width / 2, y: 540, dx: 4 * (Math.random() > 0.5 ? 1 : -1), dy: -5, r: 8, color: '#fff' }];
+    bricks = [];
+    particles = [];
+    powerups = [];
+    lasers = [];
+    generateBricks();
+}
+
+function generateBricks() {
+    const cols = 10;
+    const rows = 6;
+    const brickW = 70;
+    const brickH = 25;
+    const padding = 6;
+    const offsetX = (canvas.width - (cols * (brickW + padding) - padding)) / 2;
+    const offsetY = 50;
+
+    const colors = ['#ff0055', '#ffaa00', '#00ffaa', '#00aaff', '#aa00ff'];
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            bricks.push({
+                x: offsetX + c * (brickW + padding),
+                y: offsetY + r * (brickH + padding),
+                w: brickW, h: brickH,
+                color: colors[r % colors.length],
+                hp: 1, alive: true
+            });
+        }
+    }}
+
+// --- 粒子与特效系统 ---
+function spawnParticles(x, y, color, count = 15) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x, y,
+            dx: (Math.random() - 0.5) * 8,
+            dy: (Math.random() - 0.5) * 8,
+            life: 1.0,
+            color: color,
+            size: Math.random() * 4 + 2
+        });
+    }
+}
+
+function triggerShake(mag) { shakeMagnitude = mag; }
+
+// --- 道具系统 ---
+function spawnPowerup(x, y) {
+    if (Math.random() < 0.25) { // 25% 掉落率
+        const types = ['MULTI', 'LASER', 'WIDE'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const colors = { MULTI: '#ff0055', LASER: '#ffaa00', WIDE: '#00ffaa' };
+        powerups.push({ x, y, dy: 3, type, color: colors[type], r: 10 });
+    }
+}
+
+function applyPowerup(type) {
+    if (type === 'MULTI') {
+        const currentBalls = [...balls];
+        currentBalls.forEach(b => {
+            balls.push({ x: b.x, y: b.y, dx: b.dx * 0.8 + 2, dy: b.dy, r: b.r, color: '#ff0055' });
+            balls.push({ x: b.x, y: b.y, dx: b.dx * 0.8 - 2, dy: b.dy, r: b.r, color: '#ff0055' });
+        });
+    } else if (type === 'LASER') {
+        paddle.laserMode = true;
+        paddle.laserTimer = 600; // 10秒
+    } else if (type === 'WIDE') {
+        paddle.w = Math.min(paddle.w + 40, 250);
+    }
+}
+
+// --- 输入控制 ---
+let mouseX = canvas.width / 2;
+let keys = {};
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);});
+
+window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (gameState === 'START' || gameState === 'GAMEOVER') {
+        gameState = 'PLAYING';
+        uiLayer.classList.add('hidden');
+        initGame();
+    }
+    if (e.code === 'Space' && paddle.laserMode) shootLaser();
+});
+window.addEventListener('keyup', (e) => keys[e.code] = false);
+canvas.addEventListener('click', () => {
+    if (gameState === 'PLAYING' && paddle.laserMode) shootLaser();
+    if (gameState !== 'PLAYING') {
+        gameState = 'PLAYING';
+        uiLayer.classList.add('hidden');
+        initGame();
+    }
+});
+
+function shootLaser() {
+    lasers.push({ x: paddle.x + 10, y: paddle.y, dy: -10 });
+    lasers.push({ x: paddle.x + paddle.w - 10, y: paddle.y, dy: -10 });
+}
+
+// --- 核心逻辑更新 ---
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    hueShift += 0.5;
+    if (paddle.laserTimer > 0) paddle.laserTimer--;
+    else paddle.laserMode = false;
+
+    // 挡板移动
+    paddle.x = mouseX - paddle.w / 2;
+    if (paddle.x < 0) paddle.x = 0;
+    if (paddle.x + paddle.w > canvas.width) paddle.x = canvas.width - paddle.w;
+
+    // 球更新
+    for (let i = balls.length - 1; i >= 0; i--) {
+        let b = balls[i];
+        b.x += b.dx;
+        b.y += b.dy;
+
+        // 墙壁碰撞
+        if (b.x + b.r > canvas.width || b.x - b.r < 0) b.dx *= -1;
+        if (b.y - b.r < 0) b.dy *= -1;
+
+        // 掉出屏幕        if (b.y - b.r > canvas.height) {
+            balls.splice(i, 1);
+            combo = 0; // 掉球断连击
+            continue;
+        }
+
+        // 挡板碰撞
+        if (b.y + b.r > paddle.y && b.y - b.r < paddle.y + paddle.h &&
+            b.x > paddle.x && b.x < paddle.x + paddle.w && b.dy > 0) {
+            
+            b.dy *= -1;
+            // 根据击中位置改变X轴速度，增加可控性
+            let hitPos = (b.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+            b.dx = hitPos * 6; 
+            
+            spawnParticles(b.x, b.y, '#0ff', 5);
+        }
+
+        // 砖块碰撞
+        for (let brick of bricks) {
+            if (!brick.alive) continue;
+            if (b.x + b.r > brick.x && b.x - b.r < brick.x + brick.w &&
+                b.y + b.r > brick.y && b.y - b.r < brick.y + brick.h) {
+                
+                brick.hp--;
+                if (brick.hp <= 0) {
+                    brick.alive = false;
+                    combo++;
+                    maxCombo = Math.max(maxCombo, combo);
+                    score += 10 * (1 + Math.floor(combo / 5));
+                    spawnParticles(brick.x + brick.w / 2, brick.y + brick.h / 2, brick.color, 20);
+                    spawnPowerup(brick.x + brick.w / 2, brick.y + brick.h / 2);
+                    triggerShake(3);
+                }
+                
+                // 简单的反弹方向判断
+                let overlapX = Math.min(b.x + b.r - brick.x, brick.x + brick.w - (b.x - b.r));
+                let overlapY = Math.min(b.y + b.r - brick.y, brick.y + brick.h - (b.y - b.r));
+                if (overlapX < overlapY) b.dx *= -1;
+                else b.dy *= -1;
+                break;
+            }
+        }
+    }
+
+    // 激光更新
+    for (let i = lasers.length - 1; i >= 0; i--) {
+        let l = lasers[i];
+        l.y += l.dy;
+        if (l.y < 0) { lasers.splice(i, 1); continue; }        
+        for (let brick of bricks) {
+            if (!brick.alive) continue;
+            if (l.x > brick.x && l.x < brick.x + brick.w && l.y > brick.y && l.y < brick.y + brick.h) {
+                brick.alive = false;
+                score += 10;
+                spawnParticles(l.x, l.y, brick.color, 10);
+                lasers.splice(i, 1);
+                triggerShake(2);
+                break;
+            }
+        }
+    }
+
+    // 道具更新
+    for (let i = powerups.length - 1; i >= 0; i--) {
+        let p = powerups[i];
+        p.y += p.dy;
+        if (p.y > canvas.height) { powerups.splice(i, 1); continue; }
+        
+        if (p.y + p.r > paddle.y && p.y - p.r < paddle.y + paddle.h &&
+            p.x > paddle.x && p.x < paddle.x + paddle.w) {
+            applyPowerup(p.type);
+            spawnParticles(p.x, p.y, p.color, 30);
+            powerups.splice(i, 1);
+        }
+    }
+
+    // 粒子更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.dx;
+        p.y += p.dy;
+        p.dy += 0.1; // 重力
+        p.life -= 0.02;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // 屏幕震动衰减
+    if (shakeMagnitude > 0) shakeMagnitude *= 0.8;
+    if (shakeMagnitude < 0.1) shakeMagnitude = 0;
+
+    // 胜负判定
+    if (balls.length === 0) {
+        gameState = 'GAMEOVER';
+        titleEl.innerText = "SYSTEM FAILURE";
+        titleEl.style.color = "#ff0055";
+        subtitleEl.innerHTML = `最终得分: ${score} | 最高连击: ${maxCombo}<br>按任意键重启系统`;
+        uiLayer.classList.remove('hidden');
+    }    if (bricks.every(b => !b.alive)) {
+        // 简单粗暴：通关后直接生成下一波，速度加快（这里简化为无限模式）
+        generateBricks();
+        balls.forEach(b => { b.dx *= 1.1; b.dy *= 1.1; });
+    }
+}
+
+// --- 渲染引擎 ---
+function draw() {
+    ctx.save();
+    // 屏幕震动效果
+    if (shakeMagnitude > 0) {
+        ctx.translate(
+            (Math.random() - 0.5) * shakeMagnitude * 2,
+            (Math.random() - 0.5) * shakeMagnitude * 2
+        );
+    }
+
+    // 清除画布（带拖影效果）
+    ctx.fillStyle = 'rgba(10, 10, 18, 0.3)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 绘制网格背景
+    ctx.strokeStyle = `hsla(${hueShift}, 100%, 50%, 0.05)`;
+    ctx.lineWidth = 1;
+    for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+    for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+    if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
+        // 绘制砖块
+        ctx.shadowBlur = 10;
+        bricks.forEach(b => {
+            if (!b.alive) return;
+            ctx.shadowColor = b.color;
+            ctx.fillStyle = b.color;
+            ctx.fillRect(b.x, b.y, b.w, b.h);
+        });
+
+        // 绘制道具
+        powerups.forEach(p => {
+            ctx.shadowColor = p.color;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+            // 道具字母
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000';
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";            ctx.fillText(p.type[0], p.x, p.y + 4);
+            ctx.shadowBlur = 10;
+        });
+
+        // 绘制激光
+        ctx.shadowColor = '#ffaa00';
+        ctx.fillStyle = '#ffaa00';
+        lasers.forEach(l => {
+            ctx.fillRect(l.x - 2, l.y, 4, 15);
+        });
+
+        // 绘制挡板
+        ctx.shadowColor = paddle.laserMode ? '#ffaa00' : '#0ff';
+        ctx.fillStyle = paddle.laserMode ? '#ffaa00' : '#0ff';
+        ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+
+        // 绘制球
+        ctx.shadowColor = '#fff';
+        ctx.fillStyle = '#fff';
+        balls.forEach(b => {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // 绘制粒子
+        ctx.shadowBlur = 5;
+        particles.forEach(p => {
+            ctx.globalAlpha = p.life;
+            ctx.shadowColor = p.color;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+        });
+        ctx.globalAlpha = 1.0;
+
+        // 绘制 HUD (UI)
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fff';
+        ctx.font = "20px 'Courier New'";
+        ctx.textAlign = "left";
+        ctx.fillText(`SCORE: ${score}`, 20, 30);
+        ctx.textAlign = "right";
+        ctx.fillText(`COMBO: x${combo}`, canvas.width - 20, 30);
+        
+        if (paddle.laserMode) {
+            ctx.textAlign = "center";
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillText(`LASER ACTIVE [${Math.ceil(paddle.laserTimer/60)}s]`, canvas.width/2, 30);
+        }
+    }
+    ctx.restore();
+}
+
+// --- 主循环 ---
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// 启动引擎
+loop();
+</script>
+</body>
+</html>

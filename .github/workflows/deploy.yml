@@ -1,0 +1,33 @@
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pomotodo/**'
+      - 'gaokao-cogengine/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy-pomotodo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy pomotodo to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pomotodo
+          destination_dir: pomotodo/
+          keep_files: true
+
+      - name: Deploy gaokao-cogengine to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gaokao-cogengine
+          destination_dir: gaokao-cogengine/
+          keep_files: true

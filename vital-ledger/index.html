@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生命账簿 Vital Ledger - 你的工作健康损益表</title>
+  <meta name="description" content="科学计算工作的真实成本：收入 vs 健康损耗、医疗支出、寿命影响。帮助你重新审视工作与生活的平衡。">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>生命账簿 <span>Vital Ledger</span></h1>
+    <p>工作的真实成本，远比你想象的高。<br>科学计算你为工作付出的健康代价。</p>
+    <div class="subtitle">基于流行病学研究 · 健康经济学模型 · 职业医学数据</div>
+  </div>
+</header>
+
+<form id="lifeForm" onsubmit="return false;">
+  <div class="section">
+    <div class="card">
+      <div class="section-title"><span class="step">1</span> 基本信息</div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">当前年龄</label>
+          <input type="number" id="age" min="16" max="80" value="30" required>
+        </div>
+        <div>
+          <label class="card-label">开始工作年龄</label>
+          <input type="number" id="startWorkAge" min="16" max="40" value="22">
+        </div>
+        <div>
+          <label class="card-label">计划退休年龄</label>
+          <input type="number" id="retirementAge" min="30" max="70" value="60">
+        </div>
+      </div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">预期寿命</label>
+          <input type="number" id="lifeExpectancy" min="60" max="100" value="77">
+        </div>
+        <div>
+          <label class="card-label">职业类型</label>
+          <select id="occupationType">
+            <option value="officeWorker">办公室职员 / 程序员</option>
+            <option value="serviceWorker">服务业人员</option>
+            <option value="manualWorker">体力劳动者</option>
+            <option value="medicalWorker">医护人员</option>
+            <option value="driver">驾驶员 / 运输业</option>
+            <option value="teacher">教师 / 教育工作者</option>
+          </select>
+        </div>
+        <div>
+          <label class="card-label">性别</label>
+          <select id="gender">
+            <option value="male">男</option>
+            <option value="female">女</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <div class="section-title"><span class="step">2</span> 工作时间</div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">每日工作 <span class="hint">(小时)</span></label>
+          <input type="number" id="dailyWorkHours" min="4" max="16" value="8">
+        </div>
+        <div>
+          <label class="card-label">每周工作天数</label>
+          <input type="number" id="weeklyWorkDays" min="1" max="7" value="5">
+        </div>
+        <div>
+          <label class="card-label">通勤时间 <span class="hint">(分钟/天)</span></label>
+          <input type="number" id="commuteMinutes" min="0" max="300" value="60">
+        </div>
+      </div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">起床时间</label>
+          <input type="time" id="wakeUpTime" value="07:00">
+        </div>
+        <div>
+          <label class="card-label">上班时间</label>
+          <input type="time" id="workStartTime" value="09:00">
+        </div>
+        <div>
+          <label class="card-label">下班时间</label>
+          <input type="time" id="workEndTime" value="18:00">
+        </div>
+      </div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">入睡时间</label>
+          <input type="time" id="sleepTime" value="23:00">
+        </div>
+        <div>
+          <label class="card-label">每晚睡眠 <span class="hint">(小时)</span></label>
+          <input type="number" id="sleepHours" min="3" max="12" value="7" step="0.5">
+        </div>
+        <div>
+          <label class="card-label">每周加班 <span class="hint">(小时)</span></label>
+          <input type="number" id="overtimeHours" min="0" max="40" value="0">
+        </div>
+      </div>
+
+      <div class="form-row full" style="margin-top: 4px;">
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="hasOvertime"> 经常加班
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="hasNightShift"> 有夜班工作
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <div class="section-title"><span class="step">3</span> 薪资与习惯</div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">月薪 <span class="hint">(元)</span></label>
+          <input type="number" id="monthlySalary" min="0" max="1000000" value="8000" step="1000">
+        </div>
+        <div>
+          <label class="card-label">每日久坐 <span class="hint">(小时)</span></label>
+          <input type="number" id="sedentaryHours" min="0" max="16" value="8" step="0.5">
+        </div>
+        <div>
+          <label class="card-label">工作压力</label>
+          <select id="stressLevel">
+            <option value="low">低压力</option>
+            <option value="moderate" selected>中度压力</option>
+            <option value="high">高压力</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">吸烟</label>
+          <select id="smoking">
+            <option value="no">不吸烟</option>
+            <option value="yes">吸烟</option>
+          </select>
+        </div>
+        <div>
+          <label class="card-label">饮酒</label>
+          <select id="drinking">
+            <option value="none">不饮酒</option>
+            <option value="moderate">适量饮酒</option>
+            <option value="heavy">大量饮酒</option>
+          </select>
+        </div>
+        <div>
+          <label class="card-label">运动频率 <span class="hint">(次/周)</span></label>
+          <input type="number" id="exerciseFrequency" min="0" max="14" value="1">
+        </div>
+      </div>
+
+      <div class="form-row three">
+        <div>
+          <label class="card-label">付出与回报是否匹配？</label>
+          <select id="eriImbalance">
+            <option value="false">匹配，基本满意</option>
+            <option value="true" selected>不太匹配，付出多于回报</option>
+          </select>
+          <div style="font-size:0.8em;color:var(--text-light);margin-top:4px;">综合考虑薪资、认可度、晋升机会等</div>
+        </div>
+        <div>
+          <label class="card-label">工作之余社交频率？</label>
+          <select id="socialIsolation">
+            <option value="low">每周2次以上面对面社交</option>
+            <option value="moderate" selected>每周1次左右</option>
+            <option value="high">几乎无面对面社交</option>
+          </select>
+          <div style="font-size:0.8em;color:var(--text-light);margin-top:4px;">不包括工作中的必要交流</div>
+        </div>
+        <div>
+          <label class="card-label">办公室通风状况</label>
+          <select id="workplaceAirQuality">
+            <option value="good">良好（有新风系统/常开窗）</option>
+            <option value="moderate" selected>一般（普通空调办公室）</option>
+            <option value="poor">较差（密闭、空气沉闷）</option>
+          </select>
+          <div style="font-size:0.8em;color:var(--text-light);margin-top:4px;">空气质量差可导致注意力下降</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="text-align: center;">
+    <button type="button" class="btn btn-primary btn-block btn-lg" onclick="calculateAndShow()">
+      生成我的生命账簿
+    </button>
+  </div>
+</form>
+
+<div id="loading" class="loading">
+  <div class="spinner"></div>
+  <p>正在计算你的工作真实成本...</p>
+  <p style="font-size:0.85em;color:var(--text-light);margin-top:8px;">基于流行病学数据和健康经济学模型</p>
+</div>
+
+<div id="results" class="results-container">
+  <div class="section">
+    <div class="section-title">📊 你的生命账簿摘要</div>
+    <div id="summaryMetrics" class="metric-grid"></div>
+    <div id="summaryVerdict"></div>
+  </div>
+
+  <div class="section">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('health', this)">健康风险</button>
+      <button class="tab-btn" onclick="switchTab('finance', this)">财务分析</button>
+      <button class="tab-btn" onclick="switchTab('timeline', this)">生命时间线</button>
+      <button class="tab-btn" onclick="switchTab('advice', this)">行动建议</button>
+    </div>
+
+    <div id="tab-health" class="tab-content active"></div>
+    <div id="tab-finance" class="tab-content"></div>
+    <div id="tab-timeline" class="tab-content"></div>
+    <div id="tab-advice" class="tab-content"></div>
+  </div>
+
+  <div class="section" style="text-align:center;padding:20px;">
+    <button class="btn btn-secondary" onclick="scrollToForm()">重新评估</button>
+  </div>
+</div>
+
+<footer class="footer">
+  <p>生命账簿 Vital Ledger — 基于科学的工作生活平衡评估工具</p>
+  <p style="margin-top:4px;">数据来源：JAMA Network Open, The Lancet, AHA, WHO, RAND Europe 等同行评议研究</p>
+  <p style="margin-top:4px;">⚠️ 本工具仅供参考，不构成医学建议。如有健康问题请咨询专业医生。</p>
+</footer>
+
+<script src="data/health-risks.js"></script>
+<script src="data/economic-data.js"></script>
+<script src="data/diseases.js"></script>
+<script src="assets/js/calculator.js"></script>
+<script>
+let currentResult = null;
+
+function calculateAndShow() {
+  const loading = document.getElementById('loading');
+  const results = document.getElementById('results');
+  loading.classList.add('visible');
+  results.classList.remove('visible');
+
+  setTimeout(() => {
+    const input = collectInput();
+    currentResult = VitalLedgerCalculator.calculate(input);
+    displayResults(currentResult);
+    loading.classList.remove('visible');
+    results.classList.add('visible');
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 800);
+}
+
+function collectInput() {
+  return {
+    age: parseInt(document.getElementById('age').value),
+    startWorkAge: parseInt(document.getElementById('startWorkAge').value),
+    retirementAge: parseInt(document.getElementById('retirementAge').value),
+    lifeExpectancy: parseInt(document.getElementById('lifeExpectancy').value),
+    occupationType: document.getElementById('occupationType').value,
+    gender: document.getElementById('gender').value,
+    dailyWorkHours: parseFloat(document.getElementById('dailyWorkHours').value),
+    weeklyWorkDays: parseInt(document.getElementById('weeklyWorkDays').value),
+    commuteMinutes: parseInt(document.getElementById('commuteMinutes').value),
+    wakeUpTime: document.getElementById('wakeUpTime').value,
+    workStartTime: document.getElementById('workStartTime').value,
+    workEndTime: document.getElementById('workEndTime').value,
+    sleepTime: document.getElementById('sleepTime').value,
+    sleepHours: parseFloat(document.getElementById('sleepHours').value),
+    overtimeHoursPerWeek: parseInt(document.getElementById('overtimeHours').value),
+    hasOvertime: document.getElementById('hasOvertime').checked,
+    hasNightShift: document.getElementById('hasNightShift').checked,
+    monthlySalary: parseInt(document.getElementById('monthlySalary').value),
+    sedentaryHours: parseFloat(document.getElementById('sedentaryHours').value),
+    stressLevel: document.getElementById('stressLevel').value,
+    smoking: document.getElementById('smoking').value === 'yes',
+    drinking: document.getElementById('drinking').value,
+    exerciseFrequency: parseInt(document.getElementById('exerciseFrequency').value),
+    eriImbalance: document.getElementById('eriImbalance').value === 'true',
+    socialIsolation: document.getElementById('socialIsolation').value,
+    workplaceAirQuality: document.getElementById('workplaceAirQuality').value
+  };
+}
+
+function displayResults(result) {
+  const r = result;
+  displaySummaryMetrics(r);
+  displayHealthTab(r);
+  displayFinanceTab(r);
+  displayTimelineTab(r);
+  displayAdviceTab(r);
+}
+
+function displaySummaryMetrics(r) {
+  const metrics = document.getElementById('summaryMetrics');
+  const earningPerYear = r.financialAnalysis.annualSalary;
+  const healthCostPerYear = r.financialAnalysis.annualMedicalCosts;
+  const lifeLost = r.lifeImpact.lifeYearsLost.toFixed(1);
+
+  metrics.innerHTML = `
+    <div class="metric-card">
+      <div class="label">年收入</div>
+      <div class="value">¥${earningPerYear.toLocaleString()}</div>
+    </div>
+    <div class="metric-card ${r.financialAnalysis.healthCostRatio > 20 ? 'danger' : r.financialAnalysis.healthCostRatio > 10 ? 'caution' : 'success'}">
+      <div class="label">预估年医疗支出</div>
+      <div class="value">¥${Math.round(healthCostPerYear).toLocaleString()}</div>
+      <div style="font-size:0.85em;color:var(--text-light)">占收入 ${r.financialAnalysis.healthCostRatio.toFixed(1)}%</div>
+    </div>
+    <div class="metric-card ${lifeLost > 5 ? 'danger' : lifeLost > 2 ? 'caution' : 'success'}">
+      <div class="label">预期寿命损失</div>
+      <div class="value">${lifeLost} 年</div>
+    </div>
+    <div class="metric-card ${r.lifeImpact.healthyYearsRatio < 60 ? 'danger' : r.lifeImpact.healthyYearsRatio < 80 ? 'caution' : 'success'}">
+      <div class="label">健康寿命占比</div>
+      <div class="value">${r.lifeImpact.healthyYearsRatio}%</div>
+    </div>
+  `;
+
+  const verdict = document.getElementById('summaryVerdict');
+  const v = r.recommendations.summary;
+  const vClass = v.verdict === 'warning' ? 'danger' : v.verdict === 'caution' ? 'warning' : 'success';
+  const vIcon = v.verdict === 'warning' ? '🚨' : v.verdict === 'caution' ? '⚠️' : '✅';
+  verdict.innerHTML = `
+    <div class="warning-box ${vClass}">
+      <h4>${vIcon} ${v.title}</h4>
+      <p>${v.message}</p>
+    </div>
+  `;
+}
+
+function displayHealthTab(r) {
+  const tab = document.getElementById('tab-health');
+  const diseases = r.healthRisks.estimatedDiseases.slice(0, 8);
+  const diseaseRows = diseases.map(d => {
+    const probClass = d.probability > 0.4 ? 'danger' : d.probability > 0.2 ? 'warning' : '';
+    return `<tr>
+      <td><strong>${d.name}</strong></td>
+      <td>
+        <div class="progress-bar">
+          <div class="fill ${probClass}" style="width:${(d.probability * 100).toFixed(0)}%"></div>
+        </div>
+        ${(d.probability * 100).toFixed(0)}%
+      </td>
+      <td>${d.latencyYears}年</td>
+      <td>¥${Math.round(d.annualCost).toLocaleString()}/年</td>
+      <td>${d.description}</td>
+    </tr>`;
+  }).join('');
+
+  tab.innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom:16px;">🩺 职业相关疾病风险</h3>
+      <p style="color:var(--text-light);margin-bottom:16px;">基于你的职业类型和生活习惯，以下是预估的高风险疾病：</p>
+      <table class="disease-table">
+        <thead>
+          <tr>
+            <th>疾病</th>
+            <th>患病概率</th>
+            <th>潜伏期</th>
+            <th>年均费用</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>${diseaseRows}</tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px;">📋 健康风险因素分析</h3>
+      ${r.healthRisks.riskFactors.map(f => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;">
+            <span>${f.factor}</span>
+            <span style="color:var(--accent);font-weight:700;">RR=${f.rr.toFixed(2)}</span>
+          </div>
+          <div style="font-size:0.8em;color:var(--text-light);margin-top:2px;">${f.evidence || ''} | ${f.detail}</div>
+        </div>
+      `).join('')}
+      <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:8px;">
+        <strong>综合风险比 (Composite RR): ${r.healthRisks.compositeRR.toFixed(2)}</strong>
+        <span style="display:block;font-size:0.85em;color:var(--text-light);margin-top:4px;">
+          RR > 1 表示风险增加，数值越大风险越高
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+function displayFinanceTab(r) {
+  const tab = document.getElementById('tab-finance');
+  const f = r.financialAnalysis;
+  tab.innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom:16px;">💰 工作收入分析</h3>
+      <div class="metric-grid" style="margin-bottom:0;">
+        <div class="metric-card">
+          <div class="label">职业生涯总收入</div>
+          <div class="value">¥${Math.round(f.totalCareerEarnings).toLocaleString()}</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">养老金总额</div>
+          <div class="value">¥${Math.round(f.totalPension).toLocaleString()}</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">终身总收入</div>
+          <div class="value">¥${Math.round(f.totalLifetimeIncome).toLocaleString()}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px;">🏥 健康支出预测</h3>
+      <div class="metric-grid" style="margin-bottom:0;">
+        <div class="metric-card danger">
+          <div class="label">预估总医疗支出</div>
+          <div class="value">¥${Math.round(f.totalMedicalCosts).toLocaleString()}</div>
+        </div>
+        <div class="metric-card ${f.healthCostRatio > 20 ? 'danger' : 'caution'}">
+          <div class="label">医疗支出占收入比</div>
+          <div class="value">${f.healthCostRatio.toFixed(1)}%</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">有效时薪</div>
+          <div class="value">¥${f.effectiveHourlyRate.toFixed(0)}</div>
+          <div style="font-size:0.85em;color:var(--text-light)">扣除健康成本后</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px;">📊 成本效益分析</h3>
+      <p style="color:var(--text-light);margin-bottom:16px;">
+        工作的真实成本 = 时间 + 健康 + 医疗支出 + 生产力损失
+      </p>
+      <div style="overflow-x:auto;">
+        <table class="disease-table">
+          <tr>
+            <td>职业生涯总收入</td>
+            <td style="text-align:right;font-weight:700;">¥${Math.round(f.totalFutureEarnings).toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td>减：预估总医疗支出</td>
+            <td style="text-align:right;color:var(--danger);font-weight:700;">-¥${Math.round(f.totalMedicalCosts).toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td>减：生产力损失</td>
+            <td style="text-align:right;color:var(--danger);font-weight:700;">-¥${Math.round(f.totalProductivityLoss).toLocaleString()}</td>
+          </tr>
+          <tr style="border-top:2px solid var(--text);">
+            <td><strong>工作净收益</strong></td>
+            <td style="text-align:right;font-weight:800;font-size:1.2em;color:${f.netWorkReturn > 0 ? 'var(--success)' : 'var(--danger)'}">
+              ${f.netWorkReturn > 0 ? '+' : ''}¥${Math.round(f.netWorkReturn).toLocaleString()}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function displayTimelineTab(r) {
+  const tab = document.getElementById('tab-timeline');
+  const p = r.profile;
+  const l = r.lifeImpact;
+
+  const nowYear = new Date().getFullYear();
+  const startYear = nowYear - p.yearsWorked;
+  const retireYear = nowYear + p.yearsToRetire;
+  const endYear = startYear + p.totalWorkingYears + p.postRetirementYears;
+
+  const phases = [
+    { label: '开始工作', year: startYear, age: p.startWorkAge },
+    { label: '当前年龄', year: nowYear, age: p.age, current: true },
+    { label: '退休', year: retireYear, age: p.retirementAge },
+    { label: '预计寿命', year: startYear + p.totalWorkingYears + p.postRetirementYears, age: p.lifeExpectancy },
+    { label: '调整后预期寿命', year: startYear + p.totalWorkingYears + p.postRetirementYears - Math.round(l.lifeYearsLost), age: l.adjustedLifeExpectancy, highlight: true }
+  ];
+
+  tab.innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom:16px;">⏳ 你的生命时间线</h3>
+      <div class="timeline">
+        ${phases.map(ph => `
+          <div class="timeline-item" style="${ph.highlight ? 'opacity:0.8;' : ''}">
+            <div class="time-label">${ph.current ? '📍 ' : ''}${ph.label}</div>
+            <div style="font-size:1.2em;font-weight:700;">${ph.age} 岁 (${ph.year}年)</div>
+            ${ph.current ? `<div style="color:var(--accent);font-weight:600;">已工作 ${p.yearsWorked} 年，还需工作 ${p.yearsToRetire} 年</div>` : ''}
+            ${ph.highlight ? `<div style="color:var(--danger);font-size:0.9em;">疾病导致寿命损失 ${l.lifeYearsLost} 年</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px;">⏰ 你的一天</h3>
+      ${(() => {
+        const dayData = [
+          { label: '睡眠', hours: p.sleepHours, color: '#636e72' },
+          { label: '通勤', hours: (p.commuteMinutes || 0) / 60, color: '#b2bec3' },
+          { label: '工作', hours: p.dailyWorkHours, color: '#e17055' },
+          { label: '个人自由时间', hours: Math.max(0, 24 - p.sleepHours - (p.commuteMinutes||0)/60 - p.dailyWorkHours - 1.5), color: '#00b894' },
+          { label: '基本生活（吃饭/洗漱等）', hours: 1.5, color: '#dfe6e9' }
+        ];
+        const totalHours = dayData.reduce((s, d) => s + d.hours, 0);
+        return dayData.map(d => `
+          <div style="margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span>${d.label}</span>
+              <span style="font-weight:700;">${d.hours.toFixed(1)}h</span>
+            </div>
+            <div class="progress-bar">
+              <div class="fill" style="width:${(d.hours/totalHours*100).toFixed(0)}%;background:${d.color};"></div>
+            </div>
+          </div>
+        `).join('');
+      })()}
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px;">📊 工作时光占比</h3>
+      <div style="text-align:center;padding:20px;">
+        <div style="font-size:3em;font-weight:800;color:var(--accent);">${(r.workLifeAnalysis.workLifeRatio * 100).toFixed(0)}%</div>
+        <p style="color:var(--text-light);">工作占生命总时间的比例</p>
+        <div class="progress-bar" style="margin:16px 0;height:20px;">
+          <div class="fill" style="width:${(r.workLifeAnalysis.workLifeRatio * 100).toFixed(0)}%;background:var(--accent);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85em;color:var(--text-light);">
+          <span>工作时长: ${Math.round(r.workLifeAnalysis.lifetimeWorkHours).toLocaleString()} 小时</span>
+          <span>自由时间: ${Math.round(r.workLifeAnalysis.lifetimeFreeTime).toLocaleString()} 小时</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function displayAdviceTab(r) {
+  const tab = document.getElementById('tab-advice');
+  const recs = r.recommendations;
+
+  tab.innerHTML = `
+    <div class="card">
+      <h3 style="margin-bottom:16px;">🎯 科学行动建议</h3>
+      ${recs.items.map(rec => `
+        <div class="rec-card">
+          <div class="rec-title">${rec.title}</div>
+          <p>${rec.description}</p>
+          <ul>${rec.actionItems.map(a => `<li>${a}</li>`).join('')}</ul>
+          <div class="rec-evidence">📚 科学依据: ${rec.evidence}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px;">💭 深度反思</h3>
+      <p style="color:var(--text-light);margin-bottom:20px;">
+        以下问题没有标准答案，但值得你在安静的时刻认真思考：
+      </p>
+      ${recs.philosophicalQuestions.map(q => `
+        <div class="philosophy-box">
+          <div class="question">${q.question}</div>
+          <div class="reflection">${q.reflection}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px;">📚 科学研究参考</h3>
+      <table class="disease-table">
+        <tr><td>JAMA Network Open (2024)</td><td>48万人队列: 久坐全因死亡率+16%</td></tr>
+        <tr><td>The Lancet (2015)</td><td>长工时(55h+)中风风险+33%</td></tr>
+        <tr><td>RAND Europe (2016)</td><td>睡眠不足致美国年损失$411B</td></tr>
+        <tr><td>American Journal of Epidemiology (2018)</td><td>久坐与14种疾病死亡风险</td></tr>
+        <tr><td>JACC Advances (2025)</td><td>工作压力与冠心病因果关系</td></tr>
+        <tr><td>PLOS One (2024)</td><td>年轻人久坐也显著危害健康</td></tr>
+        <tr><td>Am J Prev Med (2025)</td><td>职业倦怠人均年成本$3,999+</td></tr>
+        <tr><td>Siegrist ERI模型 (2017)</td><td>付出-回报失衡与CVD r=0.26; 心理障碍OR=1.9</td></tr>
+        <tr><td>WHO Commission (2024)</td><td>社会孤立是全因死亡率重要预测因子</td></tr>
+        <tr><td>ScienceDirect IAQ (2025)</td><td>办公空气差导致认知下降50%、生产力损失9%</td></tr>
+      </table>
+    </div>
+  `;
+}
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + tabId).classList.add('active');
+}
+
+function scrollToForm() {
+  document.getElementById('lifeForm').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>

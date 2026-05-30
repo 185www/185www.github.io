@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>爸妈的树 — 21天改变计划</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f8f5f0;--surface:#ffffff;--surface2:#efe8dd;--accent:#2d8f4e;--accent2:#e85d3a;--gold:#d4a843;--text:#2c2420;--dim:#9a8e82;--muted:#c8bfb4;--radius:20px}
+html{font-size:18px;height:100%}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100%;display:flex;flex-direction:column}
+.hidden{display:none!important}
+
+/* HEADER */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem .8rem;background:var(--surface);min-height:52px}
+.header-left{display:flex;align-items:center;gap:.35rem}
+.header-icon{font-size:1.2rem}
+.header-title{font-weight:700;font-size:.95rem;color:var(--accent)}
+.header-badge{background:var(--accent);color:#fff;font-size:.55rem;padding:.1rem .4rem;border-radius:99px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:.3rem}
+.header-about{background:none;border:none;color:var(--dim);font-size:1rem;cursor:pointer;font-family:inherit;padding:.2rem}
+
+/* APP - main container */
+#app{flex:1;min-height:0;display:flex;flex-direction:column;padding:.6rem .8rem;padding-bottom:2rem;max-width:420px;margin:0 auto;width:100%;overflow-y:auto}
+
+/* TREE - the core */
+.tree-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh}
+.tree-svg-wrap{width:100%;max-width:240px;margin:0 auto}
+.tree-svg-wrap svg{width:100%;height:auto}
+.tree-status{text-align:center;font-size:.8rem;color:var(--dim);margin-top:-.2rem;margin-bottom:.2rem;min-height:1.2rem}
+.tree-social{text-align:center;font-size:.88rem;color:var(--text);margin-bottom:.1rem}
+.tree-social strong{color:var(--accent);font-weight:600}
+.tree-sublabel{text-align:center;font-size:.78rem;color:var(--dim);margin-bottom:.2rem}
+
+/* WATER BUTTON */
+.water-btn-wrap{text-align:center;margin:.6rem 0 .4rem}
+.water-btn{width:70%;max-width:240px;padding:1rem 0;font-size:1.15rem;font-weight:700;border:none;border-radius:50px;cursor:pointer;font-family:inherit;letter-spacing:2px;transition:all .15s;background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(45,143,78,.25)}
+.water-btn:active{transform:scale(.95);box-shadow:0 2px 8px rgba(45,143,78,.15)}
+.water-btn.gray{background:var(--muted);color:#fff;box-shadow:none}
+
+/* MINI LINKS */
+.mini-links{display:flex;justify-content:center;gap:.6rem;padding:.2rem 0}
+.mini-link{background:var(--surface);border:1px solid var(--surface2);border-radius:30px;padding:.4rem .8rem;font-size:.78rem;cursor:pointer;font-family:inherit;color:var(--dim);min-height:36px;transition:all .1s}
+.mini-link:active{background:var(--surface2);transform:scale(.96)}
+
+/* CHOICE OVERLAY (night checkin) */
+.choice-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.8rem;animation:fadeIn .2s ease}
+.choice-label{color:#fff;font-size:1rem;font-weight:600;text-align:center;margin-bottom:.3rem;text-shadow:0 1px 4px rgba(0,0,0,.3)}
+.choice-btns{display:flex;gap:.8rem;animation:slideUp .3s ease}
+.choice-btn{width:132px;height:132px;border-radius:24px;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;font-size:3.2rem;box-shadow:0 4px 16px rgba(0,0,0,.15);transition:transform .1s}
+.choice-btn:active{transform:scale(.9)}
+.choice-btn.sun{background:linear-gradient(180deg,#fef3c7,#fde68a)}
+.choice-btn.rain{background:linear-gradient(180deg,#dbeafe,#bfdbfe)}
+.choice-btn-lbl{font-size:.85rem;font-weight:600;color:var(--text)}
+
+/* TOAST */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.88);color:#fff;padding:.6rem 1.2rem;border-radius:12px;font-size:.85rem;z-index:999;pointer-events:none;max-width:85%;text-align:center;animation:fadeOut 3s ease forwards}
+@keyframes fadeOut{0%{opacity:1}75%{opacity:1}100%{opacity:0}}
+@keyframes fadeIn{0%{opacity:0}100%{opacity:1}}
+@keyframes slideUp{0%{transform:translateY(30px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes treeBounce{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
+@keyframes dropFall{0%{transform:translateY(-30px);opacity:1}100%{transform:translateY(30px);opacity:0}}
+.tree-animate-water{animation:treeBounce .4s ease-out}
+.water-drop{position:absolute;width:6px;height:20px;background:linear-gradient(180deg,transparent,rgba(45,143,78,.6));border-radius:0 0 3px 3px;animation:dropFall .6s ease-in forwards}
+
+/* S0 */
+.s0-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1rem}
+.s0-icon{font-size:3rem;margin-bottom:.6rem;animation:float 2s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.s0-title{font-size:1.15rem;font-weight:700;color:var(--accent);margin-bottom:.3rem}
+.s0-sub{color:var(--dim);font-size:.85rem;margin-bottom:.8rem;line-height:1.5;max-width:320px}
+.s0-input{width:100%;max-width:300px;padding:.8rem;border:2px solid var(--surface2);border-radius:12px;font-size:.9rem;font-family:inherit;background:var(--surface);color:var(--text);outline:none;text-align:center;margin-bottom:.5rem}
+.s0-input:focus{border-color:var(--accent)}
+.s0-big-btn{width:100%;max-width:280px;padding:.9rem;font-size:1rem;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:14px;cursor:pointer;font-family:inherit;min-height:50px;margin:.25rem;transition:transform .1s;box-shadow:0 3px 10px rgba(45,143,78,.2)}
+.s0-big-btn:active{transform:scale(.95)}
+.s0-big-btn.outline{background:var(--surface);color:var(--text);border:2px solid var(--surface2);box-shadow:none}
+
+/* COMPLETE */
+.complete-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1rem;animation:fadeIn .5s ease}
+.complete-icon{font-size:4rem;margin-bottom:.5rem}
+.complete-title{font-size:1.3rem;font-weight:700;color:var(--accent);margin-bottom:.3rem}
+.complete-sub{font-size:.88rem;color:var(--dim);margin-bottom:1rem;line-height:1.6}
+.complete-btn{width:80%;max-width:240px;padding:.9rem;font-size:1rem;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:50px;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(45,143,78,.25)}
+.complete-btn:active{transform:scale(.95)}
+
+/* EMERGENCY */
+#page-emergency{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:150;overflow-y:auto;display:none;flex-direction:column}
+#page-emergency.active{display:flex}
+.emerg-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem .8rem;background:var(--surface)}
+.emerg-title{font-size:1rem;font-weight:600;color:var(--accent2)}
+.emerg-close{background:none;border:none;color:var(--dim);font-size:1.2rem;cursor:pointer;font-family:inherit;padding:.2rem}
+.emerg-content{padding:.6rem .8rem;flex:1}
+.emerg-sub{text-align:center;color:var(--dim);font-size:.82rem;margin-bottom:.5rem}
+.emerg-btn{display:flex;align-items:center;gap:.6rem;background:var(--surface);border:1px solid var(--surface2);border-radius:var(--radius);padding:.85rem;font-size:.9rem;cursor:pointer;text-align:left;font-family:inherit;color:var(--text);line-height:1.3;min-height:54px;margin-bottom:.35rem}
+.emerg-btn:active{transform:scale(.97);border-color:var(--accent2)}
+.emerg-icon{font-size:1.5rem;flex-shrink:0}
+.emerg-label{font-weight:600;font-size:.88rem}
+.emerg-desc{font-size:.75rem;color:var(--dim);margin-top:.05rem}
+.emerg-section{background:var(--surface);border-radius:var(--radius);padding:.8rem;margin:.3rem 0}
+.emerg-section .text{font-size:.82rem;line-height:1.5;white-space:pre-wrap;margin-bottom:.4rem}
+.emerg-section .tier-lbl{font-size:.75rem;color:var(--accent2);font-weight:600;margin-bottom:.2rem}
+.emerg-go-btn{display:block;width:100%;padding:.8rem;background:var(--accent2);color:#fff;border:none;border-radius:12px;font-size:.85rem;cursor:pointer;font-family:inherit;text-align:center;margin:.3rem 0}
+.emerg-go-btn:active{opacity:.8}
+
+/* ERROR DISPLAY */
+#js-error{position:fixed;top:0;left:0;right:0;bottom:0;background:#fff8f0;z-index:999;padding:2rem 1rem;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#js-error.show{display:flex}
+#js-error h2{font-size:1.1rem;color:#e85d3a;margin-bottom:.5rem}
+#js-error p{font-size:.82rem;color:#5c4f46;line-height:1.6;max-width:340px;white-space:pre-wrap}
+
+/* INFO MODAL */
+.info-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease}
+.info-card{background:var(--surface);border-radius:var(--radius);width:86%;max-width:360px;padding:1.2rem;max-height:70vh;overflow-y:auto}
+.info-card h2{font-size:1rem;text-align:center;color:var(--accent);margin-bottom:.5rem}
+.info-card p{font-size:.8rem;color:var(--dim);line-height:1.6;margin-bottom:.4rem}
+.info-close{display:block;width:100%;padding:.7rem;background:var(--surface2);border:none;border-radius:10px;font-size:.85rem;cursor:pointer;font-family:inherit;color:var(--text);text-align:center;margin-top:.6rem}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-left">
+    <span class="header-icon">🌱</span>
+    <span class="header-title">爸妈的树</span>
+    <span class="header-badge" id="h-badge"></span>
+  </div>
+  <div class="header-right">
+    <button class="header-about" id="about-btn">ℹ️</button>
+  </div>
+</div>
+
+<div id="app"><div class="s0-wrap"><div class="s0-icon" style="font-size:2rem">🌱</div><div class="s0-title" style="font-size:.9rem;color:#9a8e82">加载中...</div></div></div>
+
+<div id="js-error"><h2>⚠️ 出了点问题</h2><p id="js-error-msg"></p></div>
+
+<div id="page-emergency">
+  <div class="emerg-header">
+    <span class="emerg-title">🆘 需要什么？</span>
+    <button class="emerg-close" id="emerg-close-btn">✕</button>
+  </div>
+  <div class="emerg-content" id="emerg-content"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════
+(function(){
+var K = 'xsheng_v7'
+function def() {
+  return {
+    userName: '', protectorName: '', protectorSet: false,
+    focus: '', focusLevel: '',
+    phase: 's0', day: 0,
+    checkins: [],
+    consecutiveSuccess: 0, difficulty: 'normal',
+    waterCount: 0, growth: 0, blossoms: 0,
+    surprisesClaimed: [],
+    lastCheckinType: null, lastCheckinDay: 0,
+    morningDay: 0, nightDay: 0,
+    created: Date.now()
+  }
+}
+function load() {
+  try {
+    var r = localStorage.getItem(K)
+    if (r) {
+      var o = JSON.parse(r)
+      if (o && typeof o === 'object') {
+        var d = def()
+        for (var k in d) { if (o[k]===undefined) o[k]=d[k] }
+        return o
+      }
+    }
+  } catch(e) {}
+  return def()
+}
+function save(o) { try { localStorage.setItem(K, JSON.stringify(o)) } catch(e) {} }
+function reset() { try { localStorage.removeItem(K) } catch(e) {}; return def() }
+window.STORE = { get:load, save:save, reset:reset,
+  update:function(fn){var o=load();fn(o);save(o);return o} }
+})();
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+var state = STORE.get()
+var ttsOn = true
+var isSpeaking = false
+
+function save() { STORE.save(state) }
+
+// ║═════════════════════════════════════╗
+// ║  CHALLENGES (21 days, 3 difficulty) ║
+// ╚═════════════════════════════════════╝
+var CHALLENGES = {
+  easy: [
+    '深呼吸1次',
+    '饭后站3分钟',
+    '喝一口水',
+    '放远一点',
+    '记1次今天抽的时间',
+    '吃几颗花生',
+    '上午少抽1根',
+    '饭后离开饭桌',
+    '想抽时做3次深呼吸',
+    '今天少抽2根',
+    '用散步代替1次',
+    '准备一句拒绝的话',
+    '少刷10分钟手机',
+    '写一句话总结',
+    '告诉自己我在改变',
+    '为身体做一件小事',
+    '在心里教别人一次',
+    '闭上眼睛20秒',
+    '对自己说辛苦了',
+    '写下自由两个字',
+    '对自己说我做到了'
+  ],
+  normal: [
+    '深呼吸3次',
+    '饭后走3分钟',
+    '喝一杯水',
+    '放另一个房间',
+    '记3次',
+    '嚼口香糖代替一次',
+    '上午不碰',
+    '饭后去洗碗',
+    '站起来伸懒腰',
+    '比昨天少3根',
+    '用散步代替3次',
+    '对一个人说不',
+    '设30分钟无手机',
+    '写一段话给家人',
+    '告诉家人我在改',
+    '做三件小事',
+    '告诉一个人方法',
+    '写下一句话',
+    '对身体说谢谢',
+    '写下自由的定义',
+    '告诉家人我做到了'
+  ],
+  hard: [
+    '深呼吸5次',
+    '饭后走10分钟',
+    '等5分钟再决定',
+    '交给家人保管',
+    '记每一次',
+    '口香糖代替每一次',
+    '选一个时段完全不碰',
+    '饭后出门走5分钟',
+    '出门走一圈',
+    '今天少一半',
+    '想抽时先走5分钟',
+    '在饭桌上拒绝一次',
+    '设1小时无手机',
+    '写信发给家人',
+    '主动分享你的方法',
+    '坚持一整天对身体好',
+    '帮一个人开始改变',
+    '写下完整未来画面',
+    '为身体做一件好事',
+    '把自由宣言发出去',
+    '和家人一起庆祝'
+  ]
+}
+
+var FOCUS_EMOJI = { smoke:'🚬', alcohol:'🍺', phone:'📱' }
+var FOCUS_LABEL = { smoke:'抽烟', alcohol:'喝酒', phone:'刷手机' }
+
+// ║═════════════════════════════════════║
+// ║  VARIABLE REWARDS                  ║
+// ╚═════════════════════════════════════╝
+var SURPRISES = [
+  { id:'sprout', name:'种子发芽',
+    check:function(s){return s.growth>=10&&!s.surprisesClaimed.includes('sprout')},
+    toast:'🌱 种子发芽了！' },
+  { id:'leaf1', name:'第一片叶子',
+    check:function(s){return s.growth>=25&&s.consecutiveSuccess>=3&&!s.surprisesClaimed.includes('leaf1')},
+    toast:'🍃 长出了一片新叶子' },
+  { id:'butterfly', name:'蝴蝶飞来',
+    check:function(s){return s.growth>=35&&s.consecutiveSuccess>=3&&Math.random()<0.5&&!s.surprisesClaimed.includes('butterfly')},
+    toast:'🦋 有蝴蝶停在树上' },
+  { id:'bloom1', name:'花开',
+    check:function(s){return s.consecutiveSuccess>=7&&!s.surprisesClaimed.includes('bloom1')},
+    toast:'🌸 树开花啦！截图告诉'+state.protectorName+'吧' },
+  { id:'bird', name:'小鸟来访',
+    check:function(s){return s.growth>=50&&s.day>=10&&!s.surprisesClaimed.includes('bird')&&Math.random()<0.4},
+    toast:'🐦 小鸟来树上唱歌了' },
+  { id:'fruit', name:'结果',
+    check:function(s){return s.consecutiveSuccess>=14&&!s.surprisesClaimed.includes('fruit')},
+    toast:'🍎 树结果子了！' },
+  { id:'firefly', name:'萤火虫',
+    check:function(s){return s.growth>=70&&s.consecutiveSuccess>=5&&!s.surprisesClaimed.includes('firefly')&&Math.random()<0.5},
+    toast:'✨ 树在发光……' },
+  { id:'fullbloom', name:'满树开花',
+    check:function(s){return s.day>=21&&!s.surprisesClaimed.includes('fullbloom')},
+    toast:'🎉 树长大了！恭喜你' }
+]
+
+function checkRewards() {
+  SURPRISES.forEach(function(sp){
+    if (sp.check(state)) {
+      state.surprisesClaimed.push(sp.id)
+      save()
+      setTimeout(function(){ showToast(sp.toast); if(ttsOn) speak(sp.toast) }, 700)
+    }
+  })
+}
+
+// ║═════════════════════════════════════║
+// ║  TTS + TOAST + SVG                 ║
+// ╚═════════════════════════════════════╝
+function speak(text) {
+  if (!ttsOn||!('speechSynthesis' in window)) return
+  window.speechSynthesis.cancel()
+  var u = new SpeechSynthesisUtterance(text)
+  u.lang = 'zh-CN'; u.rate = 0.8; u.pitch = 1.0; u.volume = 1.0
+  u.onend = function(){isSpeaking=false}
+  isSpeaking = true
+  window.speechSynthesis.speak(u)
+}
+
+function showToast(msg, duration) {
+  var old = document.querySelector('.toast')
+  if (old) old.remove()
+  var t = document.createElement('div')
+  t.className = 'toast'
+  t.textContent = msg
+  document.body.appendChild(t)
+  setTimeout(function(){if(t.parentNode)t.remove()}, duration||3000)
+}
+
+function renderTreeSVG(growth) {
+  growth = Math.max(0, growth||0)
+  var s = getTreeStage(growth)
+  var color = growth>=70?'#2d8f4e':growth>=40?'#5cb85c':'#8fc77a'
+  var svg = '<svg viewBox="0 0 120 160">'
+  svg += '<ellipse cx="60" cy="155" rx="40" ry="6" fill="#d4c8a8"/>'
+  if (s.trunk>0) {
+    var th = Math.min(s.trunk, 55)
+    var ty = 155 - th
+    svg += '<rect x="56" y="'+ty+'" width="8" height="'+th+'" rx="3" fill="#8a7e72"/>'
+  }
+  if (s.crown>0) {
+    var cy = 155 - s.trunk - s.crown/2
+    if (cy<12) cy=12
+    var rx = Math.min(10+s.crown*0.5, 36)
+    var ry = Math.min(8+s.crown*0.35, 26)
+    svg += '<ellipse cx="60" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'" fill="'+color+'" opacity="0.85"/>'
+  }
+  for (var i=0;i<s.leaves&&i<10;i++) {
+    var a=(i/10)*Math.PI*2+0.3
+    var r=Math.min(12+growth*0.12, 26)
+    svg += '<circle cx="'+(60+Math.cos(a)*r*0.8)+'" cy="'+(cy-2-Math.sin(a)*r*0.6)+'" r="2.5" fill="#d4a843"/>'
+  }
+  for (var i=0;i<s.flowers&&i<Math.min(state.blossoms||0,8);i++) {
+    var a=(i/8)*Math.PI*2
+    var fr=Math.min(16+growth*0.08, 24)
+    svg += '<circle cx="'+(60+Math.cos(a)*fr*0.7)+'" cy="'+(cy-8-Math.sin(a)*fr*0.5)+'" r="4" fill="#e85d3a" opacity="0.8"/>'
+  }
+  svg += '<text x="60" y="172" text-anchor="middle" fill="#9a8e82" font-size="9">第 '+state.day+' 天</text>'
+  svg += '</svg>'
+  return svg
+}
+
+function getTreeStage(g) {
+  g = Math.max(0, g||0)
+  if (g<=0) return {trunk:0,crown:0,leaves:0,flowers:0}
+  if (g<10) return {trunk:12,crown:0,leaves:0,flowers:0}
+  if (g<25) return {trunk:22,crown:8,leaves:0,flowers:0}
+  if (g<40) return {trunk:32,crown:16,leaves:3,flowers:0}
+  if (g<55) return {trunk:40,crown:24,leaves:6,flowers:0}
+  if (g<70) return {trunk:46,crown:30,leaves:9,flowers:2}
+  if (g<85) return {trunk:50,crown:35,leaves:11,flowers:4}
+  return {trunk:55,crown:38,leaves:12,flowers:6}
+}
+
+// ║═════════════════════════════════════║
+// ║  RENDER                            ║
+// ╚═════════════════════════════════════╝
+function render() {
+  var app = $('#app')
+  if (!app) { return }
+  if (state.phase==='s0') { renderS0(); return }
+  if (state.phase==='complete'||state.day>21) { renderComplete(); return }
+  if (!state.day||state.day<1) { renderS0(); return }
+  renderTree()
+  updateBadge()
+}
+
+function renderTree() {
+  var app = $('#app')
+  if (!app) return
+  var p = state.protectorName||'家人'
+  var streak = state.consecutiveSuccess
+  var doneMorning = state.morningDay===state.day
+  var doneNight = state.nightDay===state.day
+  var focusEmoji = FOCUS_EMOJI[state.focus]||'🚬'
+  var focusLabel = FOCUS_LABEL[state.focus]||'抽烟'
+
+  var statusTxt = doneNight ? '🌙 今天的浇好了' : doneMorning ? '☀️ 早上浇过了，晚上再来' : '🌱 今天还没浇水'
+  var btnTxt = doneNight ? '明天见 🌙' : '☀️ 浇水'
+  var btnCls = doneNight ? 'gray' : ''
+
+  var challengeTxt = ''
+
+  app.innerHTML =
+    '<div class="tree-section">' +
+      '<div class="tree-status" id="t-status">'+statusTxt+'</div>' +
+      '<div class="tree-svg-wrap" id="t-svg-wrap">'+renderTreeSVG(state.growth)+'</div>' +
+      '<div class="tree-social">'+p+'<strong>为你种</strong>的树</div>' +
+      '<div class="tree-sublabel">'+(streak>1?'已连续浇水 '+streak+' 天 🔥':'第 '+state.day+' 天')+'</div>' +
+    '</div>' +
+    '<div class="water-btn-wrap"><button class="water-btn '+btnCls+'" id="water-btn">'+btnTxt+'</button></div>' +
+    '<div class="mini-links">' +
+      '<button class="mini-link" id="em-link">'+focusEmoji+' 想'+focusLabel+'了</button>' +
+      '<button class="mini-link" id="badge-link">📊 进度</button>' +
+      '<button class="mini-link" id="share-link">🔗 发给家人</button>' +
+    '</div>'
+
+  $('#water-btn').onclick = onWater
+  $('#em-link').onclick = showEmergency
+  $('#badge-link').onclick = showProgress
+  $('#share-link').onclick = shareLink
+
+  // Auto-speak morning challenge if first visit today
+  if (!doneMorning&&!doneNight) {
+    var c = CHALLENGES[state.difficulty||'normal'][(state.day-1)||0]
+    if (c) setTimeout(function(){ speak('早上好。今天的挑战是：'+c+'。记住了就浇浇水。') }, 600)
+  }
+}
+
+// ║═════════════════════════════════════║
+// ║  S0 - 4 STEPS                      ║
+// ╚═════════════════════════════════════╝
+var s0Step = 0
+
+function renderS0() {
+  s0Step = 0
+  showS0Step(0)
+}
+
+function showS0Step(n) {
+  s0Step = n
+  var app = $('#app')
+  if (!app) { showError('页面容器(s0)未找到'); return }
+  if (n===0) {
+    app.innerHTML =
+      '<div class="s0-wrap">' +
+        '<div class="s0-icon">🌱</div>' +
+        '<div class="s0-title">你叫什么名字？</div>' +
+        '<input class="s0-input" id="s0-name" type="text" placeholder="输入你的名字" maxlength="10" value="'+state.userName+'">' +
+        '<button class="s0-big-btn" id="s0-next1">下一步</button>' +
+      '</div>'
+    $('#s0-next1').onclick = function() {
+      var v = $('#s0-name').value.trim()
+      if (!v) { showToast('请输入你的名字'); return }
+      state.userName = v; save(); showS0Step(1)
+    }
+    setTimeout(function(){var inp=$('#s0-name');if(inp)inp.focus()},300)
+  } else if (n===1) {
+    app.innerHTML =
+      '<div class="s0-wrap">' +
+        '<div class="s0-icon">🌳</div>' +
+        '<div class="s0-title">这棵树是谁为你种的？</div>' +
+        '<div class="s0-sub">选一个最想让你好起来的人</div>' +
+        '<button class="s0-big-btn" data-v="儿子">儿子 👦</button>' +
+        '<button class="s0-big-btn" data-v="女儿">女儿 👧</button>' +
+        '<button class="s0-big-btn" data-v="孙子/孙女">孙子/孙女 👶</button>' +
+        '<button class="s0-big-btn outline" data-v="自己">自己种的 💪</button>' +
+      '</div>'
+    app.querySelectorAll('.s0-big-btn').forEach(function(b){
+      b.onclick = function() {
+        state.protectorName = b.dataset.v
+        state.protectorSet = true
+        save()
+        showS0Step(2)
+      }
+    })
+  } else if (n===2) {
+    app.innerHTML =
+      '<div class="s0-wrap">' +
+        '<div class="s0-icon">🎯</div>' +
+        '<div class="s0-title">你最想改什么？</div>' +
+        '<div class="s0-sub">选一个咱们来对付</div>' +
+        '<button class="s0-big-btn" data-f="smoke">🚬 抽烟</button>' +
+        '<button class="s0-big-btn" data-f="alcohol">🍺 喝酒</button>' +
+        '<button class="s0-big-btn" data-f="phone">📱 刷手机</button>' +
+      '</div>'
+    app.querySelectorAll('.s0-big-btn').forEach(function(b){
+      b.onclick = function() {
+        state.focus = b.dataset.f
+        save()
+        showS0Step(3)
+      }
+    })
+  } else {
+    app.innerHTML =
+      '<div class="s0-wrap">' +
+        '<div class="s0-icon" id="s0-seed">🌰</div>' +
+        '<div class="s0-title">种子种下了</div>' +
+        '<div class="s0-sub">从明天开始，每天浇两次水。\n树会长大，你也会。</div>' +
+        '<button class="s0-big-btn" id="s0-done">好的，明天开始 🌱</button>' +
+      '</div>'
+    $('#s0-done').onclick = function() {
+      state.phase = 'daily'
+      state.day = 1
+      state.growth = 3
+      state.difficulty = 'normal'
+      save()
+      render()
+      speak('好了，种子种下了。明天早上来浇水。')
+    }
+  }
+}
+
+// ║═════════════════════════════════════║
+// ║  WATER - THE CORE INTERACTION      ║
+// ╚═════════════════════════════════════╝
+function onWater() {
+  if (state.nightDay===state.day) {
+    showToast('明天再来浇水 🌙')
+    return
+  }
+  var hour = new Date().getHours()
+  var isNight = hour >= 18
+  var doneMorning = state.morningDay===state.day
+
+  if (doneMorning || isNight) {
+    showNightChoice()
+  } else {
+    doMorningWater()
+  }
+}
+
+function doMorningWater() {
+  state.morningDay = state.day
+  state.lastCheckinType = 'morning'
+  state.lastCheckinDay = state.day
+  state.waterCount++
+  state.checkins.push({day:state.day,type:'morning',result:'done',timestamp:Date.now()})
+  save()
+
+  animateWaterDrop()
+  setTimeout(function(){ renderTree() }, 500)
+  showToast('🌅 早上浇过水了')
+  speak('记住了。晚上再来看树。')
+}
+
+function showNightChoice() {
+  var overlay = document.createElement('div')
+  overlay.className = 'choice-overlay'
+  overlay.innerHTML =
+    '<div class="choice-label">今天做到了没有？</div>' +
+    '<div class="choice-btns">' +
+      '<button class="choice-btn sun" id="c-sun"><span>☀️</span><span class="choice-btn-lbl">做到了</span></button>' +
+      '<button class="choice-btn rain" id="c-rain"><span>🌧</span><span class="choice-btn-lbl">没做到</span></button>' +
+    '</div>'
+  document.body.appendChild(overlay)
+
+  $('#c-sun').onclick = function() { overlay.remove(); doNightWater('success') }
+  $('#c-rain').onclick = function() { overlay.remove(); doNightWater('fail') }
+}
+
+function doNightWater(result) {
+  var isSuccess = result === 'success'
+
+  state.nightDay = state.day
+  state.lastCheckinType = 'night'
+  state.lastCheckinDay = state.day
+  state.waterCount++
+  state.checkins.push({day:state.day,type:'night',result:result,timestamp:Date.now()})
+
+  if (isSuccess) {
+    state.consecutiveSuccess++
+    state.growth = Math.min(state.growth + 8, 100)
+  } else {
+    state.consecutiveSuccess = 0
+    state.growth = Math.min(state.growth + 2, 100)
+  }
+
+  // Every 7 consecutive = blossom
+  if (state.consecutiveSuccess>0 && state.consecutiveSuccess%7===0) {
+    state.blossoms++
+    state.growth = Math.min(state.growth + 15, 100)
+  }
+
+  // Adaptive
+  adaptDifficulty()
+
+  save()
+
+  if (isSuccess) {
+    renderTree()
+    showToast('🌱 树又长高了！', 2000)
+    speak(state.protectorName+'为你高兴。')
+  } else {
+    renderTree()
+    showToast('没关系，明天再浇', 2000)
+    speak('没事，树没枯。明天再来。')
+  }
+
+  // Advance day on success
+  if (isSuccess) {
+    state.day++
+    if (state.day > 21) { state.day = 21; state.phase = 'complete'; save(); render(); return }
+    save()
+  }
+
+  // Check rewards
+  setTimeout(function(){ checkRewards() }, 1200)
+
+  // Blossom celebration
+  if (state.blossoms>0 && !state.surprisesClaimed.includes('bloom_celeb_'+state.blossoms)) {
+    state.surprisesClaimed.push('bloom_celeb_'+state.blossoms)
+    save()
+    setTimeout(function(){
+      var p = state.protectorName||'家人'
+      showToast('🌸 第'+state.blossoms+'朵花开！截图告诉'+p+'吧')
+    }, 2500)
+  }
+}
+
+function shareLink() {
+  var url = 'https://185www.github.io/xinsheng/'
+  var p = state.protectorName||'家人'
+  var txt = state.userName ? state.userName+'的树 - '+p+'为你种' : '爸妈的树 - 21天改变计划'
+  if (navigator.share) {
+    navigator.share({title:txt,text:txt,url:url}).catch(function(){})
+  } else if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function(){
+      showToast('✅ 链接已复制，打开微信发给'+p)
+    }).catch(function(){
+      fallbackCopy(url, p)
+    })
+  } else {
+    fallbackCopy(url, p)
+  }
+}
+
+function fallbackCopy(url, p) {
+  var ta = document.createElement('textarea')
+  ta.value = url; ta.style.cssText = 'position:fixed;left:-9999px'
+  document.body.appendChild(ta); ta.select()
+  try { document.execCommand('copy'); showToast('✅ 链接已复制，打开微信发给'+p) } catch(e) { showToast('请长按链接复制到微信') }
+  document.body.removeChild(ta)
+}
+
+function animateWaterDrop() {
+  var wrap = $('#t-svg-wrap')
+  if (!wrap) return
+  var drop = document.createElement('div')
+  drop.className = 'water-drop'
+  drop.style.cssText = 'position:absolute;top:20%;left:50%;margin-left:-3px;z-index:10;pointer-events:none'
+  wrap.style.position = 'relative'
+  wrap.appendChild(drop)
+  wrap.querySelector('svg').style.animation = 'treeBounce .4s ease-out'
+  setTimeout(function(){if(drop.parentNode)drop.remove()}, 700)
+}
+
+function adaptDifficulty() {
+  var recent = state.checkins.filter(function(c){return c.type==='night'}).slice(-3)
+  var successCount = recent.filter(function(c){return c.result==='success'}).length
+  if (successCount >= 3) state.difficulty = 'hard'
+  else if (successCount >= 1) state.difficulty = 'normal'
+  else if (recent.length>=3 && successCount===0) state.difficulty = 'easy'
+}
+
+// ║═════════════════════════════════════║
+// ║  COMPLETE                          ║
+// ╚═════════════════════════════════════╝
+function renderComplete() {
+  var app = $('#app')
+  app.innerHTML =
+    '<div class="complete-wrap">' +
+      '<div class="complete-icon" style="animation:float 2s ease-in-out infinite">🎉</div>' +
+      '<div class="complete-title">树长大了！</div>' +
+      '<div class="complete-sub">你完成了21天的旅程。\n这棵树会一直在这里。\n'+ (state.protectorName||'家人') +'为你骄傲。</div>' +
+      '<div style="width:100%;max-width:200px;margin-bottom:1rem">'+renderTreeSVG(state.growth)+'</div>' +
+      '<button class="complete-btn" id="restart-btn">🔄 再种一棵树</button>' +
+    '</div>'
+  $('#restart-btn').onclick = function() {
+    STORE.reset()
+    state = STORE.get()
+    render()
+  }
+}
+
+// ║═════════════════════════════════════║
+// ║  EMERGENCY                         ║
+// ╚═════════════════════════════════════╝
+var EMERGENCY_ITEMS = [
+  {icon:'🚬',label:'想抽烟',desc:'渴求感通常只持续10-20分钟',
+   tiers:[
+     {l:'第一步：深呼吸',t:'闭上眼睛，深呼吸3次。\n\n吸——呼——\n吸——呼——\n吸——呼——',a:'我做了深呼吸'},
+     {l:'第二步：分散注意力',t:'做一件需要动手的事：\n\n• 嚼口香糖\n• 盘手串\n• 叠衣服\n• 在纸上画圈\n\n做3分钟。',a:'我坚持了3分钟'},
+     {l:'第三步：联系家人',t:'给你最在乎的人发一条消息：\n\n"我想你了，你在干嘛？"\n\n说出来就好。',a:'我发了一条消息'}
+   ]},
+  {icon:'🍺',label:'想喝酒',desc:'先喝一杯水，等5分钟',
+   tiers:[
+     {l:'第一步：喝水',t:'去倒一杯水。\n\n不是酒，是水。\n\n喝完这杯水。\n\n然后等3分钟。',a:'我喝了水，等了3分钟'},
+     {l:'第二步：换一个说法',t:'如果有人劝你喝酒，准备好一句话：\n\n"开车来的"\n"医生不让喝了"\n"在吃中药"\n\n选一个，练习说一遍。',a:'我准备好了拒绝的话'},
+     {l:'第三步：打电话',t:'给家人打个电话。\n\n聊什么都行。\n\n3分钟就够了。',a:'我打了电话'}
+   ]},
+  {icon:'📱',label:'想刷手机',desc:'先站起来，离开座位',
+   tiers:[
+     {l:'第一步：物理隔离',t:'把手机放在另一个房间。\n\n然后走到窗边。\n\n看窗外30秒。\n\n只看着。',a:'我放下手机看了窗外'},
+     {l:'第二步：问自己',t:'问自己一个问题：\n\n"我现在真正需要的是什么？"\n\n是休息？是放松？还是逃避什么？',a:'我想了这个问题'},
+     {l:'第三步：做一件事',t:'去做一件一直想做但"没时间"做的事：\n\n• 给老朋友打个电话\n• 整理个抽屉\n• 听一首老歌\n\n5分钟就好。',a:'我做事去了'}
+   ]},
+  {icon:'😤',label:'心情很差',desc:'先停下来，深呼吸',
+   tiers:[
+     {l:'第一步：5-4-3-2-1',t:'把注意力拉回当下：\n\n• 说出5样你看到的东西\n• 说出4样你摸到的东西\n• 说出3种你听到的声音\n• 说出2种你闻到的气味\n• 说出1种你能尝到的味道\n\n做完这个练习。',a:'我做完了5-4-3-2-1'},
+     {l:'第二步：照顾身体',t:'做一件对身体好的小事：\n\n• 喝一杯温水\n• 用冷水洗脸\n• 出门晒1分钟太阳\n\n身体好了，情绪才会好。',a:'我做了'},
+     {l:'第三步：对自己说',t:'对自己说一句话：\n\n"这种感觉会过去的。我不需要伤害自己。"\n\n说一遍。',a:'我对自己说了'}
+   ]}
+]
+
+var emergTierIdx = 0
+var emergItem = null
+
+function showEmergency() {
+  var el = $('#page-emergency')
+  el.classList.add('active')
+  var c = $('#emerg-content')
+  c.innerHTML = '<div class="emerg-sub">选一个你现在的感受</div>'
+  EMERGENCY_ITEMS.forEach(function(item){
+    var b = document.createElement('button')
+    b.className = 'emerg-btn'
+    b.innerHTML = '<span class="emerg-icon">'+item.icon+'</span><div><div class="emerg-label">'+item.label+'</div><div class="emerg-desc">'+item.desc+'</div></div>'
+    b.onclick = function(){ startEmergTiers(item) }
+    c.appendChild(b)
+  })
+}
+
+function hideEmergency() { $('#page-emergency').classList.remove('active') }
+
+function startEmergTiers(item) {
+  emergItem = item; emergTierIdx = 0
+  var c = $('#emerg-content')
+  c.innerHTML = ''
+  var h = document.createElement('div')
+  h.className = 'emerg-section'
+  h.innerHTML = '<div style="font-weight:600;color:var(--accent2);margin-bottom:.2rem">🆘 '+item.icon+' '+item.label+'</div><div class="text" style="font-size:.8rem;color:var(--dim)">'+item.desc+'</div>'
+  c.appendChild(h)
+  showEmergTier()
+}
+
+function showEmergTier() {
+  if (!emergItem || emergTierIdx >= emergItem.tiers.length) {
+    var c = $('#emerg-content')
+    var d = document.createElement('div')
+    d.className = 'emerg-section'
+    d.innerHTML = '<div class="text" style="text-align:center;color:var(--gold);font-weight:500">✅ 你完成了所有步骤。\n\n记住这个感觉。</div>'
+    c.appendChild(d)
+    var b = document.createElement('button')
+    b.className = 'emerg-go-btn'
+    b.textContent = '🆘 还需要别的帮助吗？'
+    b.onclick = showEmergency
+    c.appendChild(b)
+    return
+  }
+  var tier = emergItem.tiers[emergTierIdx]
+  var c = $('#emerg-content')
+  var s = document.createElement('div')
+  s.className = 'emerg-section'
+  s.innerHTML = '<div class="tier-lbl">'+tier.l+'</div><div class="text">'+tier.t+'</div>'
+  c.appendChild(s)
+  if (ttsOn) speak(tier.l+'。'+tier.t)
+  var b = document.createElement('button')
+  b.className = 'emerg-go-btn'
+  b.textContent = '✅ '+tier.a
+  b.onclick = function(){
+    b.disabled = true; b.style.opacity = '0.5'
+    emergTierIdx++
+    setTimeout(showEmergTier, 400)
+  }
+  c.appendChild(b)
+  c.scrollTop = c.scrollHeight
+}
+
+// ║═════════════════════════════════════║
+// ║  PROGRESS                           ║
+// ╚═════════════════════════════════════╝
+function showProgress() {
+  var totalM = state.checkins.filter(function(c){return c.type==='morning'}).length
+  var totalN = state.checkins.filter(function(c){return c.type==='night'}).length
+  var successN = state.checkins.filter(function(c){return c.type==='night'&&c.result==='success'}).length
+  var pct = Math.round((state.day/21)*100)
+
+  var overlay = document.createElement('div')
+  overlay.className = 'info-overlay'
+  overlay.innerHTML =
+    '<div class="info-card">' +
+      '<h2>📊 树的成长</h2>' +
+      '<div style="text-align:center;margin:.5rem 0">'+renderTreeSVG(state.growth)+'</div>' +
+      '<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:.4rem 0">' +
+        '<div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:3px;transition:width .3s"></div>' +
+      '</div>' +
+      '<p>🌅 浇水次数：'+state.waterCount+' 次</p>' +
+      '<p>🔥 连续天数：'+state.consecutiveSuccess+' 天</p>' +
+      '<p>🌙 晚间完成：'+totalN+' / '+Math.min(state.day,21)+' 天</p>' +
+      '<p>✅ 成功天数：'+successN+' 天</p>' +
+      '<p>🌸 花朵：'+state.blossoms+' 朵</p>' +
+      '<p>🌱 成长值：'+state.growth+' / 100</p>' +
+      '<button class="info-close" id="progress-close">关闭</button>' +
+    '</div>'
+  document.body.appendChild(overlay)
+  $('#progress-close').onclick = function(){ overlay.remove() }
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove() }
+}
+
+// ║═════════════════════════════════════║
+// ║  INIT                              ║
+// ╚═════════════════════════════════════╝
+var $ = function(id){return document.getElementById(id)}
+
+function updateBadge() {
+  var b = $('#h-badge')
+  if (!b) return
+  if (state.phase==='s0') b.textContent = '新朋友'
+  else if (state.day<=21) b.textContent = '第'+state.day+'天'
+  else b.textContent = '完成'
+}
+
+function showError(msg) {
+  var el = document.getElementById('js-error')
+  var me = document.getElementById('js-error-msg')
+  if (el) el.classList.add('show')
+  if (me) me.textContent = msg
+}
+
+function init() {
+  try {
+    state = STORE.get()
+    var ab = $('#about-btn')
+    if (ab) ab.onclick = showAbout
+    var eb = $('#emerg-close-btn')
+    if (eb) eb.onclick = hideEmergency
+    render()
+  } catch(e) {
+    showError('应用初始化失败\n\n'+e.message+'\n\n'+e.stack)
+  }
+}
+
+function showAbout() {
+  var overlay = document.createElement('div')
+  overlay.className = 'info-overlay'
+  overlay.innerHTML =
+    '<div class="info-card">' +
+      '<h2>🌱 爸妈的树</h2>' +
+      '<p>一个21天的行为改变工具，专为中国中老年人设计。</p>' +
+      '<p>每天浇两次水（早+晚），看着树一点一点长大。</p>' +
+      '<p>树是你最在乎的人为你种的——\n为了他们，也为了你自己。</p>' +
+      '<p style="color:var(--muted);font-size:.7rem;margin-top:.5rem">v7 — 基于EMA + JITAI行为科学</p>' +
+      '<button class="info-close" id="about-close">知道了</button>' +
+    '</div>'
+  document.body.appendChild(overlay)
+  $('#about-close').onclick = function(){ overlay.remove() }
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove() }
+}
+
+// SW cleanup — fresh start, no stale cache
+try {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      regs.forEach(function(r){r.unregister()})
+    })
+  }
+} catch(e) {}
+try {
+  if (typeof caches !== 'undefined') {
+    caches.keys().then(function(ks){
+      ks.forEach(function(k){caches.delete(k)})
+    })
+  }
+} catch(e) {}
+
+function boot() { init() }
+if (document.readyState==='loading') {
+  document.addEventListener('DOMContentLoaded', boot)
+} else {
+  boot()
+}
+</script>
+</body>
+</html>

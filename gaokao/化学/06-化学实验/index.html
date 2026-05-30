@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4f46e5">
+<title>分类 · 化学记忆系统</title>
+<link rel="stylesheet" href="../shared/styles.css">
+</head>
+<body>
+<div class="app-header">
+  <h1>🧪 分类</h1>
+  <div class="subtitle">化学 <a href="../" style="color:rgba(255,255,255,0.7);text-decoration:none">← 返回</a></div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab-item active" data-tab="review">📖 复习</div>
+  <div class="tab-item" data-tab="cards">📚 卡片</div>
+  <div class="tab-item" data-tab="add">➕ 添加</div>
+  <div class="tab-item" data-tab="import">📥 导入</div>
+  <div class="tab-item" data-tab="blurting">📝 输出</div>
+</div>
+
+<div class="container">
+  <div class="tab-content" id="tab-review">
+    <div class="empty-state"><div class="icon">⏳</div><div class="text">加载中...</div></div>
+  </div>
+  <div class="tab-content" id="tab-cards" style="display:none">
+    <div class="empty-state"><div class="icon">⏳</div><div class="text">加载中...</div></div>
+  </div>
+  <div class="tab-content" id="tab-add" style="display:none">
+    <div class="card">
+      <div class="card-title">➕ 添加新卡片</div>
+      <form id="addForm">
+        <div class="form-group">
+          <label>正面（问题 / 提示）</label>
+          <input type="text" class="form-input" id="addFront" placeholder="例：Na₂O₂ 与水反应的方程式" required>
+        </div>
+        <div class="form-group">
+          <label>背面（答案）</label>
+          <textarea class="form-textarea" id="addBack" placeholder="例：2Na₂O₂ + 2H₂O = 4NaOH + O₂↑" rows="3" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>💡 记忆线索 / 口诀（可选）</label>
+          <input type="text" class="form-input" id="addMemo" placeholder="例：过氧钠遇水生氧">
+        </div>
+        <div class="form-group">
+          <label>💡 渐进提示（可选，每行一条提示）</label>
+          <textarea class="form-textarea" id="addHints" rows="2" placeholder="提示1&#10;提示2&#10;提示3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>📖 教材参考（可选）</label>
+          <input type="text" class="form-input" id="addTextbook" placeholder="例：必修1 P45">
+        </div>
+        <div class="form-group">
+          <label>🏷️ 标签（可选，逗号分隔）</label>
+          <input type="text" class="form-input" id="addTags" placeholder="例：氧化还原, 配平">
+        </div>
+        <div class="form-group">
+          <label>学习模式</label>
+          <select class="form-input" id="addMode">
+            <option value="memory">📝 记忆轨（纯记忆内容）</option>
+            <option value="understanding">🧠 理解轨（需要深度理解）</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">✅ 添加</button>
+      </form>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-import" style="display:none">
+    <div class="card">
+      <div class="card-title">📥 批量导入</div>
+      <div class="form-group">
+        <label>输入内容（格式：问题 | 答案 | 线索 | 提示1;提示2;提示3）</label>
+        <textarea class="form-textarea" id="importText" rows="8" placeholder="Na₂O₂与H₂O反应 | 2Na₂O₂ + 2H₂O = 4NaOH + O₂↑ | 过氧钠遇水生氧
+Na₂O₂的颜色 | 淡黄色固体
+Al的两性 | 既能与强酸又能与强碱反应放出H₂ | 铝是唯一 | 它是一种金属;它与酸碱反应"></textarea>
+      </div>
+      <div id="importPreview" class="import-preview"><div class="line" style="color:var(--text-secondary)">等待输入...</div></div>
+      <button class="btn btn-primary btn-block" id="importBtn" disabled>📥 导入 0 张卡片</button>
+      <div style="margin-top:12px;text-align:center">
+        <button class="btn btn-outline btn-sm" id="loadPreset">📚 一键导入预设内容</button>
+      </div>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-blurting" style="display:none">
+    <div class="empty-state"><div class="icon">⏳</div><div class="text">加载中...</div></div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <a href="../">🏠 总控</a>
+  <a href="#" class="active" onclick="return false">📖 复习</a>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../shared/engine.js"></script>
+<script src="../shared/hints.js"></script>
+<script src="../shared/understanding.js"></script>
+<script src="../shared/blurting.js"></script>
+<script src="../shared/category-page.js"></script>
+</body>
+</html>
