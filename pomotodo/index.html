@@ -45,6 +45,11 @@
       <button class="btn-timer secondary" id="btn-skip" title="跳过">⏭</button>
     </div>
     <div class="timer-active-task" id="timer-active-task"></div>
+    <div class="micro-pomo-bar" id="micro-pomo-bar">
+      <span class="micro-pomo-label">⚡ 启动困难？</span>
+      <button class="micro-pomo-btn" id="btn-micro-pomo">5分钟快速开始</button>
+      <span class="micro-pomo-hint" id="micro-pomo-hint">降低门槛，先动起来</span>
+    </div>
     <div class="score-display" id="score-display"><span class="score-num">0</span><span class="score-label">分</span><span class="level-badge">Lv.1 入门学徒</span></div>
     <div class="daily-goal-bar-wrap" id="daily-goal-bar-wrap">
       <div class="daily-goal-header"><span>🍅 今日目标</span><span class="daily-goal-text" id="daily-goal-text">0 / 6</span></div>
@@ -56,6 +61,11 @@
     <div class="momentum-feed-wrap"><h4 class="feed-heading">📰 成就动态</h4><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div>
     <div class="done-today"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3><ul class="done-list" id="done-list"></ul></div>
   </section>
+  <div class="smart-suggest-bar" id="smart-suggest-bar">
+      <span class="smart-suggest-icon">💡</span>
+      <span class="smart-suggest-text" id="smart-suggest-text">点击获取智能建议</span>
+      <button class="smart-suggest-btn" id="btn-smart-suggest">该做什么？</button>
+    </div>
   <section class="panel panel-tasks">
     <div class="gtd-tabs" id="gtd-tabs">
       <button class="gtd-tab active" data-area="inbox">📥 收件箱 <span class="gtd-cnt" id="cnt-inbox">0</span></button>
@@ -65,6 +75,10 @@
       <button class="gtd-tab" data-area="someday">💭 将来 <span class="gtd-cnt" id="cnt-someday">0</span></button>
       <button class="gtd-tab" data-area="reference">📚 参考 <span class="gtd-cnt" id="cnt-reference">0</span></button>
       <button class="gtd-tab" data-area="done">✅ 完成 <span class="gtd-cnt" id="cnt-done">0</span></button>
+    </div>
+    <div class="inbox-pressure-bar" id="inbox-pressure-bar" hidden>
+      <div class="ip-header"><span class="ip-icon">📥</span><span class="ip-text" id="ip-text">收件箱压力</span><button class="ip-action-btn" id="ip-action-btn">批量处理</button></div>
+      <div class="ip-track"><div class="ip-fill" id="ip-fill"></div></div>
     </div>
     <div class="task-input-wrap">
       <input type="text" class="task-input" id="task-input" placeholder="添加任务… #标签 !1紧急 @today" maxlength="200"/>
@@ -124,6 +138,12 @@
     <button class="cal-nav" id="cal-today-btn">今天</button>
     <div class="cal-view-toggle"><button class="cal-view-btn active" id="cal-view-month">📅 月</button><button class="cal-view-btn" id="cal-view-day">📋 日</button></div>
   </div>
+  <div class="cal-monthly-summary" id="cal-monthly-summary">
+    <div class="cal-ms-item"><span class="cal-ms-val" id="cms-total">0</span><span class="cal-ms-lbl">本月番茄</span></div>
+    <div class="cal-ms-item"><span class="cal-ms-val" id="cms-days">0</span><span class="cal-ms-lbl">活跃天数</span></div>
+    <div class="cal-ms-item"><span class="cal-ms-val" id="cms-avg">0</span><span class="cal-ms-lbl">日均</span></div>
+    <div class="cal-ms-item"><span class="cal-ms-val" id="cms-grade">-</span><span class="cal-ms-lbl">月评级</span></div>
+  </div>
   <div class="cal-grid-wrap" id="cal-grid-wrap">
     <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
     <div class="cal-grid" id="cal-grid"></div>
@@ -136,6 +156,10 @@
 </main>
 <!-- ==================== STATS VIEW ==================== -->
 <main class="view stats-view" id="view-stats">
+  <div class="daily-grade-banner" id="daily-grade-banner">
+    <div class="dg-circle" id="dg-circle"><span class="dg-letter" id="dg-letter">-</span></div>
+    <div class="dg-info"><span class="dg-title" id="dg-title">今日表现</span><span class="dg-desc" id="dg-desc">完成番茄来获取评级</span></div>
+  </div>
   <div class="stats-cards">
     <div class="stat-card"><div class="stat-val" id="s-today-count">0</div><div class="stat-lbl">今日番茄</div></div>
     <div class="stat-card"><div class="stat-val" id="s-today-mins">0m</div><div class="stat-lbl">今日专注</div></div>
@@ -143,6 +167,19 @@
     <div class="stat-card"><div class="stat-val" id="s-total-count">0</div><div class="stat-lbl">累计番茄</div></div>
   </div>
   <div class="stats-chart-box"><h3>最近 7 天</h3><canvas id="chart-weekly"></canvas></div>
+  <div class="stats-records-box" id="stats-records-box">
+    <h3>🏅 个人记录</h3>
+    <div class="records-grid">
+      <div class="record-item"><span class="record-val" id="rec-best-day">0</span><span class="record-lbl">单日最高</span></div>
+      <div class="record-item"><span class="record-val" id="rec-best-week">0</span><span class="record-lbl">单周最高</span></div>
+      <div class="record-item"><span class="record-val" id="rec-total-hours">0h</span><span class="record-lbl">累计专注</span></div>
+      <div class="record-item"><span class="record-val" id="rec-today-rank">-</span><span class="record-lbl">今日排名</span></div>
+    </div>
+  </div>
+  <div class="stats-insight-box" id="stats-insight-box">
+    <h3>🧠 智能洞察</h3>
+    <div class="insight-list" id="insight-list"><div class="insight-item insight-empty">积累更多数据后生成洞察...</div></div>
+  </div>
   <div class="daily-focus-section" id="daily-focus-section" hidden>
     <h4>🎯 今日焦点 <span class="df-count" id="df-count">0/3</span></h4>
     <ul class="df-list" id="df-list"></ul>
@@ -177,6 +214,7 @@
     <div class="sett-row"><span>专注模式</span><label class="sw"><input type="checkbox" id="opt-focus-mode" checked/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>完成动画</span><label class="sw"><input type="checkbox" id="opt-celebration" checked/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>中断确认</span><label class="sw"><input type="checkbox" id="opt-interrupt-confirm" checked/><span class="sw-track"></span></label></div>
+    <div class="sett-row"><span>专注锁屏</span><label class="sw"><input type="checkbox" id="opt-lockdown"/><span class="sw-track"></span></label></div>
   </section>
   <section class="sett-group"><h3>声音 & 通知</h3>
     <div class="sett-row"><span>提示音</span><label class="sw"><input type="checkbox" id="opt-sound" checked/><span class="sw-track"></span></label></div>
@@ -311,6 +349,6 @@
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=6"></script>
+<script src="./app.js?v=7"></script>
 </body>
 </html>

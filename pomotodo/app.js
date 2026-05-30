@@ -11,7 +11,7 @@ const defaultSettings = {
   autoBreak:true, autoWork:false, restGuide:true, focusMode:true,
   celebration:true, interruptConfirm:true,
   sound:true, volume:0.7, notify:false, wakelock:false,
-  theme:'light', dailyGoal:6
+  theme:'light', dailyGoal:6, lockdown:false
 };
 
 let S = loadState();
@@ -133,11 +133,16 @@ function requestNotify(title, body){
 
 /* ============= MDA GAMIFICATION HELPERS ============= */
 const LEVELS = [
-  {min:0, max:99, level:1, title:'入门学徒'},
-  {min:100, max:299, level:2, title:'专注学生'},
-  {min:300, max:599, level:3, title:'效率达人'},
-  {min:600, max:999, level:4, title:'时间大师'},
-  {min:1000, max:Infinity, level:5, title:'传奇学霸'},
+  {min:0, max:49, level:1, title:'入门学徒',tier:'normal'},
+  {min:50, max:149, level:2, title:'专注学生',tier:'normal'},
+  {min:150, max:299, level:3, title:'效率达人',tier:'normal'},
+  {min:300, max:499, level:4, title:'时间大师',tier:'normal'},
+  {min:500, max:799, level:5, title:'学霸觉醒',tier:'normal'},
+  {min:800, max:1199, level:6, title:'专注骑士',tier:'normal'},
+  {min:1200, max:1799, level:7, title:'效率霸主',tier:'premium'},
+  {min:1800, max:2499, level:8, title:'时间掌控者',tier:'premium'},
+  {min:2500, max:3499, level:9, title:'超级学霸',tier:'premium'},
+  {min:3500, max:Infinity, level:10, title:'传奇战神',tier:'premium'},
 ];
 const MILESTONE_STREAKS = [7,14,30,66];
 const MILESTONE_MSGS = {
@@ -224,8 +229,9 @@ function renderScoreDisplay(){
   const el = $('score-display');
   if(!el) return;
   const info = getLevelInfo(S.score||0);
+  const tierClass = info.tier==='premium' ? ' level-badge level-premium' : ' level-badge';
   el.innerHTML = '<span class="score-num">'+Math.max(0,S.score||0)+'</span><span class="score-label">分</span>' +
-    '<span class="level-badge">Lv.'+info.level+' '+info.title+'</span>';
+    '<span class="'+tierClass+'">Lv.'+info.level+' '+info.title+'</span>';
 }
 
 function updateMomentumFeed(){
@@ -281,6 +287,354 @@ function checkYesterdayCompetition(count){
     updateMomentumFeed();
   }
 }
+
+/* ============= V7: ANTI-PROCRASTINATION ENGINE ============= */
+let microPomoTimer = null;
+let microPomoRemaining = 0;
+const MICRO_POMO_DURATION = 300; // 5 minutes
+
+$('btn-micro-pomo').onclick = ()=>{
+  if(microPomoRemaining > 0){
+    // stop micro pomodoro
+    stopMicroPomo();
+    return;
+  }
+  microPomoRemaining = MICRO_POMO_DURATION;
+  $('btn-micro-pomo').textContent = '⏹ 停止';
+  $('btn-micro-pomo').classList.add('running');
+  $('micro-pomo-hint').textContent = '5分钟倒计时中...降低门槛，先动起来！';
+  if(timerWorker){
+    timerWorker.postMessage({type:'start', remaining:microPomoRemaining, total:MICRO_POMO_DURATION});
+  }
+  const start = Date.now();
+  microPomoTimer = setInterval(()=>{
+    microPomoRemaining = Math.max(0, MICRO_POMO_DURATION - Math.floor((Date.now()-start)/1000));
+    $('micro-pomo-hint').textContent = '剩余 '+Math.floor(microPomoRemaining/60)+':'+String(microPomoRemaining%60).padStart(2,'0');
+    if(microPomoRemaining <= 0){
+      clearInterval(microPomoTimer); microPomoTimer = null;
+      stopMicroPomo();
+      toast('⚡ 5分钟完成！你已经进入状态了，继续专注吧！', 4000);
+      addMilestone('⚡ 完成微番茄！启动困难已克服！');
+      addScore(5);
+      // auto-prompt to continue with full pomodoro
+      setTimeout(()=>{ showQuickStartContinue('微番茄'); }, 1500);
+    }
+  }, 500);
+};
+
+function stopMicroPomo(){
+  if(microPomoTimer){ clearInterval(microPomoTimer); microPomoTimer = null; }
+  microPomoRemaining = 0;
+  $('btn-micro-pomo').textContent = '5分钟快速开始';
+  $('btn-micro-pomo').classList.remove('running');
+  $('micro-pomo-hint').textContent = '降低门槛，先动起来';
+  if(timerWorker) timerWorker.postMessage({type:'stop'});
+}
+
+/* Smart Task Suggestion Engine */
+$('btn-smart-suggest').onclick = generateSmartSuggestion;
+
+function generateSmartSuggestion(){
+  const el = $('smart-suggest-text');
+  if(!el) return;
+  const now = new Date();
+  const today = todayStr();
+  const hour = now.getHours();
+  const todayData = S.pomodoroHistory[today] || {count:0};
+  const goal = S.settings.dailyGoal || 6;
+  
+  // Rule 1: If daily goal not reached and it's getting late
+  if(todayData.count < goal && hour >= 20){
+    el.textContent = '⏰ 今天还差'+(goal-todayData.count)+'个番茄，时间不早了，赶紧开始！';
+    return;
+  }
+  
+  // Rule 2: If no tasks at all, prompt to add
+  const activeTasks = S.tasks.filter(t=>!t.completed && (t.area==='next'||t.area==='inbox'));
+  if(activeTasks.length === 0){
+    el.textContent = '📋 没有待办任务！先添加一个你想完成的事情吧';
+    return;
+  }
+  
+  // Rule 3: Find highest priority undone task with due today
+  const overdueTasks = activeTasks.filter(t=>t.due && new Date(t.due)<now && t.area!=='someday');
+  if(overdueTasks.length > 0){
+    const t = overdueTasks.sort((a,b)=>a.priority-b.priority)[0];
+    el.textContent = '🔴 '+escHtml(t.title)+' 已逾期！现在就处理它';
+    return;
+  }
+  
+  // Rule 4: Find tasks due today
+  const todayTasks = activeTasks.filter(t=>t.due && dateStr(new Date(t.due))===today);
+  if(todayTasks.length > 0){
+    const t = todayTasks.sort((a,b)=>a.priority-b.priority)[0];
+    el.textContent = '📌 今天的重点：'+escHtml(t.title)+'（点击开始专注）';
+    return;
+  }
+  
+  // Rule 5: If inbox not empty, suggest clarifying
+  const inboxTasks = activeTasks.filter(t=>t.area==='inbox');
+  if(inboxTasks.length > 0){
+    el.textContent = '📥 收件箱有'+inboxTasks.length+'个任务待厘清，先整理一下再开始';
+    return;
+  }
+  
+  // Rule 6: Morning suggestion
+  if(hour < 10 && todayData.count === 0){
+    const t = activeTasks.sort((a,b)=>a.priority-b.priority)[0];
+    el.textContent = '🌅 早上好！建议从"'+escHtml(t.title)+'"开始新的一天';
+    return;
+  }
+  
+  // Rule 7: General suggestion
+  const t = activeTasks.sort((a,b)=>a.priority-b.priority)[0];
+  if(t){
+    const pomosLeft = Math.max(0, goal - todayData.count);
+    el.textContent = '🎯 下一步：'+escHtml(t.title)+'（今天还差'+pomosLeft+'个番茄）';
+  }
+}
+
+/* Daily Performance Grade System */
+function calculateDailyGrade(){
+  const today = todayStr();
+  const data = S.pomodoroHistory[today] || {count:0,focusMins:0};
+  const goal = S.settings.dailyGoal || 6;
+  const count = data.count;
+  
+  let grade, letter, desc;
+  if(count >= goal * 1.5){ grade='s'; letter='S'; desc='超凡表现！远超目标，你是专注之王！'; }
+  else if(count >= goal){ grade='a'; letter='A'; desc='优秀！今日目标完美达成，继续保持！'; }
+  else if(count >= goal * 0.75){ grade='b'; letter='B'; desc='良好！完成了四分之三以上，再加把劲！'; }
+  else if(count >= goal * 0.5){ grade='c'; letter='C'; desc='还行，目标过半了。明天争取达标！'; }
+  else if(count > 0){ grade='d'; letter='D'; desc='起步了，但远远不够。每个番茄都是进步。'; }
+  else { grade='f'; letter='F'; desc='今天还没有番茄记录。现在开始还来得及！'; }
+  
+  return {grade, letter, desc, count, goal};
+}
+
+function renderDailyGrade(){
+  const circle = $('dg-circle');
+  const letterEl = $('dg-letter');
+  const titleEl = $('dg-title');
+  const descEl = $('dg-desc');
+  if(!circle) return;
+  
+  const g = calculateDailyGrade();
+  letterEl.textContent = g.letter;
+  circle.className = 'dg-circle grade-'+g.grade;
+  titleEl.textContent = '今日表现: '+g.count+'/'+g.goal+' 番茄';
+  descEl.textContent = g.desc;
+}
+
+/* Personal Records */
+function renderPersonalRecords(){
+  // Best single day
+  let bestDay = 0, bestDayDate = '';
+  let totalMins = 0;
+  Object.entries(S.pomodoroHistory||{}).forEach(([date,data])=>{
+    if(data.count > bestDay){ bestDay = data.count; bestDayDate = date; }
+    totalMins += data.focusMins || 0;
+  });
+  
+  // Best week
+  let bestWeek = 0;
+  const now = new Date();
+  for(let w=0; w<52; w++){
+    let weekTotal = 0;
+    for(let d=0; d<7; d++){
+      const dt = new Date(now);
+      dt.setDate(dt.getDate() - w*7 - d);
+      const ds = dateStr(dt);
+      weekTotal += (S.pomodoroHistory[ds]||{}).count||0;
+    }
+    if(weekTotal > bestWeek) bestWeek = weekTotal;
+  }
+  
+  const el1 = $('rec-best-day'); if(el1) el1.textContent = bestDay;
+  const el2 = $('rec-best-week'); if(el2) el2.textContent = bestWeek;
+  const el3 = $('rec-total-hours'); if(el3) el3.textContent = Math.round(totalMins/60)+'h';
+  
+  // Today's rank (how does today compare to history)
+  const todayCount = (S.pomodoroHistory[todayStr()]||{}).count||0;
+  const allDays = Object.values(S.pomodoroHistory||{}).map(d=>d.count).sort((a,b)=>b-a);
+  let rank = '-';
+  if(todayCount > 0 && allDays.length > 0){
+    const pos = allDays.indexOf(todayCount);
+    rank = pos >= 0 ? 'Top '+(pos+1) : 'Top '+allDays.length;
+  }
+  const el4 = $('rec-today-rank'); if(el4) el4.textContent = rank;
+}
+
+/* Smart Insights Engine */
+function generateInsights(){
+  const list = $('insight-list');
+  if(!list) return;
+  const insights = [];
+  const today = todayStr();
+  const now = new Date();
+  const hour = now.getHours();
+  
+  // Count total pomodoros
+  let totalCount = 0;
+  Object.values(S.pomodoroHistory||{}).forEach(d=>{ totalCount += d.count; });
+  
+  // 1. Streak insight
+  const streak = calcStreak();
+  if(streak > 0){
+    var streakMsg = streak>=7 ? '习惯已经形成！' : streak>=3 ? '保持住，3天是小里程碑' : '继续积累';
+    insights.push({icon:'🔥', type:'success', text:'连续专注 '+streak+' 天！'+streakMsg});
+  }
+  
+  // 2. Crisis warning
+  const todayData = S.pomodoroHistory[today] || {count:0};
+  if(todayData.count === 0 && hour >= 14){
+    insights.push({icon:'⚠️', type:'warning', text:'今天还没有开始！下午是最好的追赶时间'});
+  }
+  
+  // 3. Productivity pattern
+  const sessions = (S.sessions||[]).filter(s=>s.type==='work');
+  if(sessions.length >= 10){
+    const hourCounts = {};
+    sessions.forEach(s=>{ if(s.start){ const h = new Date(s.start).getHours(); hourCounts[h] = (hourCounts[h]||0)+1; }});
+    let bestHour = 0, bestCount = 0;
+    Object.entries(hourCounts).forEach(([h,c])=>{ if(c>bestCount){ bestCount=c; bestHour=parseInt(h); }});
+    if(bestCount > 0){
+      insights.push({icon:'📊', type:'info', text:'你最活跃的时间段是 '+bestHour+':00-'+(bestHour+1)+':00，把重要任务安排在这个时段'});
+    }
+  }
+  
+  // 4. Task completion rate
+  const totalTasks = S.tasks.length;
+  const doneTasks = S.tasks.filter(t=>t.completed).length;
+  if(totalTasks > 5){
+    const rate = Math.round(doneTasks/totalTasks*100);
+    insights.push({icon:'📋', type:'info', text:'任务完成率 '+rate+'%' + (rate>=70?'，执行力很强！':rate>=40?'，还有提升空间':'，尝试每天先厘清收件箱')});
+  }
+  
+  // 5. Weekly comparison
+  let thisWeek = 0, lastWeek = 0;
+  for(let d=0;d<7;d++){
+    const dt = new Date(now); dt.setDate(dt.getDate()-d); thisWeek += (S.pomodoroHistory[dateStr(dt)]||{}).count||0;
+    const lt = new Date(now); lt.setDate(lt.getDate()-d-7); lastWeek += (S.pomodoroHistory[dateStr(lt)]||{}).count||0;
+  }
+  if(lastWeek > 0){
+    const diff = thisWeek - lastWeek;
+    if(diff > 0) insights.push({icon:'📈', type:'success', text:'本周比上周多 '+diff+' 个番茄，进步明显！'});
+    else if(diff < 0) insights.push({icon:'📉', type:'warning', text:'本周比上周少 '+Math.abs(diff)+' 个番茄，要加油了'});
+  }
+  
+  // 6. Inbox pressure
+  const inboxCount = S.tasks.filter(t=>t.area==='inbox'&&!t.completed).length;
+  if(inboxCount >= 5){
+    insights.push({icon:'📥', type:'warning', text:'收件箱有 '+inboxCount+' 个任务积压，建议每天花2分钟清理'});
+  }
+  
+  if(insights.length === 0){
+    list.innerHTML = '<div class="insight-item insight-empty">积累更多数据后生成洞察...</div>';
+    return;
+  }
+  list.innerHTML = insights.map(i=>
+    '<div class="insight-item insight-'+i.type+'"><span class="insight-icon">'+i.icon+'</span><span class="insight-text">'+i.text+'</span></div>'
+  ).join('');
+}
+
+/* Calendar Monthly Summary */
+function renderCalendarMonthlySummary(){
+  const y = calViewDate.getFullYear();
+  const m = calViewDate.getMonth();
+  let monthTotal = 0, activeDays = 0;
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  for(let d=1; d<=daysInMonth; d++){
+    const ds = y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const data = S.pomodoroHistory[ds];
+    if(data && data.count > 0){ monthTotal += data.count; activeDays++; }
+  }
+  const avg = activeDays > 0 ? (monthTotal/activeDays).toFixed(1) : '0';
+  
+  // Monthly grade
+  const dailyGoal = S.settings.dailyGoal || 6;
+  const expectedDays = daysInMonth; // rough
+  const expectedTotal = Math.round(dailyGoal * expectedDays * 0.6); // 60% target
+  let mGrade = 'F';
+  if(monthTotal >= expectedTotal * 1.5) mGrade = 'S';
+  else if(monthTotal >= expectedTotal) mGrade = 'A';
+  else if(monthTotal >= expectedTotal * 0.75) mGrade = 'B';
+  else if(monthTotal >= expectedTotal * 0.5) mGrade = 'C';
+  else if(monthTotal > 0) mGrade = 'D';
+  
+  const el1 = $('cms-total'); if(el1) el1.textContent = monthTotal;
+  const el2 = $('cms-days'); if(el2) el2.textContent = activeDays;
+  const el3 = $('cms-avg'); if(el3) el3.textContent = avg;
+  const el4 = $('cms-grade');
+  if(el4){ el4.textContent = mGrade; el4.className = 'cal-ms-val grade-'+mGrade.toLowerCase(); }
+}
+
+/* Calendar Heatmap Enhancement */
+function getCalDayIntensity(count, goal){
+  if(count === 0) return 0;
+  if(count >= goal) return 5;
+  if(count >= goal * 0.75) return 4;
+  if(count >= goal * 0.5) return 3;
+  if(count >= goal * 0.25) return 2;
+  return 1;
+}
+
+/* Inbox Pressure System */
+function updateInboxPressure(){
+  const bar = $('inbox-pressure-bar');
+  if(!bar) return;
+  const inboxCount = S.tasks.filter(t=>t.area==='inbox'&&!t.completed).length;
+  if(inboxCount < 3){ bar.hidden = true; return; }
+  bar.hidden = false;
+  const pressure = Math.min(100, inboxCount * 10);
+  $('ip-fill').style.width = pressure+'%';
+  $('ip-text').textContent = '收件箱有 '+inboxCount+' 个任务积压' + (inboxCount>=5?' ⚠️急需处理！':inboxCount>=3?'，建议尽快清理':'');
+}
+
+$('ip-action-btn').onclick = ()=>{
+  // switch to inbox tab and enable batch clarify
+  qsa('.gtd-tab').forEach(b=>{ b.classList.toggle('active', b.dataset.area==='inbox'); });
+  renderTasks();
+  toast('请逐个厘清收件箱中的任务');
+};
+
+/* Focus Lockdown Mode */
+let focusLockdown = false;
+$('btn-focus-toggle').onclick = ()=>{
+  if(S.timer.phase !== 'running' && S.timer.mode !== 'work'){
+    // regular focus toggle (old behavior)
+    focusModeFull = !focusModeFull;
+    $('btn-focus-toggle').classList.toggle('active', focusModeFull);
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-mode-full', focusModeFull);
+      wrap.classList.remove('focus-lockdown');
+    }
+    toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
+    return;
+  }
+  // If timer is running and lockdown setting is on, use lockdown
+  if(S.settings.lockdown && S.timer.mode==='work'){
+    focusLockdown = !focusLockdown;
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-lockdown', focusLockdown);
+      wrap.classList.remove('focus-mode-full');
+      focusModeFull = false;
+      $('btn-focus-toggle').classList.toggle('active', focusLockdown);
+    }
+    toast(focusLockdown ? '🔒 锁屏模式！所有干扰已屏蔽' : '🔓 已解锁');
+  } else {
+    focusModeFull = !focusModeFull;
+    $('btn-focus-toggle').classList.toggle('active', focusModeFull);
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-mode-full', focusModeFull);
+      wrap.classList.remove('focus-lockdown');
+    }
+    toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
+  }
+};
 
 /* ============= TIMER ============= */
 function initTimerWorker(){
@@ -970,6 +1324,12 @@ function renderTasks(){
     item.dataset.id = t.id;
 
     const hasChildren = t.subtasks && t.subtasks.length > 0;
+
+    // V7: Task aging for inbox items (>24h old)
+    if(area==='inbox' && !t.completed && t.createdAt){
+      const age = Date.now() - new Date(t.createdAt).getTime();
+      if(age > 24*60*60*1000) item.classList.add('task-aged');
+    }
 
     const prioEmoji = ['','🔴','🟠','🟡','⚪'][t.priority]||'⚪';
 
@@ -1766,15 +2126,7 @@ function applyFocusMode(on){
 
 /* ============= FOCUS MODE TOGGLE ============= */
 let focusModeFull = false;
-
-$('btn-focus-toggle').onclick = ()=>{
-  focusModeFull = !focusModeFull;
-  $('btn-focus-toggle').classList.toggle('active', focusModeFull);
-  const wrap = qs('.work-view');
-  if(!wrap) return;
-  wrap.classList.toggle('focus-mode-full', focusModeFull);
-  toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
-};
+// Focus toggle handler is defined in V7 section above (line ~603) with lockdown support
 
 /* ============= REST GUIDE ============= */
 function showRestGuide(){
@@ -2037,6 +2389,7 @@ let calViewDate = new Date();
 let calMode = 'month';
 
 function renderCalendar(){
+  renderCalendarMonthlySummary();
   $('cal-month').textContent = calViewDate.getFullYear()+'年'+(calViewDate.getMonth()+1)+'月';
   if(calMode==='month'){
     renderMonthGrid();
@@ -2084,10 +2437,22 @@ function renderMonthGrid(){
     cell.className='cal-day';
     if(ds===today) cell.classList.add('today');
     cell.textContent = d;
-    if(count>0){
-      const dot = document.createElement('span');
-      dot.className='cal-dot completed';
-      cell.appendChild(dot);
+    // V7: heatmap intensity
+    const goal = S.settings.dailyGoal || 6;
+    const intensity = getCalDayIntensity(count, goal);
+    if(intensity > 0){
+      cell.classList.add('cal-intensity-'+intensity);
+      // show count badge
+      if(count > 1){
+        const badge = document.createElement('span');
+        badge.className='cal-pomo-count';
+        badge.textContent = count;
+        cell.appendChild(badge);
+      } else {
+        const dot = document.createElement('span');
+        dot.className='cal-dot completed';
+        cell.appendChild(dot);
+      }
     }
     cell.onclick = ()=>selectDate(dt);
     cell.ondblclick = (e)=>{ e.stopPropagation(); switchToDayView(dt); };
@@ -2221,6 +2586,9 @@ $('cal-day-next').onclick = ()=>{ calViewDate.setDate(calViewDate.getDate()+1); 
 function renderStats(){
   const today = todayStr();
   const td = S.pomodoroHistory[today] || {count:0,focusMins:0};
+  // V7: render grade and records first
+  renderDailyGrade();
+  renderPersonalRecords();
   // week
   let weekCount = 0;
   const now = new Date();
@@ -2251,6 +2619,8 @@ function renderStats(){
   renderDailyFocus();
   // chart
   renderWeeklyChart();
+  // V7: insights
+  generateInsights();
 }
 
 function renderStreak(){
@@ -2710,6 +3080,7 @@ function updateAllViews(){
   updateDoneToday();
   updateActiveTaskDisplay();
   updateAreaCounts();
+  updateInboxPressure();
 }
 
 function updateDoneToday(){
@@ -2900,6 +3271,8 @@ function initApp(){
   updateModeBtns();
   updateActiveTaskDisplay();
   updateDailyGoal();
+  // V7: inbox pressure
+  updateInboxPressure();
 
   // MDA: render score display
   renderScoreDisplay();
@@ -2933,6 +3306,12 @@ function initApp(){
   S._lastVisitDate = todayStr();
   saveState();
 
+  // V7: bind lockdown setting
+  const lockdownEl = $('opt-lockdown');
+  if(lockdownEl){
+    lockdownEl.checked = !!S.settings.lockdown;
+    lockdownEl.onchange = function(){ S.settings.lockdown = this.checked; saveState(); };
+  }
   // navigation default
   navigateTo('work');
 }
