@@ -11,8 +11,12 @@ const defaultSettings = {
   autoBreak:true, autoWork:false, restGuide:true, focusMode:true,
   celebration:true, interruptConfirm:true,
   sound:true, volume:0.7, notify:false, wakelock:false,
-  theme:'light', dailyGoal:6, lockdown:false
+  theme:'light', dailyGoal:8, lockdown:false,
+  sleepEnforce:true, bedtime:'23:00', winddownMinutes:30, waketime:'07:00'
 };
+
+const GAOKAO_DATE = new Date(2026, 5, 7, 9, 0, 0); // June 7, 2026 09:00
+const ADHD_PROFILE = { inattention: 2.33, hyperactivity: 2.20, impulsivity: 1.25, totalScore: 37 };
 
 let S = loadState();
 let timerWorker = null;
@@ -25,7 +29,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5 || d.version === 6)) return d;
+      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5 || d.version === 6 || d.version === 7)) return d;
     }
   }catch(e){}
   return freshState();
@@ -33,7 +37,7 @@ function loadState(){
 
 function freshState(){
   return {
-    version:6,
+    version:7,
     settings:{...defaultSettings},
     tasks:[],
     projects:[],
@@ -53,6 +57,12 @@ function freshState(){
     _yesterdayPomoCount:-1,
     _todayExceededYesterday:false,
     _prevLevel:1,
+    sleepIdeas:[],
+    _sleepDismissCount:0,
+    _lastSleepDate:null,
+    _lastSleepQuality:null,
+    _sleepEnforceActive:false,
+    _morningCheckDone:null,
     timer:{
       mode:'work',
       phase:'idle',
@@ -425,18 +435,19 @@ function generateSmartSuggestion(){
 
 /* ============= V10: MOTIVATIONAL ENGINE ============= */
 const MOTIVATIONAL_QUOTES = [
-  '准备好了吗？开始你的第一个番茄！',
-  '每一次专注，都是在为未来投资',
-  '番茄钟的每一秒，都在缩短你和目标的距离',
+  '准备好了吗？今天的每一分钟都算数！',
+  '高考倒计时中，每专注一分钟就多一分胜算',
+  '番茄+1 = 离梦想大学又近了一步',
   '不怕慢，只怕停。现在就开始！',
-  '今天的坚持，是明天的骄傲',
-  '高考倒计时中...每一分钟都珍贵',
-  '专注25分钟，你比昨天更强',
-  '打败拖延，从这一个番茄开始',
-  '你不是在浪费时间，你是在创造未来',
-  '现在不拼，更待何时？',
-  '把手机放下，把梦想拿起',
-  '番茄+1 = 离梦想更近一步',
+  '今天的努力，是明天考场上最好的武器',
+  '打败拖延，从这个番茄开始',
+  '你不是在浪费时间，你在为未来铺路',
+  '每完成一个番茄，就超过了一个竞争者',
+  '专注25分钟，这25分钟只属于你和你的未来',
+  '高考不只是考试，是对你所有坚持的检验',
+  '把手机放下，把分数提上去',
+  '现在不拼，更待何时？倒计时不会等你',
+  '注意力是你的超能力，用好它',
 ];
 
 let quoteIndex = 0;
@@ -454,6 +465,237 @@ function rotateMotivationalQuote(){
 }
 // Rotate quote every 30 seconds
 setInterval(rotateMotivationalQuote, 30000);
+
+/* ============= V20: GAOKAO COUNTDOWN ============= */
+function updateGaokaoCountdown(){
+  const el = $('gk-countdown-value');
+  if(!el) return;
+  const now = new Date();
+  const diff = GAOKAO_DATE - now;
+  if(diff <= 0){
+    el.textContent = '高考进行中！加油！';
+    return;
+  }
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  el.textContent = days + '天 ' + hours + '时 ' + mins + '分';
+}
+setInterval(updateGaokaoCountdown, 60000);
+
+/* ============= V20: SUBJECT QUICK-ADD ============= */
+qsa('.subject-btn').forEach(btn=>{
+  btn.onclick = ()=>{
+    const subject = btn.dataset.subject;
+    const tag = btn.dataset.tag;
+    const task = createTask(subject + ' 复习', { area:'inbox', tags:[tag], priority:3, estimatedPomodoros:2 });
+    toast('已添加: ' + subject + ' 复习');
+    renderTasks();
+    updateAreaCounts();
+  };
+});
+
+/* ============= V20: SLEEP ENFORCEMENT SYSTEM ============= */
+let sleepCheckInterval = null;
+let winddownShown = false;
+
+function initSleepSystem(){
+  if(sleepCheckInterval) clearInterval(sleepCheckInterval);
+  sleepCheckInterval = setInterval(checkSleepTime, 30000); // check every 30 seconds
+  checkSleepTime();
+  // check morning
+  checkMorningSleep();
+}
+
+function checkSleepTime(){
+  if(!S.settings.sleepEnforce) return;
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const [bedH, bedM] = S.settings.bedtime.split(':').map(Number);
+  const [windH, windM] = [bedH, bedM - S.settings.winddownMinutes];
+  let windMinutes = bedM - S.settings.winddownMinutes;
+  let windHour = bedH;
+  if(windMinutes < 0){ windHour--; windMinutes += 60; }
+  
+  const bedtimeMinutes = bedH * 60 + bedM;
+  const winddownMinutes2 = windHour * 60 + windMinutes;
+  const currentMinutes = hour * 60 + minute;
+  
+  // Show wind-down warning
+  if(currentMinutes >= winddownMinutes2 && currentMinutes < bedtimeMinutes && !winddownShown){
+    winddownShown = true;
+    showWinddown();
+  }
+  
+  // Activate sleep mode at bedtime
+  if(currentMinutes >= bedtimeMinutes){
+    if(!S._sleepEnforceActive){
+      S._sleepEnforceActive = true;
+      activateSleepMode();
+    }
+    updateSleepTimer();
+  }
+  
+  // Auto-dismiss sleep mode after wake time
+  const [wakeH, wakeM] = S.settings.waketime.split(':').map(Number);
+  const wakeMinutes = wakeH * 60 + wakeM;
+  // If current time is past wake time and before bedtime, dismiss sleep mode
+  if(currentMinutes >= wakeMinutes && currentMinutes < winddownMinutes2){
+    if(S._sleepEnforceActive){
+      dismissSleepMode();
+    }
+  }
+}
+
+function showWinddown(){
+  const remaining = (S.settings.winddownMinutes);
+  $('winddown-text').textContent = '还有' + remaining + '分钟该准备睡觉了，收尾当前任务吧';
+  $('winddown-banner').hidden = false;
+  playSound('warning');
+}
+
+$('winddown-close').onclick = ()=>{ $('winddown-banner').hidden = true; };
+
+function activateSleepMode(){
+  $('sleep-overlay').hidden = false;
+  // Stop any running timer
+  if(S.timer.phase === 'running' && S.timer.mode === 'work'){
+    pauseTimer();
+  }
+  // Render sleep ideas
+  renderSleepIdeas();
+  // Set subtitle based on ADHD profile
+  const subtitles = [
+    '你的注意力得分较高，睡眠充足才能发挥最佳水平',
+    '今晚好好休息，明天效率翻倍',
+    '每少睡1小时，明天注意力下降约15%',
+    '高考倒计时中，今晚的睡眠就是明天的弹药',
+  ];
+  $('sleep-subtitle').textContent = subtitles[Math.floor(Date.now()/60000) % subtitles.length];
+  requestNotify('🌙 该睡觉了', '放下手机，好好休息。睡眠是高考最好的准备。');
+}
+
+function dismissSleepMode(){
+  S._sleepEnforceActive = false;
+  S._lastSleepDate = todayStr();
+  $('sleep-overlay').hidden = true;
+  saveState();
+}
+
+function updateSleepTimer(){
+  const el = $('sleep-timer-value');
+  if(!el || $('sleep-overlay').hidden) return;
+  const [wakeH, wakeM] = S.settings.waketime.split(':').map(Number);
+  const now = new Date();
+  const wake = new Date(now);
+  wake.setHours(wakeH, wakeM, 0, 0);
+  if(wake <= now) wake.setDate(wake.getDate() + 1);
+  const diff = wake - now;
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  el.textContent = h + '小时' + m + '分钟';
+}
+
+$('sleep-dismiss').onclick = ()=>{
+  S._sleepDismissCount = (S._sleepDismissCount || 0) + 1;
+  if(S._sleepDismissCount >= 3){
+    $('sleep-dismiss').textContent = '你已推迟3次了，真的该睡了！';
+    $('sleep-dismiss').style.opacity = '0.5';
+  }
+  saveState();
+  // Dismiss for 5 minutes (re-check will trigger again)
+  S._sleepEnforceActive = false;
+  $('sleep-overlay').hidden = true;
+  toast('⏰ 5分钟后会再次提醒');
+};
+
+$('sleep-accept').onclick = ()=>{
+  dismissSleepMode();
+  toast('晚安 💤 好好休息，明天加油！');
+};
+
+function renderSleepIdeas(){
+  const list = $('sleep-idea-list');
+  if(!list) return;
+  list.innerHTML = '';
+  (S.sleepIdeas || []).forEach((idea, i)=>{
+    const div = document.createElement('div');
+    div.className = 'sleep-idea-item';
+    div.innerHTML = '<span>' + escHtml(idea) + '</span><button class="sleep-idea-del" data-idx="' + i + '">✕</button>';
+    div.querySelector('.sleep-idea-del').onclick = ()=>{
+      S.sleepIdeas.splice(i, 1);
+      saveState();
+      renderSleepIdeas();
+    };
+    list.appendChild(div);
+  });
+}
+
+$('sleep-idea-btn').onclick = ()=>{
+  const input = $('sleep-idea-input');
+  const val = input.value.trim();
+  if(!val) return;
+  S.sleepIdeas = S.sleepIdeas || [];
+  S.sleepIdeas.push(val);
+  // Auto-create as inbox task for tomorrow
+  createTask(val, { area:'inbox', tags:['夜间想法'], priority:4 });
+  input.value = '';
+  saveState();
+  renderSleepIdeas();
+  toast('💡 想法已记录，明天再处理');
+};
+
+$('sleep-idea-input').onkeydown = e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); $('sleep-idea-btn').click(); }
+};
+
+/* ============= V20: MORNING SLEEP CHECK ============= */
+function checkMorningSleep(){
+  const today = todayStr();
+  if(S._morningCheckDone === today) return;
+  // Only show between wake time and 10am
+  const now = new Date();
+  const hour = now.getHours();
+  const [wakeH] = S.settings.waketime.split(':').map(Number);
+  if(hour < wakeH || hour >= 22) return;
+  // Only show if user slept (has lastSleepDate from yesterday or before)
+  if(!S._lastSleepDate) return;
+  
+  setTimeout(()=>{
+    $('morning-check-overlay').hidden = false;
+  }, 1000);
+}
+
+qsa('.morning-opt-btn').forEach(btn=>{
+  btn.onclick = ()=>{
+    const quality = btn.dataset.sleep;
+    S._lastSleepQuality = quality;
+    S._morningCheckDone = todayStr();
+    
+    const motivations = {
+      good: '昨晚休息得很好！今天精神充沛，冲吧！适当调低今日目标到正常水平即可。',
+      ok: '还行，但高考冲刺期建议保证7小时以上。今天尽量保持专注。',
+      bad: '睡眠不足会影响注意力和记忆力。今天适当降低目标，把最重要的2件事做好。',
+      late: '熬夜对高考复习效率是负面的。今天以恢复为主，只做最核心的任务。今晚必须早睡！',
+    };
+    $('morning-motivation').textContent = motivations[quality] || motivations.ok;
+    
+    // Auto-adjust daily goal based on sleep
+    if(quality === 'bad' || quality === 'late'){
+      S.settings.dailyGoal = Math.max(4, Math.floor((S.settings.dailyGoal || 8) * 0.6));
+      addMilestone('😴 睡眠不足，今日目标已自动调整为 ' + S.settings.dailyGoal + ' 个番茄');
+    }
+    
+    saveState();
+  };
+});
+
+$('morning-done').onclick = ()=>{
+  $('morning-check-overlay').hidden = true;
+  S._morningCheckDone = todayStr();
+  saveState();
+};
 
 /* Daily Performance Grade System */
 function calculateDailyGrade(){
@@ -3049,6 +3291,15 @@ function loadSettings(){
   $('range-val').textContent = Math.round(s.volume*100)+'%';
   $('opt-notify').checked = s.notify;
   $('opt-wakelock').checked = s.wakelock;
+  // V20: sleep settings
+  const sleepEl = $('opt-sleep-enforce');
+  if(sleepEl) sleepEl.checked = S.settings.sleepEnforce;
+  const bedEl = $('opt-bedtime');
+  if(bedEl) bedEl.value = S.settings.bedtime || '23:00';
+  const windEl = $('opt-winddown');
+  if(windEl) windEl.value = S.settings.winddownMinutes || 30;
+  const wakeEl = $('opt-waketime');
+  if(wakeEl) wakeEl.value = S.settings.waketime || '07:00';
   // theme
   applyTheme(s.theme);
   qsa('.t-btn').forEach(b=>{
@@ -3088,6 +3339,21 @@ bindSettingToggle('opt-celebration','celebration');
 bindSettingToggle('opt-interrupt-confirm','interruptConfirm');
 bindSettingToggle('opt-sound','sound');
 bindSettingToggle('opt-wakelock','wakelock');
+bindSettingToggle('opt-sleep-enforce','sleepEnforce');
+
+// Bedtime setting
+$('opt-bedtime').onchange = function(){
+  S.settings.bedtime = this.value || '23:00';
+  saveState();
+};
+$('opt-winddown').onchange = function(){
+  S.settings.winddownMinutes = parseInt(this.value) || 30;
+  saveState();
+};
+$('opt-waketime').onchange = function(){
+  S.settings.waketime = this.value || '07:00';
+  saveState();
+};
 
 $('opt-daily-goal').onchange = function(){
   S.settings.dailyGoal = parseInt(this.value) || 6;
@@ -3311,7 +3577,7 @@ function applySettings(){
 /* ============= KEYBOARD SHORTCUTS ============= */
 document.addEventListener('keydown', e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
-  const anyModalOpen = !$('modal-complete').hidden || !$('modal-abandon-confirm').hidden || !$('rest-guide-overlay').hidden || !$('daily-launch-overlay').hidden || !$('daily-review-overlay').hidden || !$('modal-quickstart-continue').hidden || !$('onboarding').hidden || !$('modal-clarify').hidden || !$('weekly-review-overlay').hidden;
+  const anyModalOpen = !$('sleep-overlay').hidden || !$('morning-check-overlay').hidden || !$('modal-complete').hidden || !$('modal-abandon-confirm').hidden || !$('rest-guide-overlay').hidden || !$('daily-launch-overlay').hidden || !$('daily-review-overlay').hidden || !$('modal-quickstart-continue').hidden || !$('onboarding').hidden || !$('modal-clarify').hidden || !$('weekly-review-overlay').hidden;
   if(anyModalOpen && e.key!=='Escape') return;
   switch(e.key){
     case ' ':
@@ -3356,6 +3622,10 @@ document.addEventListener('keydown', e=>{
       }
       break;
     case 'Escape':
+      $('sleep-overlay').hidden = true;
+      S._sleepEnforceActive = false;
+      $('morning-check-overlay').hidden = true;
+      $('winddown-banner').hidden = true;
       if(focusLockdown){ exitLockdown(); }
       closeDetail();
       $('modal-complete').hidden = true;
@@ -3419,10 +3689,27 @@ function migrateData(){
     S.version=6;
     saveState();
   }
+  // v6 → v7 migration (gaokao edition)
+  if(S.version===6){
+    S.settings.sleepEnforce = S.settings.sleepEnforce !== undefined ? S.settings.sleepEnforce : true;
+    S.settings.bedtime = S.settings.bedtime || '23:00';
+    S.settings.winddownMinutes = S.settings.winddownMinutes || 30;
+    S.settings.waketime = S.settings.waketime || '07:00';
+    S.settings.dailyGoal = S.settings.dailyGoal || 8;
+    S.sleepIdeas = S.sleepIdeas || [];
+    S._sleepDismissCount = S._sleepDismissCount || 0;
+    S._lastSleepDate = S._lastSleepDate || null;
+    S._lastSleepQuality = S._lastSleepQuality || null;
+    S._sleepEnforceActive = S._sleepEnforceActive || false;
+    S._morningCheckDone = S._morningCheckDone || null;
+    S.version = 7;
+    saveState();
+  }
 }
 
 /* ============= INIT ============= */
 function initApp(){
+  winddownShown = false;
   migrateData();
   // ensure S has proper timer object
   if(!S.timer) S.timer = freshState().timer;
@@ -3464,6 +3751,12 @@ function initApp(){
   if(S._yesterdayPomoCount===undefined) S._yesterdayPomoCount=-1;
   if(S._todayExceededYesterday===undefined) S._todayExceededYesterday=false;
   if(S._prevLevel===undefined) S._prevLevel=1;
+  if(S.sleepIdeas===undefined) S.sleepIdeas=[];
+  if(S._sleepDismissCount===undefined) S._sleepDismissCount=0;
+  if(S._lastSleepDate===undefined) S._lastSleepDate=null;
+  if(S._lastSleepQuality===undefined) S._lastSleepQuality=null;
+  if(S._sleepEnforceActive===undefined) S._sleepEnforceActive=false;
+  if(S._morningCheckDone===undefined) S._morningCheckDone=null;
 
   // if timer was running on page unload, reset to idle (can't track wall-clock time)
   if(S.timer.phase==='running') S.timer.phase='idle';
@@ -3534,6 +3827,9 @@ function initApp(){
     lockdownEl.checked = !!S.settings.lockdown;
     lockdownEl.onchange = function(){ S.settings.lockdown = this.checked; saveState(); };
   }
+  // V20: Init sleep system
+  initSleepSystem();
+  updateGaokaoCountdown();
   // Auto-trigger smart suggestion on load
   setTimeout(generateSmartSuggestion, 1500);
 
