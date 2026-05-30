@@ -11,9 +11,7 @@ const defaultSettings = {
   autoBreak:true, autoWork:false, restGuide:true, focusMode:true,
   celebration:true, interruptConfirm:true,
   sound:true, volume:0.7, notify:false, wakelock:false,
-  theme:'light', dailyGoal:6,
-  distractionPenalty:2, distractionThreshold:120, titleFlash:true, distractionNotice:true,
-  showScore:true, achievementNotify:true, streakCrisis:true
+  theme:'light', dailyGoal:6, lockdown:false
 };
 
 let S = loadState();
@@ -135,11 +133,16 @@ function requestNotify(title, body){
 
 /* ============= MDA GAMIFICATION HELPERS ============= */
 const LEVELS = [
-  {min:0, max:99, level:1, title:'入门学徒'},
-  {min:100, max:299, level:2, title:'专注学生'},
-  {min:300, max:599, level:3, title:'效率达人'},
-  {min:600, max:999, level:4, title:'时间大师'},
-  {min:1000, max:Infinity, level:5, title:'传奇学霸'},
+  {min:0, max:49, level:1, title:'入门学徒',tier:'normal'},
+  {min:50, max:149, level:2, title:'专注学生',tier:'normal'},
+  {min:150, max:299, level:3, title:'效率达人',tier:'normal'},
+  {min:300, max:499, level:4, title:'时间大师',tier:'normal'},
+  {min:500, max:799, level:5, title:'学霸觉醒',tier:'normal'},
+  {min:800, max:1199, level:6, title:'专注骑士',tier:'normal'},
+  {min:1200, max:1799, level:7, title:'效率霸主',tier:'premium'},
+  {min:1800, max:2499, level:8, title:'时间掌控者',tier:'premium'},
+  {min:2500, max:3499, level:9, title:'超级学霸',tier:'premium'},
+  {min:3500, max:Infinity, level:10, title:'传奇战神',tier:'premium'},
 ];
 const MILESTONE_STREAKS = [7,14,30,66];
 const MILESTONE_MSGS = {
@@ -226,8 +229,9 @@ function renderScoreDisplay(){
   const el = $('score-display');
   if(!el) return;
   const info = getLevelInfo(S.score||0);
+  const tierClass = info.tier==='premium' ? ' level-badge level-premium' : ' level-badge';
   el.innerHTML = '<span class="score-num">'+Math.max(0,S.score||0)+'</span><span class="score-label">分</span>' +
-    '<span class="level-badge">Lv.'+info.level+' '+info.title+'</span>';
+    '<span class="'+tierClass+'">Lv.'+info.level+' '+info.title+'</span>';
 }
 
 function updateMomentumFeed(){
@@ -248,7 +252,6 @@ function updateMomentumFeed(){
 function showStreakCrisisWarning(){
   const el = $('streak-crisis-banner');
   if(!el) return;
-  if(S.settings.streakCrisis === false){ el.hidden=true; return; }
   const today = todayStr();
   const todayData = S.pomodoroHistory[today];
   if(todayData && todayData.count>0) { el.hidden=true; return; }
@@ -284,6 +287,354 @@ function checkYesterdayCompetition(count){
     updateMomentumFeed();
   }
 }
+
+/* ============= V7: ANTI-PROCRASTINATION ENGINE ============= */
+let microPomoTimer = null;
+let microPomoRemaining = 0;
+const MICRO_POMO_DURATION = 300; // 5 minutes
+
+$('btn-micro-pomo').onclick = ()=>{
+  if(microPomoRemaining > 0){
+    // stop micro pomodoro
+    stopMicroPomo();
+    return;
+  }
+  microPomoRemaining = MICRO_POMO_DURATION;
+  $('btn-micro-pomo').textContent = '⏹ 停止';
+  $('btn-micro-pomo').classList.add('running');
+  $('micro-pomo-hint').textContent = '5分钟倒计时中...降低门槛，先动起来！';
+  if(timerWorker){
+    timerWorker.postMessage({type:'start', remaining:microPomoRemaining, total:MICRO_POMO_DURATION});
+  }
+  const start = Date.now();
+  microPomoTimer = setInterval(()=>{
+    microPomoRemaining = Math.max(0, MICRO_POMO_DURATION - Math.floor((Date.now()-start)/1000));
+    $('micro-pomo-hint').textContent = '剩余 '+Math.floor(microPomoRemaining/60)+':'+String(microPomoRemaining%60).padStart(2,'0');
+    if(microPomoRemaining <= 0){
+      clearInterval(microPomoTimer); microPomoTimer = null;
+      stopMicroPomo();
+      toast('⚡ 5分钟完成！你已经进入状态了，继续专注吧！', 4000);
+      addMilestone('⚡ 完成微番茄！启动困难已克服！');
+      addScore(5);
+      // auto-prompt to continue with full pomodoro
+      setTimeout(()=>{ showQuickStartContinue('微番茄'); }, 1500);
+    }
+  }, 500);
+};
+
+function stopMicroPomo(){
+  if(microPomoTimer){ clearInterval(microPomoTimer); microPomoTimer = null; }
+  microPomoRemaining = 0;
+  $('btn-micro-pomo').textContent = '5分钟快速开始';
+  $('btn-micro-pomo').classList.remove('running');
+  $('micro-pomo-hint').textContent = '降低门槛，先动起来';
+  if(timerWorker) timerWorker.postMessage({type:'stop'});
+}
+
+/* Smart Task Suggestion Engine */
+$('btn-smart-suggest').onclick = generateSmartSuggestion;
+
+function generateSmartSuggestion(){
+  const el = $('smart-suggest-text');
+  if(!el) return;
+  const now = new Date();
+  const today = todayStr();
+  const hour = now.getHours();
+  const todayData = S.pomodoroHistory[today] || {count:0};
+  const goal = S.settings.dailyGoal || 6;
+  
+  // Rule 1: If daily goal not reached and it's getting late
+  if(todayData.count < goal && hour >= 20){
+    el.textContent = '⏰ 今天还差'+(goal-todayData.count)+'个番茄，时间不早了，赶紧开始！';
+    return;
+  }
+  
+  // Rule 2: If no tasks at all, prompt to add
+  const activeTasks = S.tasks.filter(t=>!t.completed && (t.area==='next'||t.area==='inbox'));
+  if(activeTasks.length === 0){
+    el.textContent = '📋 没有待办任务！先添加一个你想完成的事情吧';
+    return;
+  }
+  
+  // Rule 3: Find highest priority undone task with due today
+  const overdueTasks = activeTasks.filter(t=>t.due && new Date(t.due)<now && t.area!=='someday');
+  if(overdueTasks.length > 0){
+    const t = overdueTasks.sort((a,b)=>a.priority-b.priority)[0];
+    el.textContent = '🔴 '+escHtml(t.title)+' 已逾期！现在就处理它';
+    return;
+  }
+  
+  // Rule 4: Find tasks due today
+  const todayTasks = activeTasks.filter(t=>t.due && dateStr(new Date(t.due))===today);
+  if(todayTasks.length > 0){
+    const t = todayTasks.sort((a,b)=>a.priority-b.priority)[0];
+    el.textContent = '📌 今天的重点：'+escHtml(t.title)+'（点击开始专注）';
+    return;
+  }
+  
+  // Rule 5: If inbox not empty, suggest clarifying
+  const inboxTasks = activeTasks.filter(t=>t.area==='inbox');
+  if(inboxTasks.length > 0){
+    el.textContent = '📥 收件箱有'+inboxTasks.length+'个任务待厘清，先整理一下再开始';
+    return;
+  }
+  
+  // Rule 6: Morning suggestion
+  if(hour < 10 && todayData.count === 0){
+    const t = activeTasks.sort((a,b)=>a.priority-b.priority)[0];
+    el.textContent = '🌅 早上好！建议从"'+escHtml(t.title)+'"开始新的一天';
+    return;
+  }
+  
+  // Rule 7: General suggestion
+  const t = activeTasks.sort((a,b)=>a.priority-b.priority)[0];
+  if(t){
+    const pomosLeft = Math.max(0, goal - todayData.count);
+    el.textContent = '🎯 下一步：'+escHtml(t.title)+'（今天还差'+pomosLeft+'个番茄）';
+  }
+}
+
+/* Daily Performance Grade System */
+function calculateDailyGrade(){
+  const today = todayStr();
+  const data = S.pomodoroHistory[today] || {count:0,focusMins:0};
+  const goal = S.settings.dailyGoal || 6;
+  const count = data.count;
+  
+  let grade, letter, desc;
+  if(count >= goal * 1.5){ grade='s'; letter='S'; desc='超凡表现！远超目标，你是专注之王！'; }
+  else if(count >= goal){ grade='a'; letter='A'; desc='优秀！今日目标完美达成，继续保持！'; }
+  else if(count >= goal * 0.75){ grade='b'; letter='B'; desc='良好！完成了四分之三以上，再加把劲！'; }
+  else if(count >= goal * 0.5){ grade='c'; letter='C'; desc='还行，目标过半了。明天争取达标！'; }
+  else if(count > 0){ grade='d'; letter='D'; desc='起步了，但远远不够。每个番茄都是进步。'; }
+  else { grade='f'; letter='F'; desc='今天还没有番茄记录。现在开始还来得及！'; }
+  
+  return {grade, letter, desc, count, goal};
+}
+
+function renderDailyGrade(){
+  const circle = $('dg-circle');
+  const letterEl = $('dg-letter');
+  const titleEl = $('dg-title');
+  const descEl = $('dg-desc');
+  if(!circle) return;
+  
+  const g = calculateDailyGrade();
+  letterEl.textContent = g.letter;
+  circle.className = 'dg-circle grade-'+g.grade;
+  titleEl.textContent = '今日表现: '+g.count+'/'+g.goal+' 番茄';
+  descEl.textContent = g.desc;
+}
+
+/* Personal Records */
+function renderPersonalRecords(){
+  // Best single day
+  let bestDay = 0, bestDayDate = '';
+  let totalMins = 0;
+  Object.entries(S.pomodoroHistory||{}).forEach(([date,data])=>{
+    if(data.count > bestDay){ bestDay = data.count; bestDayDate = date; }
+    totalMins += data.focusMins || 0;
+  });
+  
+  // Best week
+  let bestWeek = 0;
+  const now = new Date();
+  for(let w=0; w<52; w++){
+    let weekTotal = 0;
+    for(let d=0; d<7; d++){
+      const dt = new Date(now);
+      dt.setDate(dt.getDate() - w*7 - d);
+      const ds = dateStr(dt);
+      weekTotal += (S.pomodoroHistory[ds]||{}).count||0;
+    }
+    if(weekTotal > bestWeek) bestWeek = weekTotal;
+  }
+  
+  const el1 = $('rec-best-day'); if(el1) el1.textContent = bestDay;
+  const el2 = $('rec-best-week'); if(el2) el2.textContent = bestWeek;
+  const el3 = $('rec-total-hours'); if(el3) el3.textContent = Math.round(totalMins/60)+'h';
+  
+  // Today's rank (how does today compare to history)
+  const todayCount = (S.pomodoroHistory[todayStr()]||{}).count||0;
+  const allDays = Object.values(S.pomodoroHistory||{}).map(d=>d.count).sort((a,b)=>b-a);
+  let rank = '-';
+  if(todayCount > 0 && allDays.length > 0){
+    const pos = allDays.indexOf(todayCount);
+    rank = pos >= 0 ? 'Top '+(pos+1) : 'Top '+allDays.length;
+  }
+  const el4 = $('rec-today-rank'); if(el4) el4.textContent = rank;
+}
+
+/* Smart Insights Engine */
+function generateInsights(){
+  const list = $('insight-list');
+  if(!list) return;
+  const insights = [];
+  const today = todayStr();
+  const now = new Date();
+  const hour = now.getHours();
+  
+  // Count total pomodoros
+  let totalCount = 0;
+  Object.values(S.pomodoroHistory||{}).forEach(d=>{ totalCount += d.count; });
+  
+  // 1. Streak insight
+  const streak = calcStreak();
+  if(streak > 0){
+    var streakMsg = streak>=7 ? '习惯已经形成！' : streak>=3 ? '保持住，3天是小里程碑' : '继续积累';
+    insights.push({icon:'🔥', type:'success', text:'连续专注 '+streak+' 天！'+streakMsg});
+  }
+  
+  // 2. Crisis warning
+  const todayData = S.pomodoroHistory[today] || {count:0};
+  if(todayData.count === 0 && hour >= 14){
+    insights.push({icon:'⚠️', type:'warning', text:'今天还没有开始！下午是最好的追赶时间'});
+  }
+  
+  // 3. Productivity pattern
+  const sessions = (S.sessions||[]).filter(s=>s.type==='work');
+  if(sessions.length >= 10){
+    const hourCounts = {};
+    sessions.forEach(s=>{ if(s.start){ const h = new Date(s.start).getHours(); hourCounts[h] = (hourCounts[h]||0)+1; }});
+    let bestHour = 0, bestCount = 0;
+    Object.entries(hourCounts).forEach(([h,c])=>{ if(c>bestCount){ bestCount=c; bestHour=parseInt(h); }});
+    if(bestCount > 0){
+      insights.push({icon:'📊', type:'info', text:'你最活跃的时间段是 '+bestHour+':00-'+(bestHour+1)+':00，把重要任务安排在这个时段'});
+    }
+  }
+  
+  // 4. Task completion rate
+  const totalTasks = S.tasks.length;
+  const doneTasks = S.tasks.filter(t=>t.completed).length;
+  if(totalTasks > 5){
+    const rate = Math.round(doneTasks/totalTasks*100);
+    insights.push({icon:'📋', type:'info', text:'任务完成率 '+rate+'%' + (rate>=70?'，执行力很强！':rate>=40?'，还有提升空间':'，尝试每天先厘清收件箱')});
+  }
+  
+  // 5. Weekly comparison
+  let thisWeek = 0, lastWeek = 0;
+  for(let d=0;d<7;d++){
+    const dt = new Date(now); dt.setDate(dt.getDate()-d); thisWeek += (S.pomodoroHistory[dateStr(dt)]||{}).count||0;
+    const lt = new Date(now); lt.setDate(lt.getDate()-d-7); lastWeek += (S.pomodoroHistory[dateStr(lt)]||{}).count||0;
+  }
+  if(lastWeek > 0){
+    const diff = thisWeek - lastWeek;
+    if(diff > 0) insights.push({icon:'📈', type:'success', text:'本周比上周多 '+diff+' 个番茄，进步明显！'});
+    else if(diff < 0) insights.push({icon:'📉', type:'warning', text:'本周比上周少 '+Math.abs(diff)+' 个番茄，要加油了'});
+  }
+  
+  // 6. Inbox pressure
+  const inboxCount = S.tasks.filter(t=>t.area==='inbox'&&!t.completed).length;
+  if(inboxCount >= 5){
+    insights.push({icon:'📥', type:'warning', text:'收件箱有 '+inboxCount+' 个任务积压，建议每天花2分钟清理'});
+  }
+  
+  if(insights.length === 0){
+    list.innerHTML = '<div class="insight-item insight-empty">积累更多数据后生成洞察...</div>';
+    return;
+  }
+  list.innerHTML = insights.map(i=>
+    '<div class="insight-item insight-'+i.type+'"><span class="insight-icon">'+i.icon+'</span><span class="insight-text">'+i.text+'</span></div>'
+  ).join('');
+}
+
+/* Calendar Monthly Summary */
+function renderCalendarMonthlySummary(){
+  const y = calViewDate.getFullYear();
+  const m = calViewDate.getMonth();
+  let monthTotal = 0, activeDays = 0;
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  for(let d=1; d<=daysInMonth; d++){
+    const ds = y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const data = S.pomodoroHistory[ds];
+    if(data && data.count > 0){ monthTotal += data.count; activeDays++; }
+  }
+  const avg = activeDays > 0 ? (monthTotal/activeDays).toFixed(1) : '0';
+  
+  // Monthly grade
+  const dailyGoal = S.settings.dailyGoal || 6;
+  const expectedDays = daysInMonth; // rough
+  const expectedTotal = Math.round(dailyGoal * expectedDays * 0.6); // 60% target
+  let mGrade = 'F';
+  if(monthTotal >= expectedTotal * 1.5) mGrade = 'S';
+  else if(monthTotal >= expectedTotal) mGrade = 'A';
+  else if(monthTotal >= expectedTotal * 0.75) mGrade = 'B';
+  else if(monthTotal >= expectedTotal * 0.5) mGrade = 'C';
+  else if(monthTotal > 0) mGrade = 'D';
+  
+  const el1 = $('cms-total'); if(el1) el1.textContent = monthTotal;
+  const el2 = $('cms-days'); if(el2) el2.textContent = activeDays;
+  const el3 = $('cms-avg'); if(el3) el3.textContent = avg;
+  const el4 = $('cms-grade');
+  if(el4){ el4.textContent = mGrade; el4.className = 'cal-ms-val grade-'+mGrade.toLowerCase(); }
+}
+
+/* Calendar Heatmap Enhancement */
+function getCalDayIntensity(count, goal){
+  if(count === 0) return 0;
+  if(count >= goal) return 5;
+  if(count >= goal * 0.75) return 4;
+  if(count >= goal * 0.5) return 3;
+  if(count >= goal * 0.25) return 2;
+  return 1;
+}
+
+/* Inbox Pressure System */
+function updateInboxPressure(){
+  const bar = $('inbox-pressure-bar');
+  if(!bar) return;
+  const inboxCount = S.tasks.filter(t=>t.area==='inbox'&&!t.completed).length;
+  if(inboxCount < 3){ bar.hidden = true; return; }
+  bar.hidden = false;
+  const pressure = Math.min(100, inboxCount * 10);
+  $('ip-fill').style.width = pressure+'%';
+  $('ip-text').textContent = '收件箱有 '+inboxCount+' 个任务积压' + (inboxCount>=5?' ⚠️急需处理！':inboxCount>=3?'，建议尽快清理':'');
+}
+
+$('ip-action-btn').onclick = ()=>{
+  // switch to inbox tab and enable batch clarify
+  qsa('.gtd-tab').forEach(b=>{ b.classList.toggle('active', b.dataset.area==='inbox'); });
+  renderTasks();
+  toast('请逐个厘清收件箱中的任务');
+};
+
+/* Focus Lockdown Mode */
+let focusLockdown = false;
+$('btn-focus-toggle').onclick = ()=>{
+  if(S.timer.phase !== 'running' && S.timer.mode !== 'work'){
+    // regular focus toggle (old behavior)
+    focusModeFull = !focusModeFull;
+    $('btn-focus-toggle').classList.toggle('active', focusModeFull);
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-mode-full', focusModeFull);
+      wrap.classList.remove('focus-lockdown');
+    }
+    toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
+    return;
+  }
+  // If timer is running and lockdown setting is on, use lockdown
+  if(S.settings.lockdown && S.timer.mode==='work'){
+    focusLockdown = !focusLockdown;
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-lockdown', focusLockdown);
+      wrap.classList.remove('focus-mode-full');
+      focusModeFull = false;
+      $('btn-focus-toggle').classList.toggle('active', focusLockdown);
+    }
+    toast(focusLockdown ? '🔒 锁屏模式！所有干扰已屏蔽' : '🔓 已解锁');
+  } else {
+    focusModeFull = !focusModeFull;
+    $('btn-focus-toggle').classList.toggle('active', focusModeFull);
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-mode-full', focusModeFull);
+      wrap.classList.remove('focus-lockdown');
+    }
+    toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
+  }
+};
 
 /* ============= TIMER ============= */
 function initTimerWorker(){
@@ -956,32 +1307,17 @@ function renderTasks(){
     tasks = tasks.filter(t=>t.completed);
   }
 
-  // sort: overdue first, today next, priority asc, due asc, age desc for inbox
-  const now = new Date();
-  const todayDate = todayStr();
+  // sort: incomplete first, priority asc, due asc
   tasks.sort((a,b)=>{
     if(a.completed!==b.completed) return a.completed ? 1 : -1;
-    // Overdue tasks first
-    const aOverdue = !a.completed && a.due && new Date(a.due)<now;
-    const bOverdue = !b.completed && b.due && new Date(b.due)<now;
-    if(aOverdue!==bOverdue) return aOverdue ? -1 : 1;
-    // Today tasks next
-    const aToday = !a.completed && a.due && dateStr(new Date(a.due))===todayDate;
-    const bToday = !b.completed && b.due && dateStr(new Date(b.due))===todayDate;
-    if(aToday!==bToday) return aToday ? -1 : 1;
-    // Priority asc (1=high, 4=low)
     if(a.priority!==b.priority) return a.priority-b.priority;
-    // Due date asc
     if(a.due && b.due) return new Date(a.due)-new Date(b.due);
     if(a.due) return -1;
     if(b.due) return 1;
-    // For inbox: older first
-    if(area==='inbox' && a.createdAt && b.createdAt) return new Date(a.createdAt)-new Date(b.createdAt);
     return 0;
   });
 
   list.innerHTML = '';
-  const now = new Date();
   tasks.forEach(t=>{
     const item = document.createElement('li');
     item.className = 'task-item' + (t.completed ? ' completed' : '');
@@ -989,31 +1325,13 @@ function renderTasks(){
 
     const hasChildren = t.subtasks && t.subtasks.length > 0;
 
-    const prioEmoji = ['','🔴','🟠','🟡','⚪'][t.priority]||'⚪';
-
-    // Aging indicator for inbox tasks
-    let agingHtml = '';
+    // V7: Task aging for inbox items (>24h old)
     if(area==='inbox' && !t.completed && t.createdAt){
-      const ageMs = now - new Date(t.createdAt).getTime();
-      const ageDays = ageMs / 86400000;
-      if(ageDays >= 7){
-        agingHtml = '<span class="task-aging urgent">紧急</span>';
-      } else if(ageDays >= 3){
-        agingHtml = '<span class="task-aging warn">老化</span>';
-      }
+      const age = Date.now() - new Date(t.createdAt).getTime();
+      if(age > 24*60*60*1000) item.classList.add('task-aged');
     }
 
-    // Quick focus button for next area tasks
-    let quickFocusHtml = '';
-    if(area==='next' && !t.completed){
-      quickFocusHtml = '<button class="task-quick-focus" data-action="quick-focus" title="快速专注">🍅</button>';
-    }
-
-    // Daily focus star
-    let focusStarHtml = '';
-    if(!t.completed && S.dailyFocusTasks && S.dailyFocusTasks.some(f=>f.id===t.id)){
-      focusStarHtml = '<span class="task-focus-star">⭐</span>';
-    }
+    const prioEmoji = ['','🔴','🟠','🟡','⚪'][t.priority]||'⚪';
 
     let extraMeta = '';
     if(area==='waiting'){
@@ -1024,11 +1342,8 @@ function renderTasks(){
     item.innerHTML = `
       <div class="task-check ${t.completed?'checked':''}" data-action="toggle">${t.completed?'✓':''}</div>
       <span class="task-prio">${prioEmoji}</span>
-      ${focusStarHtml}
       ${area==='inbox' && !t.completed ? '<span class="task-clarify-btn" data-action="clarify">🧹</span>' : ''}
       <span class="task-text">${escHtml(t.title)}${hasChildren?' <span class="task-sub-indicator">📋</span>':''}</span>
-      ${agingHtml}
-      ${quickFocusHtml}
       <div class="task-meta">
         ${t.completedPomodoros ? '<span class="task-pomo">🍅'+t.completedPomodoros+'</span>' : ''}
         ${t.tags && t.tags.length ? t.tags.map(tg=>'<span class="task-tag">#'+escHtml(tg)+'</span>').join('') : ''}
@@ -1049,19 +1364,7 @@ function renderTasks(){
         openClarify(t.id);
         return;
       }
-      if(action==='quick-focus'){
-        e.stopPropagation();
-        S.timer.currentTaskId = t.id;
-        saveState();
-        updateActiveTaskDisplay();
-        navigateTo('work');
-        if(S.timer.phase==='idle'){
-          setTimerMode('work');
-          startTimer();
-        }
-        return;
-      }
-      if(!e.target.closest('.task-check') && !e.target.closest('.task-clarify-btn') && !e.target.closest('.task-quick-focus')){
+      if(!e.target.closest('.task-check') && !e.target.closest('.task-clarify-btn')){
         openDetail(t.id);
       }
     };
@@ -1823,15 +2126,7 @@ function applyFocusMode(on){
 
 /* ============= FOCUS MODE TOGGLE ============= */
 let focusModeFull = false;
-
-$('btn-focus-toggle').onclick = ()=>{
-  focusModeFull = !focusModeFull;
-  $('btn-focus-toggle').classList.toggle('active', focusModeFull);
-  const wrap = qs('.work-view');
-  if(!wrap) return;
-  wrap.classList.toggle('focus-mode-full', focusModeFull);
-  toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
-};
+// Focus toggle handler is defined in V7 section above (line ~603) with lockdown support
 
 /* ============= REST GUIDE ============= */
 function showRestGuide(){
@@ -2094,10 +2389,10 @@ let calViewDate = new Date();
 let calMode = 'month';
 
 function renderCalendar(){
+  renderCalendarMonthlySummary();
   $('cal-month').textContent = calViewDate.getFullYear()+'年'+(calViewDate.getMonth()+1)+'月';
   if(calMode==='month'){
     renderMonthGrid();
-    renderCalendarMonthlySummary();
     $('cal-dayview').style.display='none';
     $('cal-day-tasks').hidden=true;
   }else{
@@ -2114,18 +2409,6 @@ function renderMonthGrid(){
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const daysInPrev = new Date(year, month, 0).getDate();
-  const goal = S.settings.dailyGoal || 6;
-
-  // Pre-calculate streak chain for current month
-  const streakDays = new Set();
-  const d = new Date();
-  for(let i=0;i<366;i++){
-    const p = new Date(d);
-    p.setDate(p.getDate()-i);
-    const ds = dateStr(p);
-    const data = S.pomodoroHistory[ds];
-    if(data && data.count>0){ streakDays.add(ds); } else { break; }
-  }
 
   grid.innerHTML = '';
   const today = todayStr();
@@ -2139,18 +2422,7 @@ function renderMonthGrid(){
     const cell = document.createElement('div');
     cell.className='cal-day other-month';
     cell.textContent = d;
-    if(count>0){
-      const level = count===1?1:count<=3?2:count<=6?3:4;
-      cell.classList.add('cal-level-'+level);
-      const cntEl = document.createElement('span');
-      cntEl.className='cal-pomo-count';
-      cntEl.textContent = count;
-      cell.appendChild(cntEl);
-      if(streakDays.has(ds)) cell.classList.add('cal-streak');
-      if(count >= goal) cell.classList.add('cal-goal');
-    } else {
-      cell.classList.add('cal-level-0');
-    }
+    if(count>0) cell.innerHTML += '<span class="cal-dot completed"></span>';
     cell.onclick = ()=>selectDate(dt);
     cell.ondblclick = (e)=>{ e.stopPropagation(); switchToDayView(dt); };
     grid.appendChild(cell);
@@ -2165,17 +2437,22 @@ function renderMonthGrid(){
     cell.className='cal-day';
     if(ds===today) cell.classList.add('today');
     cell.textContent = d;
-    if(count>0){
-      const level = count===1?1:count<=3?2:count<=6?3:4;
-      cell.classList.add('cal-level-'+level);
-      const cntEl = document.createElement('span');
-      cntEl.className='cal-pomo-count';
-      cntEl.textContent = count;
-      cell.appendChild(cntEl);
-      if(streakDays.has(ds)) cell.classList.add('cal-streak');
-      if(count >= goal) cell.classList.add('cal-goal');
-    } else {
-      cell.classList.add('cal-level-0');
+    // V7: heatmap intensity
+    const goal = S.settings.dailyGoal || 6;
+    const intensity = getCalDayIntensity(count, goal);
+    if(intensity > 0){
+      cell.classList.add('cal-intensity-'+intensity);
+      // show count badge
+      if(count > 1){
+        const badge = document.createElement('span');
+        badge.className='cal-pomo-count';
+        badge.textContent = count;
+        cell.appendChild(badge);
+      } else {
+        const dot = document.createElement('span');
+        dot.className='cal-dot completed';
+        cell.appendChild(dot);
+      }
     }
     cell.onclick = ()=>selectDate(dt);
     cell.ondblclick = (e)=>{ e.stopPropagation(); switchToDayView(dt); };
@@ -2186,6 +2463,7 @@ function renderMonthGrid(){
   const totalCells = firstDay+daysInMonth;
   const remaining = (7 - totalCells % 7) % 7;
   if(remaining>0){
+    // need a separate row
     for(let d=1;d<=remaining;d++){
       const dt = new Date(year, month+1, d);
       const ds = dateStr(dt);
@@ -2193,62 +2471,12 @@ function renderMonthGrid(){
       const cell = document.createElement('div');
       cell.className='cal-day other-month';
       cell.textContent = d;
-      if(count>0){
-        const level = count===1?1:count<=3?2:count<=6?3:4;
-        cell.classList.add('cal-level-'+level);
-        const cntEl = document.createElement('span');
-        cntEl.className='cal-pomo-count';
-        cntEl.textContent = count;
-        cell.appendChild(cntEl);
-        if(streakDays.has(ds)) cell.classList.add('cal-streak');
-        if(count >= goal) cell.classList.add('cal-goal');
-      } else {
-        cell.classList.add('cal-level-0');
-      }
+      if(count>0) cell.innerHTML += '<span class="cal-dot completed"></span>';
       cell.onclick = ()=>selectDate(dt);
       cell.ondblclick = (e)=>{ e.stopPropagation(); switchToDayView(dt); };
       grid.appendChild(cell);
     }
   }
-}
-
-function renderCalendarMonthlySummary(){
-  const el = $('cal-monthly-summary');
-  if(!el) return;
-  const year = calViewDate.getFullYear();
-  const month = calViewDate.getMonth();
-  const daysInMonth = new Date(year, month+1, 0).getDate();
-  let totalPomos = 0;
-  let activeDays = 0;
-  let bestDay = 0;
-  let bestDayDate = '';
-  let monthStreak = 0;
-  const goal = S.settings.dailyGoal || 6;
-
-  for(let d=1;d<=daysInMonth;d++){
-    const ds = dateStr(new Date(year, month, d));
-    const count = (S.pomodoroHistory[ds]||{}).count||0;
-    totalPomos += count;
-    if(count>0) activeDays++;
-    if(count > bestDay){ bestDay = count; bestDayDate = (month+1)+'/'+d; }
-    if(count >= goal) monthStreak++;
-  }
-  const avg = activeDays > 0 ? (totalPomos/activeDays).toFixed(1) : '0';
-  // calculate active streak in the month
-  let streakInMonth = 0;
-  const today = todayStr();
-  for(let d=daysInMonth;d>=1;d--){
-    const ds = dateStr(new Date(year, month, d));
-    if(ds > today) continue;
-    const count = (S.pomodoroHistory[ds]||{}).count||0;
-    if(count>0) streakInMonth++;
-    else break;
-  }
-  el.innerHTML =
-    '<div class="cal-summary-item"><div class="cal-summary-val">'+totalPomos+'</div><div class="cal-summary-lbl">本月🍅</div></div>'+
-    '<div class="cal-summary-item"><div class="cal-summary-val">'+avg+'</div><div class="cal-summary-lbl">日均</div></div>'+
-    '<div class="cal-summary-item"><div class="cal-summary-val">'+bestDay+'</div><div class="cal-summary-lbl">最佳('+bestDayDate+')</div></div>'+
-    '<div class="cal-summary-item"><div class="cal-summary-val">'+streakInMonth+'</div><div class="cal-summary-lbl">连续🔥</div></div>';
 }
 
 function switchToDayView(dt){
@@ -2355,20 +2583,22 @@ $('cal-day-prev').onclick = ()=>{ calViewDate.setDate(calViewDate.getDate()-1); 
 $('cal-day-next').onclick = ()=>{ calViewDate.setDate(calViewDate.getDate()+1); renderDayView(); };
 
 /* ============= STATS ============= */
-let monthlyChartInstance = null;
-let chartToggleMode = 'bar'; // bar or line
-
 function renderStats(){
   const today = todayStr();
   const td = S.pomodoroHistory[today] || {count:0,focusMins:0};
+  // V7: render grade and records first
+  renderDailyGrade();
+  renderPersonalRecords();
   // week
   let weekCount = 0;
   const now = new Date();
+  const dayOfWeek = now.getDay() || 7; // Mon=1...Sun=7
   for(let i=0;i<7;i++){
     const d = new Date(now);
     d.setDate(d.getDate()-i);
     const ds = dateStr(d);
-    weekCount += (S.pomodoroHistory[ds]||{}).count||0;
+    const c = (S.pomodoroHistory[ds]||{}).count||0;
+    weekCount += c;
   }
   // total
   let total = 0;
@@ -2387,227 +2617,10 @@ function renderStats(){
   renderTagBars();
   // daily focus
   renderDailyFocus();
-  // weekly chart
+  // chart
   renderWeeklyChart();
-  // monthly chart
-  renderMonthlyChart();
-  // level section
-  renderLevelSection();
-  // records
-  renderRecords();
-  // achievements
-  renderAchievements();
-  // insights
-  renderInsights();
-}
-
-function renderLevelSection(){
-  const score = Math.max(0, S.score||0);
-  const info = getLevelInfo(score);
-  const icons = ['','🌱','📚','⚡','👑','🌟'];
-  const icon = icons[info.level] || '🌱';
-  const el_icon = $('level-icon');
-  const el_name = $('level-name');
-  const el_fill = $('level-xp-fill');
-  const el_text = $('level-xp-text');
-  if(el_icon) el_icon.textContent = icon;
-  if(el_name) el_name.textContent = 'Lv.'+info.level+' '+info.title;
-  const pct = info.max===Infinity ? 100 : Math.min(100, ((score-info.min)/(info.max-info.min))*100);
-  if(el_fill) el_fill.style.width = pct+'%';
-  const nextXP = info.max===Infinity ? 'MAX' : (info.max - score);
-  if(el_text) el_text.textContent = info.max===Infinity ? 'MAX XP' : score+'/'+info.max+' XP';
-}
-
-function renderRecords(){
-  // Best single day
-  let bestDayCount = 0;
-  let bestDayDate = '';
-  // Best single week
-  let bestWeekCount = 0;
-  // Total focus minutes
-  let totalMins = 0;
-  // Longest streak (full calc)
-  let longestStreak = 0;
-  let tempStreak = 0;
-
-  const allDates = Object.keys(S.pomodoroHistory).sort();
-  allDates.forEach(ds=>{
-    const d = S.pomodoroHistory[ds];
-    if(d && d.count>0){
-      totalMins += (d.focusMins||0);
-      if(d.count > bestDayCount){ bestDayCount = d.count; bestDayDate = ds; }
-      tempStreak++;
-      if(tempStreak > longestStreak) longestStreak = tempStreak;
-    } else {
-      tempStreak = 0;
-    }
-  });
-
-  // Calculate best week by sliding window
-  const dateArr = allDates.map(d=>new Date(d).getTime()).sort((a,b)=>a-b);
-  for(let i=0;i<dateArr.length;i++){
-    let weekSum = 0;
-    const endTs = dateArr[i] + 7*86400000;
-    for(let j=i;j<dateArr.length && dateArr[j]<endTs;j++){
-      const ds = dateStr(new Date(dateArr[j]));
-      weekSum += (S.pomodoroHistory[ds]||{}).count||0;
-    }
-    if(weekSum > bestWeekCount) bestWeekCount = weekSum;
-  }
-
-  const hours = (totalMins/60).toFixed(1)+'h';
-  const elBD = $('rec-best-day');
-  const elBDD = $('rec-best-day-date');
-  const elBW = $('rec-best-week');
-  const elTH = $('rec-total-hours');
-  const elBS = $('rec-best-streak');
-  if(elBD) elBD.textContent = bestDayCount;
-  if(elBDD) elBDD.textContent = bestDayDate || '';
-  if(elBW) elBW.textContent = bestWeekCount;
-  if(elTH) elTH.textContent = hours;
-  if(elBS) elBS.textContent = longestStreak;
-
-  // Also update settings records
-  const sBD = $('sett-rec-best-day');
-  const sBS = $('sett-rec-streak');
-  const sTH = $('sett-rec-hours');
-  const sSC = $('sett-rec-score');
-  if(sBD) sBD.textContent = bestDayCount;
-  if(sBS) sBS.textContent = longestStreak;
-  if(sTH) sTH.textContent = hours;
-  if(sSC) sSC.textContent = Math.max(0, S.score||0);
-}
-
-function renderMonthlyChart(){
-  const canvas = $('chart-monthly');
-  if(!canvas) return;
-  if(monthlyChartInstance){ monthlyChartInstance.destroy(); monthlyChartInstance=null; }
-  if(typeof Chart==='undefined') return;
-
-  // Bind toggle buttons
-  const barBtn = $('chart-toggle-bar');
-  const lineBtn = $('chart-toggle-line');
-  if(barBtn) barBtn.onclick = ()=>{ chartToggleMode='bar'; if(barBtn) barBtn.classList.add('active'); if(lineBtn) lineBtn.classList.remove('active'); renderMonthlyChart(); };
-  if(lineBtn) lineBtn.onclick = ()=>{ chartToggleMode='line'; if(lineBtn) lineBtn.classList.add('active'); if(barBtn) barBtn.classList.remove('active'); renderMonthlyChart(); };
-
-  const now = new Date();
-  const labels = [];
-  const data = [];
-  const days = chartToggleMode==='line' ? 30 : 7;
-  for(let i=days-1;i>=0;i--){
-    const d = new Date(now);
-    d.setDate(d.getDate()-i);
-    labels.push((d.getMonth()+1)+'/'+d.getDate());
-    const ds = dateStr(d);
-    data.push((S.pomodoroHistory[ds]||{}).count||0);
-  }
-  monthlyChartInstance = new Chart(canvas, {
-    type: chartToggleMode,
-    data:{
-      labels,
-      datasets:[{
-        label:'番茄数',
-        data,
-        backgroundColor: chartToggleMode==='bar' ? 'rgba(231,76,60,0.6)' : 'rgba(231,76,60,0.1)',
-        borderColor:'#e74c3c',
-        borderWidth:2,
-        borderRadius: chartToggleMode==='bar'?4:0,
-        fill: chartToggleMode==='line',
-        tension:0.3,
-        pointRadius: chartToggleMode==='line'?3:0,
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.06)'}},
-        x:{grid:{display:false}}
-      }
-    }
-  });
-}
-
-function renderAchievements(){
-  const grid = $('achievements-grid');
-  if(!grid) return;
-  const ACHIEVEMENTS = [
-    {icon:'🍅', name:'第一个番茄', check:()=>Object.values(S.pomodoroHistory).some(d=>(d.count||0)>0)},
-    {icon:'📈', name:'Lv.2 达成', check:()=>(S.score||0)>=100},
-    {icon:'🔥', name:'7天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('7天连续'))},
-    {icon:'🥈', name:'14天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('14天'))},
-    {icon:'🥇', name:'30天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('30天'))},
-    {icon:'👑', name:'66天连续', check:()=>S.milestones && S.milestones.some(m=>m.msg&&m.msg.includes('66天'))},
-    {icon:'🎯', name:'目标达成', check:()=>{ const g=S.settings.dailyGoal||6; return Object.values(S.pomodoroHistory).some(d=>(d.count||0)>=g); }},
-    {icon:'⚡', name:'Lv.3 达成', check:()=>(S.score||0)>=300},
-    {icon:'💯', name:'100个番茄', check:()=>{ let t=0; Object.values(S.pomodoroHistory).forEach(d=>{t+=(d.count||0);}); return t>=100; }},
-    {icon:'📚', name:'Lv.4 达成', check:()=>(S.score||0)>=600},
-    {icon:'🌟', name:'Lv.5 达成', check:()=>(S.score||0)>=1000},
-    {icon:'🏆', name:'500个番茄', check:()=>{ let t=0; Object.values(S.pomodoroHistory).forEach(d=>{t+=(d.count||0);}); return t>=500; }},
-  ];
-  grid.innerHTML = ACHIEVEMENTS.map(a=>{
-    const earned = a.check();
-    return '<div class=\"achievement-badge '+(earned?'earned':'locked')+'\"><span class=\"ach-icon\">'+a.icon+'</span><span class=\"ach-name\">'+a.name+'</span></div>';
-  }).join('');
-}
-
-function renderInsights(){
-  const el = $('insights-list');
-  if(!el) return;
-  const items = [];
-  const now = new Date();
-
-  // Best day of week
-  const weekdayNames = ['周日','周一','周二','周三','周四','周五','周六'];
-  const weekdayTotals = [0,0,0,0,0,0,0];
-  const weekdayCounts = [0,0,0,0,0,0,0];
-  Object.keys(S.pomodoroHistory).forEach(ds=>{
-    const d = new Date(ds);
-    const day = d.getDay();
-    const c = (S.pomodoroHistory[ds]||{}).count||0;
-    if(c>0){ weekdayTotals[day]+=c; weekdayCounts[day]++; }
-  });
-  let bestDayIdx = -1;
-  let bestDayAvg = 0;
-  weekdayCounts.forEach((cnt,i)=>{
-    const avg = cnt>0 ? weekdayTotals[i]/cnt : 0;
-    if(avg > bestDayAvg){ bestDayAvg = avg; bestDayIdx = i; }
-  });
-  if(bestDayIdx >= 0){
-    items.push({icon:'📅', text:'最高效的日子', val:weekdayNames[bestDayIdx]+' ('+bestDayAvg.toFixed(1)+'🍅/天)'});
-  }
-
-  // Average daily pomos (last 7 days)
-  let weekTotal = 0;
-  for(let i=0;i<7;i++){
-    const d = new Date(now); d.setDate(d.getDate()-i);
-    weekTotal += (S.pomodoroHistory[dateStr(d)]||{}).count||0;
-  }
-  items.push({icon:'📊', text:'近7天日均', val:(weekTotal/7).toFixed(1)+'🍅'});
-
-  // Productivity trend (this week vs last week)
-  let thisWeek = 0, lastWeek = 0;
-  for(let i=0;i<7;i++){
-    const d1 = new Date(now); d1.setDate(d1.getDate()-i);
-    thisWeek += (S.pomodoroHistory[dateStr(d1)]||{}).count||0;
-    const d2 = new Date(now); d2.setDate(d2.getDate()-i-7);
-    lastWeek += (S.pomodoroHistory[dateStr(d2)]||{}).count||0;
-  }
-  const diff = thisWeek - lastWeek;
-  const trendIcon = diff > 0 ? '📈' : diff < 0 ? '📉' : '➡️';
-  const trendText = diff > 0 ? '+'+diff : String(diff);
-  items.push({icon:trendIcon, text:'本周vs上周', val:trendText+'🍅'});
-
-  // Focus efficiency (completed sessions vs total started)
-  const totalSessions = (S.sessions||[]).filter(s=>s.type==='work').length;
-  const completedSessions = (S.sessions||[]).filter(s=>s.type==='work'&&s.completed).length;
-  const effPct = totalSessions > 0 ? Math.round(completedSessions/totalSessions*100) : 0;
-  items.push({icon:'🎯', text:'专注完成率', val:effPct+'%'});
-
-  el.innerHTML = items.map(it=>
-    '<div class=\"insight-item\"><span class=\"insight-icon\">'+it.icon+'</span><span class=\"insight-text\">'+it.text+'</span><span class=\"insight-val\">'+it.val+'</span></div>'
-  ).join('');
+  // V7: insights
+  generateInsights();
 }
 
 function renderStreak(){
@@ -2826,56 +2839,11 @@ function loadSettings(){
   $('range-val').textContent = Math.round(s.volume*100)+'%';
   $('opt-notify').checked = s.notify;
   $('opt-wakelock').checked = s.wakelock;
-  // anti-addiction settings
-  if($('opt-distraction-penalty')) $('opt-distraction-penalty').value = s.distractionPenalty||2;
-  if($('opt-distraction-threshold')) $('opt-distraction-threshold').value = s.distractionThreshold||120;
-  if($('opt-title-flash')) $('opt-title-flash').checked = s.titleFlash!==false;
-  if($('opt-distraction-notice')) $('opt-distraction-notice').checked = s.distractionNotice!==false;
-  // display preferences
-  if($('opt-show-score')) $('opt-show-score').checked = s.showScore!==false;
-  if($('opt-achievement-notify')) $('opt-achievement-notify').checked = s.achievementNotify!==false;
-  if($('opt-streak-crisis')) $('opt-streak-crisis').checked = s.streakCrisis!==false;
-  // apply score visibility
-  applyScoreVisibility();
   // theme
   applyTheme(s.theme);
   qsa('.t-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.theme===s.theme);
   });
-  // render settings records
-  renderSettingsRecords();
-}
-
-function applyScoreVisibility(){
-  const el = $('score-display');
-  if(!el) return;
-  if(S.settings.showScore===false){
-    el.classList.add('hidden-score');
-  }else{
-    el.classList.remove('hidden-score');
-  }
-}
-
-function renderSettingsRecords(){
-  // These will be populated when renderRecords() is called from renderStats()
-  // or we can calculate them here directly
-  let bestDayCount = 0;
-  let longestStreak = 0;
-  let totalMins = 0;
-  let tempStreak = 0;
-  Object.keys(S.pomodoroHistory||{}).sort().forEach(ds=>{
-    const d = S.pomodoroHistory[ds];
-    if(d && d.count>0){
-      totalMins += (d.focusMins||0);
-      if(d.count > bestDayCount) bestDayCount = d.count;
-      tempStreak++;
-      if(tempStreak > longestStreak) longestStreak = tempStreak;
-    }else{ tempStreak=0; }
-  });
-  const sBD=$('sett-rec-best-day'); if(sBD) sBD.textContent=bestDayCount;
-  const sBS=$('sett-rec-streak'); if(sBS) sBS.textContent=longestStreak;
-  const sTH=$('sett-rec-hours'); if(sTH) sTH.textContent=(totalMins/60).toFixed(1)+'h';
-  const sSC=$('sett-rec-score'); if(sSC) sSC.textContent=Math.max(0,S.score||0);
 }
 
 $('opt-volume').oninput = function(){
@@ -2910,25 +2878,6 @@ bindSettingToggle('opt-celebration','celebration');
 bindSettingToggle('opt-interrupt-confirm','interruptConfirm');
 bindSettingToggle('opt-sound','sound');
 bindSettingToggle('opt-wakelock','wakelock');
-bindSettingToggle('opt-title-flash','titleFlash');
-bindSettingToggle('opt-distraction-notice','distractionNotice');
-bindSettingToggle('opt-show-score','showScore');
-bindSettingToggle('opt-achievement-notify','achievementNotify');
-bindSettingToggle('opt-streak-crisis','streakCrisis');
-
-// Anti-addiction number inputs
-if($('opt-distraction-penalty')){
-  $('opt-distraction-penalty').onchange = function(){
-    const v = parseInt(this.value);
-    if(v>=0 && v<=50){ S.settings.distractionPenalty = v; saveState(); }
-  };
-}
-if($('opt-distraction-threshold')){
-  $('opt-distraction-threshold').onchange = function(){
-    const v = parseInt(this.value);
-    if(v>=30 && v<=600){ S.settings.distractionThreshold = v; saveState(); }
-  };
-}
 
 $('opt-daily-goal').onchange = function(){
   S.settings.dailyGoal = parseInt(this.value) || 6;
@@ -3131,6 +3080,7 @@ function updateAllViews(){
   updateDoneToday();
   updateActiveTaskDisplay();
   updateAreaCounts();
+  updateInboxPressure();
 }
 
 function updateDoneToday(){
@@ -3145,7 +3095,7 @@ function updateDoneToday(){
 
 /* ============= SETTINGS APPLY ============= */
 function applySettings(){
-  applyScoreVisibility();
+  // nothing immediate needed
 }
 
 /* ============= KEYBOARD SHORTCUTS ============= */
@@ -3321,6 +3271,8 @@ function initApp(){
   updateModeBtns();
   updateActiveTaskDisplay();
   updateDailyGoal();
+  // V7: inbox pressure
+  updateInboxPressure();
 
   // MDA: render score display
   renderScoreDisplay();
@@ -3354,6 +3306,12 @@ function initApp(){
   S._lastVisitDate = todayStr();
   saveState();
 
+  // V7: bind lockdown setting
+  const lockdownEl = $('opt-lockdown');
+  if(lockdownEl){
+    lockdownEl.checked = !!S.settings.lockdown;
+    lockdownEl.onchange = function(){ S.settings.lockdown = this.checked; saveState(); };
+  }
   // navigation default
   navigateTo('work');
 }
@@ -3415,21 +3373,17 @@ document.addEventListener('visibilitychange', ()=>{
   }else{
     if(hiddenSince && S.timer.phase === 'running'){
       const elapsed = Math.floor((Date.now() - hiddenSince) / 1000);
-      const threshold = S.settings.distractionThreshold || 120;
-      const penalty = S.settings.distractionPenalty || 2;
-      if(elapsed >= threshold){
-        // MDA: Distraction Tax — configurable penalty
-        addScore(-penalty);
+      if(elapsed >= 120){
+        // MDA: Distraction Tax — deduct 2 points
+        addScore(-2);
         S.distractionCount = (S.distractionCount||0) + 1;
         saveState();
-        toast('⚠️ 专注中断 -'+penalty+'分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
-        if(S.settings.distractionNotice !== false){
-          const notice = document.createElement('div');
-          notice.className = 'distraction-notice';
-          notice.textContent = '👋 欢迎回来，继续专注！切走超过'+Math.floor(elapsed/60)+'分钟了哦';
-          document.body.appendChild(notice);
-          setTimeout(()=>{ if(notice.parentNode) notice.remove(); }, 4000);
-        }
+        toast('⚠️ 专注中断 -2分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
+        const notice = document.createElement('div');
+        notice.className = 'distraction-notice';
+        notice.textContent = '👋 欢迎回来，继续专注！切走超过2分钟了哦';
+        document.body.appendChild(notice);
+        setTimeout(()=>{ if(notice.parentNode) notice.remove(); }, 4000);
         toast('⚠️ 你离开了 '+Math.floor(elapsed/60)+' 分钟');
       }else{
         const wb = $('welcome-back');
@@ -3443,9 +3397,9 @@ document.addEventListener('visibilitychange', ()=>{
     updateTimerDisplay();
     updateTimerBtn();
   }
-  // title flash when hidden and timer running — respect titleFlash setting
+  // title flash when hidden and timer running
   if(document.hidden && S.timer.phase === 'running'){
-    if(S.settings.titleFlash !== false) startTitleFlash();
+    startTitleFlash();
   }else{
     stopTitleFlash();
   }
