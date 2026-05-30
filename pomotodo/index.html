@@ -35,7 +35,7 @@
       <button class="mode-btn" data-mode="longBreak">🌿 长休息</button>
     </div>
     <div class="timer-ring-wrap" id="timer-ring-wrap">
-      <svg class="timer-ring" viewBox="0 0 200 200"><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88"/></svg>
+      <svg class="timer-ring" viewBox="0 0 200 200"><defs><linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e74c3c"/><stop offset="100%" style="stop-color:#c0392b"/></linearGradient><linearGradient id="timerGradientBreak" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#2ecc71"/><stop offset="100%" style="stop-color:#27ae60"/></linearGradient></defs><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88"/></svg>
       <div class="timer-center"><span class="timer-digits" id="timer-digits">25:00</span><span class="timer-cycle" id="timer-cycle">#1</span></div>
     </div>
     <div class="timer-actions">
@@ -58,8 +58,8 @@
       <div class="daily-goal-celebration" id="daily-goal-celebration" hidden>🎉 今日目标达成！</div>
       <div class="streak-mini" id="streak-mini" hidden>🔥 连续专注 <strong id="streak-mini-num">0</strong> 天</div>
     </div>
-    <div class="momentum-feed-wrap"><h4 class="feed-heading">📰 成就动态</h4><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div>
-    <div class="done-today"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3><ul class="done-list" id="done-list"></ul></div>
+    <div class="momentum-feed-wrap collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h4 class="feed-heading">📰 成就动态</h4></div><div class="collapsible-body collapsed"><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div></div>
+    <div class="done-today collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3></div><div class="collapsible-body collapsed"><ul class="done-list" id="done-list"></ul></div></div>
   </section>
   <div class="smart-suggest-bar" id="smart-suggest-bar">
       <span class="smart-suggest-icon">💡</span>
@@ -346,9 +346,21 @@
 </div>
 <div class="welcome-back" id="welcome-back" hidden>👋 欢迎回来，继续专注！</div>
 <div class="streak-crisis-banner" id="streak-crisis-banner" hidden>⚠️ 你的连续专注记录面临中断风险！今天至少完成1个番茄来保持 🔥<strong id="streak-crisis-num">0</strong> 天连续</div>
+<!-- LOCKDOWN OVERLAY -->
+<div class="lockdown-overlay" id="lockdown-overlay" hidden>
+  <div class="lockdown-container">
+    <div class="lockdown-timer-wrap">
+      <svg class="lockdown-ring" viewBox="0 0 200 200"><circle class="ld-ring-track" cx="100" cy="100" r="88"/><circle class="ld-ring-fill" cx="100" cy="100" r="88"/></svg>
+      <div class="lockdown-center"><span class="lockdown-digits" id="lockdown-digits">25:00</span><span class="lockdown-label">专注中</span></div>
+    </div>
+    <div class="lockdown-task" id="lockdown-task"></div>
+    <div class="lockdown-message" id="lockdown-message">远离手机，保持专注</div>
+    <div class="lockdown-warning">⚠️ 放弃专注将损失本次番茄的10分</div>
+  </div>
+</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=7"></script>
+<script src="./app.js?v=8"></script>
 </body>
 </html>

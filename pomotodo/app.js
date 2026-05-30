@@ -25,7 +25,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5)) return d;
+      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5 || d.version === 6)) return d;
     }
   }catch(e){}
   return freshState();
@@ -33,7 +33,7 @@ function loadState(){
 
 function freshState(){
   return {
-    version:5,
+    version:6,
     settings:{...defaultSettings},
     tasks:[],
     projects:[],
@@ -598,33 +598,92 @@ $('ip-action-btn').onclick = ()=>{
   toast('请逐个厘清收件箱中的任务');
 };
 
-/* Focus Lockdown Mode */
+/* Focus Lockdown Mode - COMPLETE */
 let focusLockdown = false;
+let lockdownSyncInterval = null;
+
+function enterLockdown(){
+  focusLockdown = true;
+  $('lockdown-overlay').hidden = false;
+  updateLockdownDisplay();
+  lockdownSyncInterval = setInterval(updateLockdownDisplay, 200);
+  document.body.style.overflow = 'hidden';
+}
+
+function exitLockdown(){
+  focusLockdown = false;
+  $('lockdown-overlay').hidden = true;
+  if(lockdownSyncInterval){ clearInterval(lockdownSyncInterval); lockdownSyncInterval = null; }
+  document.body.style.overflow = '';
+  const wrap = qs('.work-view');
+  if(wrap) wrap.classList.remove('focus-lockdown');
+  $('btn-focus-toggle').classList.remove('active');
+}
+
+function updateLockdownDisplay(){
+  const digits = $('lockdown-digits');
+  const taskEl = $('lockdown-task');
+  const msgEl = $('lockdown-message');
+  if(!digits) return;
+  
+  // sync timer digits
+  digits.textContent = fmtTime(S.timer.remaining);
+  
+  // sync ring
+  const pct = S.timer.total > 0 ? S.timer.remaining/S.timer.total : 0;
+  const offset = 553.1 * (1-pct);
+  const fill = qs('.ld-ring-fill');
+  if(fill) fill.style.strokeDashoffset = offset;
+  
+  // show task name
+  if(S.timer.currentTaskId){
+    const t = findTask(S.timer.currentTaskId);
+    if(t && taskEl) taskEl.textContent = t.title;
+  }else if(taskEl){
+    taskEl.textContent = '自由专注';
+  }
+  
+  // motivational messages that rotate
+  const msgs = ['远离手机，保持专注','你正在变得更好','每一秒都在积累','坚持住，你比大多数人强','专注是通往卓越的桥梁','现在的努力，未来的你会感谢'];
+  if(msgEl) msgEl.textContent = msgs[Math.floor(Date.now()/10000) % msgs.length];
+}
+
 $('btn-focus-toggle').onclick = ()=>{
-  if(S.timer.phase !== 'running' && S.timer.mode !== 'work'){
-    // regular focus toggle (old behavior)
-    focusModeFull = !focusModeFull;
-    $('btn-focus-toggle').classList.toggle('active', focusModeFull);
-    const wrap = qs('.work-view');
-    if(wrap){
-      wrap.classList.toggle('focus-mode-full', focusModeFull);
-      wrap.classList.remove('focus-lockdown');
+  if(focusLockdown){
+    // confirm exit
+    if(S.timer.phase === 'running' && S.settings.interruptConfirm && S.timer.mode==='work'){
+      const elapsed = S.timer.total - S.timer.remaining;
+      $('abandon-minutes').textContent = Math.round(elapsed/60);
+      $('modal-abandon-confirm').hidden = false;
+      // modify abandon confirm to also exit lockdown
+      const origHandler = $('abandon-confirm').onclick;
+      $('abandon-confirm').onclick = ()=>{
+        $('abandon-confirm').onclick = origHandler;
+        exitLockdown();
+        abandonPomo();
+      };
+      $('abandon-continue').onclick = ()=>{
+        $('abandon-continue').onclick = ()=>{ $('modal-abandon-confirm').hidden = true; };
+        $('modal-abandon-confirm').hidden = true;
+      };
+      return;
     }
-    toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
+    exitLockdown();
+    toast('🔓 已解锁');
     return;
   }
-  // If timer is running and lockdown setting is on, use lockdown
+  
   if(S.settings.lockdown && S.timer.mode==='work'){
-    focusLockdown = !focusLockdown;
-    const wrap = qs('.work-view');
-    if(wrap){
-      wrap.classList.toggle('focus-lockdown', focusLockdown);
-      wrap.classList.remove('focus-mode-full');
+    if(S.timer.phase === 'running'){
+      enterLockdown();
+      toast('🔒 锁屏模式已开启');
+    }else{
+      // turn on lockdown mode for next timer
       focusModeFull = false;
-      $('btn-focus-toggle').classList.toggle('active', focusLockdown);
+      $('btn-focus-toggle').classList.add('active');
+      toast('🔒 锁屏已就绪，开始专注时自动激活');
     }
-    toast(focusLockdown ? '🔒 锁屏模式！所有干扰已屏蔽' : '🔓 已解锁');
-  } else {
+  }else{
     focusModeFull = !focusModeFull;
     $('btn-focus-toggle').classList.toggle('active', focusModeFull);
     const wrap = qs('.work-view');
@@ -686,6 +745,10 @@ function startTimer(){
   }
   requestWakeLock();
   saveState();
+  // auto-enter lockdown if setting is on and work mode
+  if(S.settings.lockdown && S.timer.mode==='work' && $('btn-focus-toggle').classList.contains('active')){
+    enterLockdown();
+  }
 }
 
 function pauseTimer(){
@@ -758,6 +821,7 @@ function updateTimerModeClass(){
   const wrap = $('timer-ring-wrap');
   if(!wrap) return;
   wrap.classList.toggle('timer-mode-break', S.timer.mode !== 'work');
+  wrap.classList.toggle('timer-active', S.timer.phase === 'running' && S.timer.mode === 'work');
 }
 
 function updateModeBtns(){
@@ -779,7 +843,7 @@ function updateTimerBtn(){
     btn.textContent = '▶ 下一个番茄';
     btn.className = 'btn-timer primary';
   }else{
-    const label = S.timer.mode==='work' ? '开始专注' : S.timer.mode==='shortBreak' ? '开始短休息' : '开始长休息';
+    const label = S.timer.mode==='work' ? '▶ 就现在，开始！' : S.timer.mode==='shortBreak' ? '开始短休息' : '开始长休息';
     btn.textContent = '▶ '+label;
     btn.className = 'btn-timer primary';
   }
@@ -873,6 +937,7 @@ function calcStreak(){
 function onTimerComplete(){
   S.timer.phase='finished';
   stopTimer();
+  if(focusLockdown) exitLockdown();
   updateTimerBtn();
 
   if(S.timer.mode==='work'){
@@ -2038,6 +2103,16 @@ $('modal-task-select').onclick = e=>{
 $('btn-start').onclick = ()=>{
   if(S.timer.phase==='idle'){
     if(S.timer.mode==='work'){
+      // Anti-procrastination: check if user is hesitating
+      const today = todayStr();
+      const todayData = S.pomodoroHistory[today] || {count:0};
+      const hour = new Date().getHours();
+      
+      // If it's late and goal not reached, show urgency
+      if(todayData.count === 0 && hour >= 16){
+        toast('⏰ 今天还没开始！每拖延一分钟就少一分钟！', 4000);
+      }
+      
       // always show task selector when starting a new work session
       const hasTasks = S.tasks.some(t=>t.area==='next' && !t.completed);
       if(hasTasks){
@@ -3146,6 +3221,7 @@ document.addEventListener('keydown', e=>{
       }
       break;
     case 'Escape':
+      if(focusLockdown){ exitLockdown(); }
       closeDetail();
       $('modal-complete').hidden = true;
       $('modal-abandon-confirm').hidden = true;
@@ -3200,6 +3276,12 @@ function migrateData(){
     S._todayExceededYesterday = S._todayExceededYesterday||false;
     S._prevLevel = S._prevLevel||1;
     S.version=5;
+    saveState();
+  }
+  // v5 → v6 migration
+  if(S.version===5){
+    // No data structure changes, just version bump
+    S.version=6;
     saveState();
   }
 }
@@ -3271,6 +3353,11 @@ function initApp(){
   updateModeBtns();
   updateActiveTaskDisplay();
   updateDailyGoal();
+  // Hide micro-pomo if user already has pomos today
+  const todayForMicro = S.pomodoroHistory[todayStr()];
+  if(todayForMicro && todayForMicro.count > 0){
+    $('micro-pomo-bar').style.display = 'none';
+  }
   // V7: inbox pressure
   updateInboxPressure();
 
