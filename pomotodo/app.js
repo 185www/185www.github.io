@@ -275,7 +275,6 @@ function checkMilestones(streak){
   if(!S.milestones) S.milestones=[];
   MILESTONE_STREAKS.forEach(s=>{
     if(streak===s){
-      const key = 'streak_'+s;
       if(!S.milestones.find(m=>m.msg===MILESTONE_MSGS[s])){
         S.score = (S.score||0) + 200;
         addMilestone(MILESTONE_MSGS[s]);
@@ -389,11 +388,11 @@ $('btn-micro-pomo').onclick = ()=>{
   }
   microPomoRemaining = MICRO_POMO_DURATION;
   $('btn-micro-pomo').textContent = '⏹ 停止';
-  $('btn-micro-pomo').classList.add('running');
-  $('micro-pomo-hint').textContent = '5分钟倒计时中...降低门槛，先动起来！';
-  if(timerWorker){
-    timerWorker.postMessage({type:'start', remaining:microPomoRemaining, total:MICRO_POMO_DURATION});
-  }
+ $('btn-micro-pomo').classList.add('running');
+ $('micro-pomo-hint').textContent = '5分钟倒计时中...降低门槛，先动起来！';
+  // BUG FIX: Do NOT send to shared timerWorker — micro pomo has its own setInterval
+  // Sending to the shared worker would destroy the main timer's state
+
   const start = Date.now();
   microPomoTimer = setInterval(()=>{
     microPomoRemaining = Math.max(0, MICRO_POMO_DURATION - Math.floor((Date.now()-start)/1000));
@@ -416,7 +415,7 @@ function stopMicroPomo(){
   $('btn-micro-pomo').textContent = '5分钟快速开始';
   $('btn-micro-pomo').classList.remove('running');
   $('micro-pomo-hint').textContent = '降低门槛，先动起来';
-  if(timerWorker) timerWorker.postMessage({type:'stop'});
+  // BUG FIX: Do NOT stop the shared timerWorker — micro pomo is independent
 }
 
 /* Smart Task Suggestion Engine */
@@ -429,7 +428,7 @@ function generateSmartSuggestion(){
   const today = todayStr();
   const hour = now.getHours();
   const todayData = S.pomodoroHistory[today] || {count:0};
-  const goal = S.settings.dailyGoal || 6;
+  const goal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
   
   // Rule 1: If daily goal not reached and it's getting late
   if(todayData.count < goal && hour >= 20){
@@ -766,7 +765,8 @@ function activateSleepMode(){
     }
     
     // Loss framing
-    const minsAwake = Math.floor((now.getHours() * 60 + now.getMinutes()) - (23 * 60)) || 0;
+    const [bedH2, bedM2] = getEffectiveBedtime().split(':').map(Number);
+    const minsAwake = Math.floor((now.getHours() * 60 + now.getMinutes()) - (bedH2 * 60 + bedM2)) || 0;
     if(minsAwake > 0){
       reasonHtml += '<p>已经超过就寝时间 <strong>' + minsAwake + '</strong> 分钟，明天注意力可能下降约 <strong>' + Math.round(minsAwake * 2) + '</strong> 分钟</p>';
     }
@@ -1207,6 +1207,14 @@ qsa('.morning-opt-btn').forEach(btn=>{
     }
     
     saveState();
+    // Auto-restore daily goal when sleep quality is good or ok
+    if(quality === 'good' || quality === 'ok'){
+      if(S._goalReducedBySleep){
+        S.settings.dailyGoal = DEFAULT_DAILY_GOAL;
+        S._goalReducedBySleep = false;
+        saveState();
+      }
+    }
   };
 });
 
@@ -1220,7 +1228,7 @@ $('morning-done').onclick = ()=>{
 function calculateDailyGrade(){
   const today = todayStr();
   const data = S.pomodoroHistory[today] || {count:0,focusMins:0};
-  const goal = S.settings.dailyGoal || 6;
+  const goal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
   const count = data.count;
   
   let grade, letter, desc;
@@ -1374,7 +1382,7 @@ function renderCalendarMonthlySummary(){
   const avg = activeDays > 0 ? (monthTotal/activeDays).toFixed(1) : '0';
   
   // Monthly grade
-  const dailyGoal = S.settings.dailyGoal || 6;
+  const dailyGoal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
   const expectedDays = daysInMonth; // rough
   const expectedTotal = Math.round(dailyGoal * expectedDays * 0.6); // 60% target
   let mGrade = 'F';
@@ -1753,7 +1761,7 @@ function updateDailyGoal(){
   if(!wrap) return;
   const today = todayStr();
   const data = S.pomodoroHistory[today] || {count:0};
-  const goal = S.settings.dailyGoal || 6;
+  const goal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
   const count = data.count || 0;
   const fill = $('daily-goal-fill');
   const text = $('daily-goal-text');
@@ -1883,7 +1891,7 @@ function recordPomodoro(){
   addScore(10);
 
   const count = S.pomodoroHistory[today].count;
-  const goal = S.settings.dailyGoal || 6;
+  const goal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
 
   // MDA: First tomato of today
   if(prevCount === 0 && count === 1){
@@ -1938,15 +1946,16 @@ function showCompletionModal(){
   if(levelProgress){
     const info = getLevelInfo(S.score||0);
     const pct = info.max===Infinity ? 100 : Math.min(100, ((S.score||0)-info.min)/(info.max-info.min)*100);
+    const nextLevelPoints = info.max===Infinity ? 0 : info.max - (S.score||0);
     levelProgress.innerHTML = '<div class="modal-level-bar"><div class="modal-level-fill" style="width:'+pct+'%"></div></div>' +
-      '<span class="modal-level-text">距离 Lv.'+(info.level+1)+' 还需 '+Math.max(0,Math.min(info.max-(S.score||0), info.max===Infinity?0:info.max-(S.score||0)))+' 分</span>';
+      '<span class="modal-level-text">距离 Lv.'+(info.level+1)+' 还需 '+Math.max(0, nextLevelPoints)+' 分</span>';
     levelProgress.hidden = false;
   }
 
   // MDA: Check if goal was just reached
   const today = todayStr();
   const data = S.pomodoroHistory[today] || {count:0};
-  const goal = S.settings.dailyGoal || 6;
+  const goal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
   if(data.count === goal){
     const goalMsg = $('modal-goal-reached');
     if(goalMsg){
@@ -2209,11 +2218,9 @@ function parseQuickInput(str){
     return m;
   }).trim();
 
-  // #tag
-  title.replace(/#(\S+)/g, (m,tag)=>{
-    tags.push(tag);
-    return '';
-  });
+  // BUG FIX: Extract tags and remove them in one pass
+  const tagMatches = title.match(/#(\S+)/g);
+  if(tagMatches) tagMatches.forEach(m => tags.push(m.slice(1)));
   title = title.replace(/#\S+/g,'').trim();
 
   return {title, tags, priority, due};
@@ -2337,6 +2344,8 @@ function updateAreaCounts(){
         const p = findTask(t.parentId);
         if(p) return false;
       }
+      // BUG FIX: 'done' area should count completed tasks, others count non-completed
+      if(a === 'done') return t.area===a;
       return t.area===a && !t.completed;
     }).length;
     const el = $('cnt-'+a);
@@ -2659,8 +2668,11 @@ function addFromInput(){
 
   const mergedTags = [...new Set([...parsed.tags, ...qiTags])];
 
+  // BUG FIX: Use current active GTD tab as default area (not always inbox)
+  const activeTab = qs('.gtd-tab.active');
+  const defaultArea = activeTab ? activeTab.dataset.area : 'inbox';
   const task = createTask(parsed.title, {
-    area: 'inbox',
+    area: defaultArea,
     priority: prio,
     tags: mergedTags,
     due: qiDue.value ? new Date(qiDue.value).toISOString() : parsed.due ? parsed.due.toISOString() : null,
@@ -2668,7 +2680,8 @@ function addFromInput(){
   });
 
   input.value = '';
-  toast('已添加到收件箱');
+  const areaNames = {inbox:'收件箱', next:'行动', projects:'项目', waiting:'等待', someday:'将来也许', reference:'参考', done:'已完成'};
+  toast('已添加到' + (areaNames[defaultArea] || '收件箱'));
   renderTasks();
   updateDoneToday();
   updateAllViews();
@@ -3242,22 +3255,24 @@ $('dl-start').onclick = ()=>{
 
 /* ============= DAILY REVIEW ============= */
 function showDailyReview(){
-  const today = todayStr();
-  const data = S.pomodoroHistory[today] || {count:0,focusMins:0};
-  $('dr-pomo').textContent = data.count;
-  $('dr-mins').textContent = Math.round(data.focusMins);
-
-  // compare with yesterday
+  // BUG FIX: Show YESTERDAY's data (this is triggered as 'yesterday's review' at start of new day)
   const y = new Date(); y.setDate(y.getDate()-1);
   const yStr = dateStr(y);
-  const yData = S.pomodoroHistory[yStr];
+  const data = S.pomodoroHistory[yStr] || {count:0,focusMins:0};
+ $('dr-pomo').textContent = data.count;
+  $('dr-mins').textContent = Math.round(data.focusMins);
+  $('dr-title').textContent = '昨日表现';
+  // compare with day before yesterday
+  const y2 = new Date(); y2.setDate(y2.getDate()-2);
+  const y2Str = dateStr(y2);
+  const yData = S.pomodoroHistory[y2Str];
   if(yData){
     const diff = data.count - yData.count;
     const diffText = (diff>=0?'+':'')+diff;
     $('dr-diff-pomo').textContent = diffText;
-    if(diff > 0) $('dr-compare').innerHTML = '<p>🔥 比昨天多了 '+diff+' 个！</p>';
-    else if(diff === 0) $('dr-compare').innerHTML = '<p>📊 和昨天持平</p>';
-    else $('dr-compare').innerHTML = '<p>📊 比昨日 '+diffText+' 个番茄</p>';
+    if(diff > 0) $('dr-compare').innerHTML = '<p>🔥 比前天多了 '+diff+' 个！</p>';
+    else if(diff === 0) $('dr-compare').innerHTML = '<p>📊 和前天持平</p>';
+    else $('dr-compare').innerHTML = '<p>📊 比前天 '+diffText+' 个番茄</p>';
     $('dr-compare').hidden = false;
   }else{
     $('dr-compare').hidden = true;
@@ -3270,36 +3285,36 @@ function showDailyReview(){
     const scoreEarned = data.count * 10;
     const goalBonus = (data.count >= (S.settings.dailyGoal||6)) ? 50 : 0;
     const totalEarned = scoreEarned + goalBonus;
-    drScore.innerHTML = '<div class="dr-stat-row"><span>今日得分</span><strong class="dr-score-val">+'+totalEarned+'分</strong></div>' +
+    drScore.innerHTML = '<div class="dr-stat-row"><span>昨日得分</span><strong class="dr-score-val">+'+totalEarned+'分</strong></div>' +
       '<div class="dr-stat-row"><span>累计总分</span><strong>'+Math.max(0,S.score||0)+'分</strong></div>' +
       '<div class="dr-stat-row"><span>当前等级</span><strong>Lv.'+info.level+' '+info.title+'</strong></div>';
     if(yData){
       const yScoreEarned = yData.count * 10 + ((yData.count >= (S.settings.dailyGoal||6)) ? 50 : 0);
       const scoreDiff = totalEarned - yScoreEarned;
       const diffSign = scoreDiff >= 0 ? '+' : '';
-      drScore.innerHTML += '<div class="dr-stat-row dr-compare-score"><span>与昨日对比</span><strong>'+(scoreDiff>=0?'🔥':'')+' '+diffSign+scoreDiff+'分</strong></div>';
+      drScore.innerHTML += '<div class="dr-stat-row dr-compare-score"><span>与前天对比</span><strong>'+(scoreDiff>=0?'🔥':'')+' '+diffSign+scoreDiff+'分</strong></div>';
     }
     drScore.hidden = false;
   }
 
   // goal completion rate
-  const goal = S.settings.dailyGoal || 6;
+  const goal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
   const rate = Math.min(100, Math.round((data.count/goal)*100));
 
-  // MDA: encouraging message based on performance
+  // BUG FIX: Updated copy to say 'yesterday' since we now show yesterday's data
   const unfinished = S.tasks.filter(t=>!t.completed && (t.area==='next'||t.area==='inbox'));
-  let suggestion = '今日完成 '+data.count+'/'+goal+' 个番茄，目标完成率 '+rate+'%。';
+  let suggestion = '昨日完成 '+data.count+'/'+goal+' 个番茄，目标完成率 '+rate+'%。';
   if(data.count >= goal){
-    suggestion = '🎉 太棒了！今日超额完成目标！你获得了 '+(data.count*10+50)+' 分，继续保持！';
+    suggestion = '🎉 太棒了！昨日超额完成目标！继续保持这个势头！';
   } else if(data.count >= goal/2){
-    suggestion = '💪 不错！完成了目标的一半以上，明天争取达标！';
+    suggestion = '💪 不错！完成了目标的一半以上，今天争取达标！';
   } else if(data.count > 0){
-    suggestion = '🌱 今天做了 '+data.count+' 个番茄，每个番茄都是进步。明天加油！';
+    suggestion = '🌱 昨天做了 '+data.count+' 个番茄，每个番茄都是进步。今天继续加油！';
   } else {
-    suggestion = '🌅 今天还没开始，没关系，明天是新的一天！';
+    suggestion = '🌅 昨天还没有番茄记录，没关系，今天重新开始！';
   }
   if(unfinished.length > 0 && data.count < goal){
-    suggestion += ' 明天可以优先处理 "' + unfinished[0].title + '" 等 ' + unfinished.length + ' 个待办。';
+    suggestion += ' 今天可以优先处理 "' + unfinished[0].title + '" 等 ' + unfinished.length + ' 个待办。';
   } else if(unfinished.length === 0){
     suggestion += ' 所有任务都完成了，好好休息！';
   }
@@ -3409,7 +3424,7 @@ function renderMonthGrid(){
     if(ds===today) cell.classList.add('today');
     cell.textContent = d;
     // V7: heatmap intensity
-    const goal = S.settings.dailyGoal || 6;
+    const goal = S.settings.dailyGoal || DEFAULT_DAILY_GOAL;
     const intensity = getCalDayIntensity(count, goal);
     if(intensity > 0){
       cell.classList.add('cal-intensity-'+intensity);
@@ -3482,6 +3497,7 @@ function selectDate(dt){
 }
 
 function renderDayView(){
+  $('cal-grid-wrap').style.display = 'none';
   $('cal-day-date-label').textContent = calViewDate.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
   const timeline = $('cal-dayview-timeline');
   timeline.innerHTML = '';

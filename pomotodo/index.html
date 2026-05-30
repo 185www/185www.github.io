@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
-<meta name="theme-color" content="#ff4757"/>
+<meta name="theme-color" content="#e74c3c"/>
 <meta name="description" content="Pomotodo 高考版 — 专为高考考生定制的专注力管理系统"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
@@ -111,6 +111,7 @@
 </style>
 </head>
 <body data-theme="light">
+<noscript><div style="text-align:center;padding:40px;font-size:18px">⚠️ Pomotodo 需要 JavaScript 才能运行。请在浏览器设置中启用 JavaScript。</div></noscript>
 <header class="app-header">
   <h1 class="app-logo">🍅 Pomotodo <span class="gk-badge">高考版</span></h1>
   <nav class="header-nav">
@@ -161,7 +162,7 @@
     </div>
     <div class="score-display" id="score-display"><span class="score-num">0</span><span class="score-label">分</span><span class="level-badge">Lv.1 入门学徒</span></div>
     <div class="daily-goal-bar-wrap" id="daily-goal-bar-wrap">
-      <div class="daily-goal-header"><span>🍅 今日目标</span><span class="daily-goal-text" id="daily-goal-text">0 / 6</span></div>
+      <div class="daily-goal-header"><span>🍅 今日目标</span><span class="daily-goal-text" id="daily-goal-text">0 / 8</span></div>
       <div class="daily-goal-track"><div class="daily-goal-fill" id="daily-goal-fill"></div><div class="yesterday-ghost-line" id="yesterday-ghost-line" hidden></div></div>
       <div class="yesterday-hint" id="yesterday-hint" hidden></div>
       <div class="daily-goal-celebration" id="daily-goal-celebration" hidden>🎉 今日目标达成！</div>
@@ -329,7 +330,7 @@
     <div class="sett-row"><label for="opt-long">长休息 (分钟)</label><input type="number" id="opt-long" class="sett-num" min="1" max="60" value="15"/></div>
     <div class="sett-row"><label for="opt-interval">长休息间隔</label><input type="number" id="opt-interval" class="sett-num" min="2" max="10" value="4"/></div>
     <div class="sett-row"><span>自动开始休息</span><label class="sw"><input type="checkbox" id="opt-auto-break" checked/><span class="sw-track"></span></label></div>
-    <div class="sett-row"><label for="opt-daily-goal">每日目标 (🍅)</label><input type="number" id="opt-daily-goal" class="sett-num" min="1" max="50" value="6"/></div>
+    <div class="sett-row"><label for="opt-daily-goal">每日目标 (🍅)</label><input type="number" id="opt-daily-goal" class="sett-num" min="1" max="50" value="8"/></div>
     <div class="sett-row"><span>自动开始专注</span><label class="sw"><input type="checkbox" id="opt-auto-work"/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>休息引导</span><label class="sw"><input type="checkbox" id="opt-rest-guide" checked/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>专注模式</span><label class="sw"><input type="checkbox" id="opt-focus-mode" checked/><span class="sw-track"></span></label></div>
