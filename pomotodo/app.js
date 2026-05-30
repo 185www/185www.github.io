@@ -423,6 +423,38 @@ function generateSmartSuggestion(){
   }
 }
 
+/* ============= V10: MOTIVATIONAL ENGINE ============= */
+const MOTIVATIONAL_QUOTES = [
+  '准备好了吗？开始你的第一个番茄！',
+  '每一次专注，都是在为未来投资',
+  '番茄钟的每一秒，都在缩短你和目标的距离',
+  '不怕慢，只怕停。现在就开始！',
+  '今天的坚持，是明天的骄傲',
+  '高考倒计时中...每一分钟都珍贵',
+  '专注25分钟，你比昨天更强',
+  '打败拖延，从这一个番茄开始',
+  '你不是在浪费时间，你是在创造未来',
+  '现在不拼，更待何时？',
+  '把手机放下，把梦想拿起',
+  '番茄+1 = 离梦想更近一步',
+];
+
+let quoteIndex = 0;
+function rotateMotivationalQuote(){
+  const el = $('mq-text');
+  if(!el) return;
+  quoteIndex = (quoteIndex + 1) % MOTIVATIONAL_QUOTES.length;
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(8px)';
+  setTimeout(()=>{
+    el.textContent = MOTIVATIONAL_QUOTES[quoteIndex];
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }, 300);
+}
+// Rotate quote every 30 seconds
+setInterval(rotateMotivationalQuote, 30000);
+
 /* Daily Performance Grade System */
 function calculateDailyGrade(){
   const today = todayStr();
@@ -631,12 +663,63 @@ $('ip-action-btn').onclick = ()=>{
 let focusLockdown = false;
 let lockdownSyncInterval = null;
 
+function initLockdownParticles(){
+  const canvas = $('lockdown-particles');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const particles = [];
+  for(let i=0;i<30;i++){
+    particles.push({
+      x:Math.random()*canvas.width,
+      y:Math.random()*canvas.height,
+      vx:(Math.random()-0.5)*0.5,
+      vy:(Math.random()-0.5)*0.5,
+      r:Math.random()*3+1,
+      a:Math.random()*0.5+0.1,
+    });
+  }
+  function animate(){
+    if(!focusLockdown) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>canvas.width) p.vx*=-1;
+      if(p.y<0||p.y>canvas.height) p.vy*=-1;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(231,76,60,'+p.a+')';
+      ctx.fill();
+    });
+    // Draw connections
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const dx=particles[i].x-particles[j].x;
+        const dy=particles[i].y-particles[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<150){
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle='rgba(231,76,60,'+(0.15*(1-dist/150))+')';
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
 function enterLockdown(){
   focusLockdown = true;
   $('lockdown-overlay').hidden = false;
   updateLockdownDisplay();
   lockdownSyncInterval = setInterval(updateLockdownDisplay, 200);
   document.body.style.overflow = 'hidden';
+  // Particle effect for lockdown
+  initLockdownParticles();
 }
 
 function exitLockdown(){
@@ -754,6 +837,12 @@ function startTimer(){
     S.timer.total = S.settings[S.timer.mode]*60;
   }
   S.timer.phase = 'running';
+  // Battle mode indicator
+  const bi = $('battle-indicator');
+  if(bi && S.timer.mode === 'work'){
+    bi.hidden = false;
+    $('battle-text').textContent = '专注中 #'+S.timer.currentCycle;
+  }
   updateTimerModeClass();
   updateTimerDisplay();
   updateTimerBtn();
@@ -819,6 +908,8 @@ function stopTimer(){
     currentTimerId = null;
   }
   releaseWakeLock();
+  const bi = $('battle-indicator');
+  if(bi) bi.hidden = true;
 }
 
 function setTimerMode(mode){
@@ -1304,6 +1395,12 @@ function toggleTaskComplete(id){
   t.completed = !t.completed;
   t.completedAt = t.completed ? isoNow() : null;
   if(t.completed && t.area!=='done') t.area='done';
+  // Animate the task item
+  const taskEl = qs('.task-item[data-id="'+id+'"]');
+  if(taskEl){
+    taskEl.classList.add('task-completing');
+    setTimeout(()=>taskEl.classList.remove('task-completing'), 500);
+  }
   saveState();
   renderTasks();
   updateDoneToday();
@@ -1418,6 +1515,7 @@ function renderTasks(){
     const item = document.createElement('li');
     item.className = 'task-item' + (t.completed ? ' completed' : '');
     item.dataset.id = t.id;
+    item.dataset.prio = t.priority || 4;
 
     const hasChildren = t.subtasks && t.subtasks.length > 0;
 
@@ -2263,24 +2361,30 @@ $('rest-guide-overlay').onclick = e=>{
 function showCelebration(){
   if(!S.settings.celebration) return;
   const overlay = $('celebration-overlay');
+  if(!overlay) return;
   overlay.hidden = false;
   const container = qs('.confetti-container');
+  if(!container) return;
   container.innerHTML = '';
-  const colors = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#e91e63'];
-  for(let i=0;i<80;i++){
+  const colors = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6','#e91e63','#ff6b6b'];
+  const shapes = ['','star','circle','diamond'];
+  for(let i=0;i<60;i++){
     const c = document.createElement('div');
-    c.className='confetti';
+    c.className='confetti ' + shapes[Math.floor(Math.random()*shapes.length)];
     c.style.left=Math.random()*100+'%';
     c.style.background=colors[Math.floor(Math.random()*colors.length)];
-    c.style.width=(6+Math.random()*8)+'px';
-    c.style.height=(6+Math.random()*8)+'px';
+    c.style.width=(6+Math.random()*10)+'px';
+    c.style.height=(6+Math.random()*10)+'px';
     c.style.animationDuration=(2+Math.random()*3)+'s';
     c.style.animationDelay=Math.random()*1.5+'s';
     container.appendChild(c);
   }
-  setTimeout(()=>{
-    overlay.hidden = true;
-  }, 4000);
+  // Screen flash effect
+  const flash = document.createElement('div');
+  flash.className = 'celebration-flash';
+  overlay.appendChild(flash);
+  setTimeout(()=>{ flash.remove(); }, 600);
+  setTimeout(()=>{ overlay.hidden=true; }, 4000);
 }
 
 /* ============= DAILY LAUNCH ============= */
