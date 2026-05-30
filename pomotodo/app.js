@@ -1064,6 +1064,9 @@ function onTimerComplete(){
     recordPomodoro();
     playSound('complete', ()=>{
       if(S.settings.celebration) showCelebration();
+    if(window._v11_attackBoss) window._v11_attackBoss();
+    if(window._v11_checkAchievements) window._v11_checkAchievements();
+    if(window._v11_renderSubjectStats) window._v11_renderSubjectStats();
       showCompletionModal();
       requestNotify('🍅 番茄完成！','专注完成，休息一下吧');
     });
@@ -3631,5 +3634,375 @@ document.addEventListener('visibilitychange', ()=>{
 });
 // also save on unload
 window.addEventListener('pagehide', ()=>{ saveState(); });
+
+/* ============= V11: GAOKAO COUNTDOWN ============= */
+const GAOKAO_DATE = new Date('2026-06-07T09:00:00+08:00'); // 2026高考时间
+const GAOKAO_MOTTOS = [
+  '乾坤未定，你我皆是黑马',
+  '不苦不累，高三无味；不拼不搏，高三白活',
+  '今天多一份拼搏，明天多几份欢笑',
+  '拼一个春夏秋冬，换一生无怨无悔',
+  '一分耕耘，一分收获，未必；九分耕耘，会有收获，一定',
+  '静下来，铸我实力；拼上去，亮我风采',
+  '人生没有彩排，每一天都是现场直播',
+  '不为失败找理由，只为成功找方法',
+  '眼泪不是答案，拼搏才是选择',
+  '每一次努力都是最优的亲近，每一滴汗水都是成长的滋润',
+];
+
+function updateGaokaoCountdown(){
+  const now = Date.now();
+  const diff = GAOKAO_DATE.getTime() - now;
+  if(diff <= 0){
+    $('gaokao-days').textContent = '0';
+    $('gaokao-hours').textContent = '0';
+    $('gaokao-mins').textContent = '0';
+    $('gaokao-motto').textContent = '高考加油！你准备好了！';
+    return;
+  }
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  $('gaokao-days').textContent = days;
+  $('gaokao-hours').textContent = String(hours).padStart(2,'0');
+  $('gaokao-mins').textContent = String(mins).padStart(2,'0');
+  // Rotate motto daily
+  const dayOfYear = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
+  $('gaokao-motto').textContent = GAOKAO_MOTTOS[dayOfYear % GAOKAO_MOTTOS.length];
+}
+updateGaokaoCountdown();
+setInterval(updateGaokaoCountdown, 60000);
+
+/* ============= V11: EXTENDED MOTIVATIONAL QUOTES (50+) ============= */
+const V11_QUOTES = [
+  '准备好了吗？开始你的第一个番茄！',
+  '每一次专注，都是在为未来投资',
+  '番茄钟的每一秒，都在缩短你和目标的距离',
+  '不怕慢，只怕停。现在就开始！',
+  '今天的坚持，是明天的骄傲',
+  '高考倒计时中...每一分钟都珍贵',
+  '专注25分钟，你比昨天更强',
+  '打败拖延，从这一个番茄开始',
+  '你不是在浪费时间，你是在创造未来',
+  '现在不拼，更待何时？',
+  '把手机放下，把梦想拿起',
+  '番茄+1 = 离梦想更近一步',
+  '星光不问赶路人，时光不负有心人',
+  '你现在的努力，是未来的你回头看时的感动',
+  '与其羡慕别人，不如加快脚步',
+  '成功的秘诀在于坚持到底',
+  '每一个不曾起舞的日子，都是对生命的辜负',
+  '哪怕只有1%的希望，也要付出100%的努力',
+  '现在流的汗，是以后笑的泪',
+  '高考不过是一次考试，人生才是真正的战场',
+  '你比你想象的更强大',
+  '行动是治愈恐惧的良药',
+  '别让明天的你，后悔今天的自己',
+  '每一次想放弃的时候，想想为什么开始',
+  '坚持的意义，不在于结果，而在于过程',
+  '你的努力，终将成就无可替代的自己',
+  '没有什么不可能，只要你足够想',
+  '与其担心未来，不如现在努力',
+  '把每一天当作最后一天来过',
+  '优秀不是一种行为，而是一种习惯',
+  '天道酬勤，力耕不欺',
+  '越努力，越幸运',
+  '知识改变命运，努力改变人生',
+  '今天的辛苦，是明天的财富',
+  '没有等出来的辉煌，只有拼出来的精彩',
+  '你的竞争对手正在学习，你还在犹豫？',
+  '高考是人生一次洗礼，经历过才懂得珍惜',
+  '把每一道题当作通往梦想的台阶',
+  '不积跬步，无以至千里；不积小流，无以成江海',
+  '让最好的自己，在最好的时间，做最好的事',
+  '成功没有捷径，唯有脚踏实地',
+  '你只管努力，剩下的交给时间',
+  '梦想不会逃跑，会逃跑的永远是自己',
+  '给自己一个微笑，今天是全新的一天',
+  '专注当下，未来可期',
+  '每完成一个番茄，你就领先了一步',
+  '累的时候告诉自己：再坚持一下',
+  '你在做的事情，比你想象的更重要',
+  '咬定青山不放松，立根原在破岩中',
+  '千磨万击还坚劲，任尔东西南北风',
+  '少年不惧岁月长，彼方尚有荣光在',
+];
+
+// Replace the old MOTIVATIONAL_QUOTES reference
+// Override rotateMotivationalQuote to use expanded list
+const _origRotate = typeof rotateMotivationalQuote === 'function' ? rotateMotivationalQuote : null;
+(function(){
+  if($('mq-text')){
+    const idx = Math.floor(Math.random() * V11_QUOTES.length);
+    $('mq-text').textContent = V11_QUOTES[idx];
+  }
+})();
+
+/* ============= V11: REAL BATTLE SYSTEM ============= */
+const BOSSES = [
+  {name:'拖延怪兽',level:1,emoji:'👹',hp:3,atk:1,reward:30,desc:'入门级BOSS，3个番茄即可击败'},
+  {name:'分心恶魔',level:2,emoji:'😈',hp:5,atk:1,reward:60,desc:'5个番茄才能打败它'},
+  {name:'焦虑巨人',level:3,emoji:'👹',hp:8,atk:2,reward:100,desc:'8个番茄的挑战'},
+  {name:'懒惰魔王',level:4,emoji:'👿',hp:12,atk:2,reward:160,desc:'12个番茄，你敢来吗？'},
+  {name:'放弃之神',level:5,emoji:'💀',hp:16,atk:3,reward:250,desc:'终极BOSS！16个番茄！'},
+];
+
+let currentBoss = null;
+let bossCurrentHP = 0;
+let bossDefeatedCount = 0;
+
+function initBoss(){
+  const saved = S.bossData;
+  if(saved && saved.bossIdx < BOSSES.length){
+    currentBoss = BOSSES[saved.bossIdx];
+    bossCurrentHP = saved.hp;
+    bossDefeatedCount = saved.defeated || 0;
+  } else {
+    currentBoss = BOSSES[0];
+    bossCurrentHP = currentBoss.hp;
+    bossDefeatedCount = 0;
+  }
+  renderBoss();
+}
+
+function renderBoss(){
+  if(!currentBoss || !$('boss-avatar')) return;
+  $('boss-avatar').textContent = currentBoss.emoji;
+  $('boss-name').textContent = currentBoss.name + ' Lv.' + currentBoss.level;
+  $('boss-level').textContent = currentBoss.desc;
+  const pct = Math.max(0, (bossCurrentHP / currentBoss.hp) * 100);
+  const fill = $('boss-hp-fill');
+  fill.style.width = pct + '%';
+  $('boss-hp-text').textContent = Math.ceil(bossCurrentHP) + '/' + currentBoss.hp;
+  fill.className = 'boss-hp-fill ' + (pct > 50 ? 'safe' : pct > 20 ? 'warning' : 'danger');
+  if(S.streak > 0){
+    $('battle-streak-badge').textContent = '🔥 连续' + S.streak + '天';
+  }
+}
+
+function attackBoss(){
+  if(!currentBoss || bossCurrentHP <= 0) return;
+  const dmg = currentBoss.atk + Math.floor(Math.random() * 2);
+  bossCurrentHP = Math.max(0, bossCurrentHP - dmg);
+  // Add log entry
+  const log = $('battle-log');
+  const entry = document.createElement('div');
+  entry.className = 'battle-log-entry';
+  entry.textContent = '⚔️ 造成 ' + dmg + ' 点伤害！剩余HP: ' + Math.ceil(bossCurrentHP);
+  log.insertBefore(entry, log.firstChild);
+  // Animate
+  const avatar = $('boss-avatar');
+  avatar.classList.add('shaking');
+  setTimeout(()=> avatar.classList.remove('shaking'), 400);
+  // Float damage
+  const dmgEl = document.createElement('div');
+  dmgEl.className = 'boss-dmg-float';
+  dmgEl.textContent = '-' + dmg;
+  const bossSection = document.querySelector('.boss-section');
+  bossSection.style.position = 'relative';
+  dmgEl.style.left = '50%';
+  dmgEl.style.top = '20px';
+  bossSection.appendChild(dmgEl);
+  setTimeout(()=> dmgEl.remove(), 1000);
+
+  renderBoss();
+
+  if(bossCurrentHP <= 0){
+    bossDefeatedCount++;
+    addScore(currentBoss.reward);
+    $('battle-reward').textContent = '🏆 ' + currentBoss.name + '被击败！+' + currentBoss.reward + '分';
+    $('battle-reward').classList.remove('hidden');
+    avatar.classList.add('boss-defeated');
+    showCelebration();
+    // Add momentum feed
+    addMilestone('🏆 击败 ' + currentBoss.name + ' Lv.' + currentBoss.level + '！获得 ' + currentBoss.reward + ' 分');
+    // Advance to next boss after delay
+    setTimeout(()=>{
+      const nextIdx = BOSSES.indexOf(currentBoss) + 1;
+      if(nextIdx < BOSSES.length){
+        currentBoss = BOSSES[nextIdx];
+        bossCurrentHP = currentBoss.hp;
+        avatar.classList.remove('boss-defeated');
+        $('battle-reward').classList.add('hidden');
+        renderBoss();
+      }
+      saveBossData();
+    }, 3000);
+  }
+  saveBossData();
+}
+
+function saveBossData(){
+  S.bossData = {
+    bossIdx: BOSSES.indexOf(currentBoss),
+    hp: bossCurrentHP,
+    defeated: bossDefeatedCount,
+  };
+  saveState();
+}
+
+/* ============= V11: ACHIEVEMENT SYSTEM ============= */
+const ACHIEVEMENTS = [
+  {id:'first_pomo',name:'初次专注',icon:'🍅',desc:'完成第一个番茄',check:()=>getTotalPomos()>=1},
+  {id:'pomo_10',name:'番茄新手',icon:'🌱',desc:'累计10个番茄',check:()=>getTotalPomos()>=10},
+  {id:'pomo_50',name:'专注达人',icon:'⭐',desc:'累计50个番茄',check:()=>getTotalPomos()>=50},
+  {id:'pomo_100',name:'百番斩',icon:'💯',desc:'累计100个番茄',check:()=>getTotalPomos()>=100},
+  {id:'streak_3',name:'三天小成',icon:'🔥',desc:'连续专注3天',check:()=>(S.streak||0)>=3},
+  {id:'streak_7',name:'一周习惯',icon:'🏅',desc:'连续专注7天',check:()=>(S.streak||0)>=7},
+  {id:'streak_30',name:'月度铁人',icon:'👑',desc:'连续专注30天',check:()=>(S.streak||0)>=30},
+  {id:'boss_1',name:'初战告捷',icon:'⚔️',desc:'击败第一个Boss',check:()=>bossDefeatedCount>=1},
+  {id:'boss_3',name:'猎魔高手',icon:'🗡️',desc:'击败3个Boss',check:()=>bossDefeatedCount>=3},
+  {id:'boss_5',name:'终焉之刃',icon:'💫',desc:'击败所有Boss',check:()=>bossDefeatedCount>=5},
+  {id:'grade_s',name:'超凡日',icon:'🌟',desc:'单日获得S评级',check:()=>hasGradeS()},
+  {id:'score_1000',name:'千分俱乐部',icon:'🎯',desc:'累计1000分',check:()=>(S.score||0)>=1000},
+];
+
+function getTotalPomos(){
+  let total = 0;
+  Object.values(S.pomodoroHistory||{}).forEach(d=>{ total += (d.count||0); });
+  return total;
+}
+
+function hasGradeS(){
+  return Object.values(S.pomodoroHistory||{}).some(d=>(d.count||0) >= (S.settings.dailyGoal||6) * 1.5);
+}
+
+function checkAchievements(){
+  if(!S.achievements) S.achievements = [];
+  let newUnlock = false;
+  ACHIEVEMENTS.forEach(a=>{
+    if(!S.achievements.includes(a.id) && a.check()){
+      S.achievements.push(a.id);
+      addMilestone('🏆 解锁成就：' + a.icon + ' ' + a.name);
+      toast('🏆 解锁成就：' + a.icon + ' ' + a.name);
+      newUnlock = true;
+    }
+  });
+  if(newUnlock){ saveState(); renderAchievements(); }
+}
+
+function renderAchievements(){
+  if(!$('achievement-grid')) return;
+  const grid = $('achievement-grid');
+  grid.innerHTML = '';
+  let unlocked = 0;
+  ACHIEVEMENTS.forEach(a=>{
+    const isUnlocked = (S.achievements||[]).includes(a.id);
+    if(isUnlocked) unlocked++;
+    const badge = document.createElement('div');
+    badge.className = 'achievement-badge ' + (isUnlocked ? 'unlocked' : 'locked');
+    badge.innerHTML = '<span class="achievement-icon">' + a.icon + '</span>' +
+      '<span class="achievement-name">' + a.name + '</span>' +
+      '<span class="achievement-tooltip">' + a.desc + '</span>';
+    grid.appendChild(badge);
+  });
+  $('achievement-count').textContent = unlocked + '/' + ACHIEVEMENTS.length;
+}
+
+/* ============= V11: SUBJECT CATEGORY SYSTEM ============= */
+const SUBJECTS = {
+  math:{name:'数学',icon:'📐',color:'#e74c3c'},
+  chinese:{name:'语文',icon:'📝',color:'#e67e22'},
+  english:{name:'英语',icon:'🔤',color:'#3498db'},
+  physics:{name:'物理',icon:'⚛️',color:'#9b59b6'},
+  chemistry:{name:'化学',icon:'🧪',color:'#2ecc71'},
+  biology:{name:'生物',icon:'🧬',color:'#1abc9c'},
+  history:{name:'历史',icon:'📜',color:'#f39c12'},
+  geography:{name:'地理',icon:'🌏',color:'#e91e63'},
+  politics:{name:'政治',icon:'⚖️',color:'#795548'},
+  other:{name:'其他',icon:'📌',color:'#607d8b'},
+};
+
+let currentSubject = null;
+
+function initSubjectBar(){
+  document.querySelectorAll('.subject-tag').forEach(tag=>{
+    tag.addEventListener('click',()=>{
+      const sub = tag.dataset.subject;
+      if(currentSubject === sub){
+        currentSubject = null;
+        tag.classList.remove('active');
+      } else {
+        document.querySelectorAll('.subject-tag').forEach(t=>t.classList.remove('active'));
+        currentSubject = sub;
+        tag.classList.add('active');
+      }
+      // Update placeholder
+      const input = $('task-input');
+      if(input){
+        input.placeholder = currentSubject
+          ? '添加' + SUBJECTS[currentSubject].name + '任务…'
+          : '添加任务… #标签 !1紧急 @today';
+      }
+    });
+  });
+}
+
+function getTaskSubject(task){
+  if(task.subject) return task.subject;
+  // Auto-detect from tags
+  const tagKeys = Object.keys(SUBJECTS);
+  if(task.tags){
+    for(const tag of task.tags){
+      if(tagKeys.includes(tag)) return tag;
+    }
+  }
+  return null;
+}
+
+function renderSubjectStats(){
+  const grid = $('subject-stats-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  const subjectMins = {};
+  // Count pomodoro time per subject from today's completed tasks
+  const today = todayStr();
+  const todayData = S.pomodoroHistory[today] || {};
+  // Use task data to count
+  Object.values(S.tasks||{}).forEach(task=>{
+    if(!task.completedAt) return;
+    const sub = getTaskSubject(task);
+    if(!sub) return;
+    const mins = (task.pomoCount || 0) * (S.settings.workMins || 25);
+    subjectMins[sub] = (subjectMins[sub] || 0) + mins;
+  });
+  Object.entries(SUBJECTS).forEach(([key, info])=>{
+    const mins = subjectMins[key] || 0;
+    const card = document.createElement('div');
+    card.className = 'subject-stat-card';
+    card.innerHTML = '<div class="subject-stat-icon">' + info.icon + '</div>' +
+      '<div class="subject-stat-name">' + info.name + '</div>' +
+      '<div class="subject-stat-val">' + mins + 'm</div>';
+    card.style.borderColor = info.color + '30';
+    grid.appendChild(card);
+  });
+}
+
+/* ============= V11: INTEGRATION HOOKS ============= */
+// Hook: attack boss when pomodoro completes
+const _origOnPomoComplete = typeof onPomoComplete === 'function' ? onPomoComplete : null;
+// We hook into the existing flow by overriding
+(function(){
+  const origStart = typeof startTimer === 'function' ? startTimer : null;
+
+  // Hook save to persist boss data
+  const origSave = typeof save === 'function' ? save : null;
+
+  // Initialize everything on load
+  setTimeout(()=>{
+    initBoss();
+    initSubjectBar();
+    renderAchievements();
+    checkAchievements();
+    renderSubjectStats();
+  }, 500);
+})();
+
+// Make attackBoss available globally for timer completion hook
+window._v11_attackBoss = attackBoss;
+window._v11_checkAchievements = checkAchievements;
+window._v11_renderAchievements = renderAchievements;
+window._v11_renderSubjectStats = renderSubjectStats;
+window._v11_getTaskSubject = getTaskSubject;
 
 })();

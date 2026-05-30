@@ -48,6 +48,14 @@
     <span class="battle-text" id="battle-text">专注模式</span>
   </div>
 </header>
+<!-- V11: GAOKAO COUNTDOWN -->
+<div class="gaokao-banner" id="gaokao-banner">
+  <span class="gb-title">🎓 高考倒计时</span>
+  <span class="gb-days" id="gaokao-days">--</span><span class="gb-unit">天</span>
+  <span class="gb-days" id="gaokao-hours" style="font-size:20px">--</span><span class="gb-unit">时</span>
+  <span class="gb-days" id="gaokao-mins" style="font-size:20px">--</span><span class="gb-unit">分</span>
+  <span class="gb-motto" id="gaokao-motto">乾坤未定，你我皆是黑马</span>
+</div>
 <!-- ==================== WORK VIEW ==================== -->
 <main class="view work-view active" id="view-work">
   <section class="panel panel-timer">
@@ -85,12 +93,51 @@
     </div>
     <div class="momentum-feed-wrap collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h4 class="feed-heading">📰 成就动态</h4></div><div class="collapsible-body collapsed"><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div></div>
     <div class="done-today collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3></div><div class="collapsible-body collapsed"><ul class="done-list" id="done-list"></ul></div></div>
+<!-- V11: ACHIEVEMENT SHELF -->
+<div class="achievement-shelf" id="achievement-shelf">
+  <h4>🏆 成就墙 <span class="achievement-count" id="achievement-count">0/12</span></h4>
+  <div class="achievement-grid" id="achievement-grid"></div>
+</div>
     <div class="smart-suggest-bar" id="smart-suggest-bar">
       <span class="smart-suggest-icon">💡</span>
       <span class="smart-suggest-text" id="smart-suggest-text">点击获取智能建议</span>
       <button class="smart-suggest-btn" id="btn-smart-suggest">该做什么？</button>
     </div>
   </section>
+<!-- V11: BATTLE BOSS PANEL -->
+<div class="battle-panel" id="battle-panel">
+  <div class="battle-header">
+    <span class="battle-title">⚔️ 高考闯关</span>
+    <span class="battle-streak-badge" id="battle-streak-badge">🔥 连续0天</span>
+  </div>
+  <div class="boss-section">
+    <div class="boss-info">
+      <div class="boss-avatar" id="boss-avatar">👹</div>
+      <div class="boss-meta">
+        <div class="boss-name" id="boss-name">拖延怪兽 Lv.1</div>
+        <div class="boss-level" id="boss-level">需要 3 个番茄击败</div>
+      </div>
+    </div>
+    <div class="boss-hp-bar">
+      <div class="boss-hp-fill safe" id="boss-hp-fill" style="width:100%"><span class="boss-hp-text" id="boss-hp-text">100%</span></div>
+    </div>
+  </div>
+  <div class="battle-log" id="battle-log"><div class="battle-log-entry">🎮 完成番茄来攻击Boss！</div></div>
+  <div class="battle-reward hidden" id="battle-reward">🏆 Boss被击败！+50分</div>
+</div>
+<!-- V11: SUBJECT BAR -->
+<div class="subject-bar" id="subject-bar">
+  <button class="subject-tag" data-subject="math"><span class="subject-dot"></span>数学</button>
+  <button class="subject-tag" data-subject="chinese"><span class="subject-dot"></span>语文</button>
+  <button class="subject-tag" data-subject="english"><span class="subject-dot"></span>英语</button>
+  <button class="subject-tag" data-subject="physics"><span class="subject-dot"></span>物理</button>
+  <button class="subject-tag" data-subject="chemistry"><span class="subject-dot"></span>化学</button>
+  <button class="subject-tag" data-subject="biology"><span class="subject-dot"></span>生物</button>
+  <button class="subject-tag" data-subject="history"><span class="subject-dot"></span>历史</button>
+  <button class="subject-tag" data-subject="geography"><span class="subject-dot"></span>地理</button>
+  <button class="subject-tag" data-subject="politics"><span class="subject-dot"></span>政治</button>
+  <button class="subject-tag" data-subject="other"><span class="subject-dot"></span>其他</button>
+</div>
   <section class="panel panel-tasks">
     <div class="gtd-tabs" id="gtd-tabs">
       <button class="gtd-tab active" data-area="inbox">📥 收件箱 <span class="gtd-cnt" id="cnt-inbox">0</span></button>
@@ -220,6 +267,11 @@
     <div class="habit-heatmap" id="habit-heatmap"></div>
   </div>
   <div class="stats-tags-box"><h3>标签分布</h3><div class="tag-bars" id="tag-bars"></div></div>
+<!-- V11: SUBJECT STATS -->
+<div class="subject-stats-section" id="subject-stats-section">
+  <h3>📚 学科维度</h3>
+  <div class="subject-stats-grid" id="subject-stats-grid"></div>
+</div>
   <div class="stats-io"><button class="btn-sm" id="btn-export">📥 导出数据</button><label class="btn-sm label-btn">📤 导入数据<input type="file" id="btn-import" accept=".json" hidden/></label></div>
 </main>
 <!-- ==================== SETTINGS VIEW ==================== -->
