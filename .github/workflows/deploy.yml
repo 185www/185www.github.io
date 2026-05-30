@@ -1,3 +1,16 @@
-# DISABLED: GitHub Pages now serves directly from gh-pages branch
-# This workflow was causing submodule conflicts and build failures
+# DEPLOY WORKFLOW - DISABLED
+# GitHub Pages serves directly from gh-pages branch
 # To deploy: push directly to gh-pages branch
+# This file is intentionally left as a valid no-op workflow
+name: Deploy (Disabled)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'DISABLED'
+jobs:
+  noop:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploy workflow is disabled. Push directly to gh-pages."
