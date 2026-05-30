@@ -4406,10 +4406,21 @@ function checkDailyReview(){
 /* ============= START ============= */
 document.addEventListener('DOMContentLoaded', initApp);
 
-// register service worker
+// register service worker (v=8 cache bust forces old SW to update)
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js?v=8').then(reg=>{
+      // Force activate immediately if a new SW is waiting
+      if(reg.waiting){ reg.waiting.postMessage({type:'SKIP_WAITING'}); }
+    });
+    // Listen for new SW taking control, then reload to get fresh content
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      window.location.reload();
+    });
+    // If no controller yet, we're running without SW — try to claim one
+    if(!navigator.serviceWorker.controller){
+      navigator.serviceWorker.register('./sw.js?v=8').catch(()=>{});
+    }
   });
 }
 
