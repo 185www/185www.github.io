@@ -2,14 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover"/>
-<meta name="theme-color" content="#e74c3c" media="(prefers-color-scheme: light)"/>
-<meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)"/>
-<meta name="description" content="Pomotodo — 番茄钟 + GTD 时间管理工具"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#ff4757"/>
+<meta name="description" content="Pomotodo 高考版 — 专为高考考生定制的专注力管理系统"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Pomotodo"/>
-<meta name="mobile-web-app-capable" content="yes"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
@@ -18,17 +14,108 @@
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <link rel="manifest" href="./manifest.json"/>
 <link rel="stylesheet" href="./style.css"/>
-<title>Pomotodo</title>
+<title>Pomotodo 高考版</title>
+<style>
+.motivational-quote{text-align:center;padding:8px 0;min-height:40px}
+.mq-text{font-size:14px;color:var(--text2);font-style:italic;transition:opacity 0.3s,transform 0.3s;display:inline-block}
+.battle-indicator{position:fixed;top:var(--nav-h);left:50%;transform:translateX(-50%);z-index:99;background:linear-gradient(90deg,var(--primary),var(--orange));color:#fff;padding:4px 16px;border-radius:0 0 12px 12px;font-size:12px;font-weight:600;animation:slideDown 0.3s ease;display:flex;align-items:center;gap:4px}
+@keyframes slideDown{from{transform:translateX(-50%) translateY(-100%);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.battle-fire{animation:fireGlow 1s ease-in-out infinite alternate}
+@keyframes fireGlow{from{transform:scale(1)}to{transform:scale(1.2)}}
+.lockdown-particles{position:absolute;inset:0;z-index:0}
+.lockdown-container{position:relative}
+.lockdown-progress-text{color:var(--text2);font-size:12px;margin-top:8px;text-align:center}
+.task-completing{animation:checkPop 0.4s ease}
+@keyframes checkPop{0%{transform:scale(1)}30%{transform:scale(1.08)}60%{transform:scale(0.97)}100%{transform:scale(1)}}
+.celebration-flash{position:fixed;inset:0;background:white;opacity:0.6;animation:flashFade 0.6s ease forwards;z-index:1000;pointer-events:none}
+@keyframes flashFade{from{opacity:0.6}to{opacity:0}}
+.confetti.star{border-radius:0;clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.confetti.circle{border-radius:50%}
+.confetti.diamond{border-radius:2px;transform:rotate(45deg)}
+.gk-badge{font-size:11px;background:linear-gradient(135deg,#ff6b35,#f7971e);color:#fff;padding:1px 6px;border-radius:8px;vertical-align:middle;margin-left:4px;font-weight:600;letter-spacing:0.5px}
+.gk-countdown{position:absolute;top:var(--nav-h);left:0;right:0;background:linear-gradient(90deg,#ff6b35,#e74c3c);color:#fff;padding:3px 16px;font-size:12px;text-align:center;z-index:99;box-shadow:0 2px 8px rgba(231,76,60,0.3)}
+.gk-countdown-icon{margin-right:4px}
+.gk-countdown-label{opacity:0.9;margin-right:8px}
+.gk-countdown-value{font-weight:700;font-size:14px;letter-spacing:1px}
+.subject-quick-add{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}
+.subject-label{font-size:12px;color:var(--text2)}
+.subject-btn{padding:3px 8px;border-radius:12px;font-size:11px;background:var(--surface2);border:1px solid var(--border);transition:all var(--anim-fast)}
+.subject-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.subject-btn[data-subject="语文"]{border-color:#e74c3c;color:#e74c3c}
+.subject-btn[data-subject="数学"]{border-color:#3498db;color:#3498db}
+.subject-btn[data-subject="英语"]{border-color:#2ecc71;color:#2ecc71}
+.subject-btn[data-subject="物理"]{border-color:#9b59b6;color:#9b59b6}
+.subject-btn[data-subject="化学"]{border-color:#e67e22;color:#e67e22}
+.subject-btn[data-subject="生物"]{border-color:#27ae60;color:#27ae60}
+.subject-btn[data-subject="历史"]{border-color:#f39c12;color:#f39c12}
+.subject-btn[data-subject="地理"]{border-color:#1abc9c;color:#1abc9c}
+.subject-btn[data-subject="政治"]{border-color:#e91e63;color:#e91e63}
+/* Sleep System */
+.sleep-overlay{position:fixed;inset:0;background:rgba(10,15,40,0.95);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.sleep-card{background:linear-gradient(135deg,#1a1a3e,#0f0f2e);border:1px solid rgba(100,100,200,0.2);border-radius:var(--radius);padding:32px 24px;max-width:460px;width:100%;text-align:center;box-shadow:var(--shadow-xl)}
+.sleep-icon{font-size:64px;display:block;margin-bottom:12px;animation:moonGlow 3s ease-in-out infinite}
+@keyframes moonGlow{0%,100%{filter:drop-shadow(0 0 15px rgba(200,200,255,0.3))}50%{filter:drop-shadow(0 0 35px rgba(200,200,255,0.6))}}
+.sleep-title{font-size:28px;font-weight:700;color:#e8e8ff;margin-bottom:4px}
+.sleep-subtitle{font-size:14px;color:#a0a0d0;margin-bottom:16px}
+.sleep-reason{background:rgba(255,255,255,0.05);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;text-align:left}
+.sleep-reason p{font-size:13px;color:#b0b0e0;margin-bottom:4px;line-height:1.5}
+.sleep-reason strong{color:#ffd700}
+.sleep-timer{margin-bottom:16px}
+.sleep-timer-label{font-size:12px;color:#8080b0;display:block;margin-bottom:4px}
+.sleep-timer-value{font-size:24px;font-weight:700;color:#7c7cff;font-variant-numeric:tabular-nums}
+.sleep-idea-capture{margin-bottom:16px;text-align:left}
+.sleep-idea-hint{font-size:13px;color:#a0a0d0;margin-bottom:8px}
+.sleep-idea-input-wrap{display:flex;gap:6px;margin-bottom:8px}
+.sleep-idea-input{flex:1;padding:8px 12px;font-size:14px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#e8e8f0}
+.sleep-idea-input:focus{border-color:rgba(100,100,255,0.5);box-shadow:0 0 0 3px rgba(100,100,255,0.1)}
+.sleep-idea-btn{padding:8px 14px;background:rgba(100,100,255,0.2);color:#b0b0ff;border-radius:var(--radius-sm);font-size:13px}
+.sleep-idea-btn:hover{background:rgba(100,100,255,0.3)}
+.sleep-idea-list{max-height:120px;overflow-y:auto}
+.sleep-idea-item{font-size:12px;color:#9090c0;padding:4px 8px;background:rgba(255,255,255,0.03);border-radius:var(--radius-xs);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.sleep-idea-item span:first-child{flex:1}
+.sleep-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.sleep-dismiss-btn{padding:10px 20px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.08);color:#8080b0;font-size:14px}
+.sleep-accept-btn{padding:10px 28px;border-radius:var(--radius-sm);background:linear-gradient(135deg,#4a4aff,#7c7cff);color:#fff;font-size:15px;font-weight:600;box-shadow:0 4px 15px rgba(100,100,255,0.3)}
+.sleep-accept-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(100,100,255,0.4)}
+.winddown-banner{position:fixed;top:calc(var(--nav-h) + 40px);left:50%;transform:translateX(-50%);z-index:99;background:linear-gradient(90deg,#f39c12,#e67e22);color:#fff;padding:8px 20px;border-radius:0 0 12px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;animation:slideDown 0.3s ease;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+.winddown-text{flex:1}
+.winddown-close{padding:4px 8px;border-radius:50%;font-size:14px}
+.winddown-close:hover{background:rgba(255,255,255,0.2)}
+/* Morning Check */
+.morning-check-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.95);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+[data-theme=dark] .morning-check-overlay{background:rgba(15,15,30,0.95)}
+.morning-check-card{background:var(--surface);border-radius:var(--radius);padding:28px 24px;max-width:420px;width:100%;text-align:center;box-shadow:var(--shadow-xl)}
+.morning-check-card h3{font-size:24px;margin-bottom:4px}
+.morning-check-sub{font-size:14px;color:var(--text2);margin-bottom:16px}
+.morning-sleep-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.morning-opt-btn{padding:14px 8px;border-radius:var(--radius-sm);background:var(--surface2);font-size:14px;border:2px solid transparent;transition:all var(--transition);display:flex;flex-direction:column;align-items:center;gap:4px}
+.morning-opt-btn:hover{border-color:var(--primary);transform:scale(1.03)}
+.morning-opt-btn .opt-emoji{font-size:24px}
+.morning-motivation{font-size:13px;color:var(--text2);margin-bottom:12px;min-height:40px;line-height:1.5}
+.morning-done-btn{padding:10px 28px;background:var(--primary);color:#fff;border-radius:var(--radius-sm);font-size:15px;font-weight:600}
+.bedtime-input-wrap{display:flex;align-items:center;gap:8px}
+.bedtime-note{font-size:11px;color:var(--text3)}
+.bedtime-input-wrap input{width:80px}
+</style>
 </head>
 <body data-theme="light">
 <header class="app-header">
-  <h1 class="app-logo">🍅 Pomotodo</h1>
+  <h1 class="app-logo">🍅 Pomotodo <span class="gk-badge">高考版</span></h1>
   <nav class="header-nav">
     <button class="nav-btn active" data-view="work">工作台</button>
     <button class="nav-btn" data-view="calendar">日历</button>
     <button class="nav-btn" data-view="stats">统计</button>
     <button class="nav-btn" data-view="settings">设置</button>
   </nav>
+  <div class="gk-countdown" id="gk-countdown">
+    <span class="gk-countdown-icon">🎯</span>
+    <span class="gk-countdown-label">高考倒计时</span>
+    <span class="gk-countdown-value" id="gk-countdown-value">---</span>
+  </div>
+  <div class="battle-indicator" id="battle-indicator" hidden>
+    <span class="battle-fire">⚔️</span>
+    <span class="battle-text" id="battle-text">专注模式</span>
+  </div>
 </header>
 <!-- ==================== WORK VIEW ==================== -->
 <main class="view work-view active" id="view-work">
@@ -39,12 +126,12 @@
       <button class="mode-btn" data-mode="longBreak">🌿 长休息</button>
     </div>
     <div class="timer-ring-wrap" id="timer-ring-wrap">
-      <svg class="timer-ring" viewBox="0 0 200 200"><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88"/></svg>
+      <svg class="timer-ring" viewBox="0 0 200 200"><defs><linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e74c3c"/><stop offset="100%" style="stop-color:#c0392b"/></linearGradient><linearGradient id="timerGradientBreak" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#2ecc71"/><stop offset="100%" style="stop-color:#27ae60"/></linearGradient></defs><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88"/></svg>
       <div class="timer-center"><span class="timer-digits" id="timer-digits">25:00</span><span class="timer-cycle" id="timer-cycle">#1</span></div>
     </div>
     <div class="timer-actions">
       <button class="btn-timer secondary" id="btn-reset" title="重置">↺</button>
-      <button class="btn-timer primary" id="btn-start">▶ 开始专注</button>
+      <button class="btn-timer primary" id="btn-start">🔥 就现在，开始！</button>
       <button class="btn-timer secondary" id="btn-focus-toggle" title="专注模式">🔍</button>
       <button class="btn-timer secondary" id="btn-skip" title="跳过">⏭</button>
     </div>
@@ -54,6 +141,9 @@
       <button class="micro-pomo-btn" id="btn-micro-pomo">5分钟快速开始</button>
       <span class="micro-pomo-hint" id="micro-pomo-hint">降低门槛，先动起来</span>
     </div>
+    <div class="motivational-quote" id="motivational-quote">
+      <span class="mq-text" id="mq-text">准备好了吗？开始你的第一个番茄！</span>
+    </div>
     <div class="score-display" id="score-display"><span class="score-num">0</span><span class="score-label">分</span><span class="level-badge">Lv.1 入门学徒</span></div>
     <div class="daily-goal-bar-wrap" id="daily-goal-bar-wrap">
       <div class="daily-goal-header"><span>🍅 今日目标</span><span class="daily-goal-text" id="daily-goal-text">0 / 6</span></div>
@@ -62,14 +152,26 @@
       <div class="daily-goal-celebration" id="daily-goal-celebration" hidden>🎉 今日目标达成！</div>
       <div class="streak-mini" id="streak-mini" hidden>🔥 连续专注 <strong id="streak-mini-num">0</strong> 天</div>
     </div>
-    <div class="momentum-feed-wrap"><h4 class="feed-heading">📰 成就动态</h4><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div>
-    <div class="done-today"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3><ul class="done-list" id="done-list"></ul></div>
-  </section>
-  <div class="smart-suggest-bar" id="smart-suggest-bar">
+    <div class="momentum-feed-wrap collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h4 class="feed-heading">📰 成就动态</h4></div><div class="collapsible-body collapsed"><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div></div>
+    <div class="done-today collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3></div><div class="collapsible-body collapsed"><ul class="done-list" id="done-list"></ul></div></div>
+    <div class="smart-suggest-bar" id="smart-suggest-bar">
       <span class="smart-suggest-icon">💡</span>
       <span class="smart-suggest-text" id="smart-suggest-text">点击获取智能建议</span>
       <button class="smart-suggest-btn" id="btn-smart-suggest">该做什么？</button>
     </div>
+    <div class="subject-quick-add" id="subject-quick-add">
+      <span class="subject-label">📚 快速添加：</span>
+      <button class="subject-btn" data-subject="语文" data-tag="语文">语文</button>
+      <button class="subject-btn" data-subject="数学" data-tag="数学">数学</button>
+      <button class="subject-btn" data-subject="英语" data-tag="英语">英语</button>
+      <button class="subject-btn" data-subject="物理" data-tag="理综">物理</button>
+      <button class="subject-btn" data-subject="化学" data-tag="理综">化学</button>
+      <button class="subject-btn" data-subject="生物" data-tag="理综">生物</button>
+      <button class="subject-btn" data-subject="历史" data-tag="文综">历史</button>
+      <button class="subject-btn" data-subject="地理" data-tag="文综">地理</button>
+      <button class="subject-btn" data-subject="政治" data-tag="文综">政治</button>
+    </div>
+  </section>
   <section class="panel panel-tasks">
     <div class="gtd-tabs" id="gtd-tabs">
       <button class="gtd-tab active" data-area="inbox">📥 收件箱 <span class="gtd-cnt" id="cnt-inbox">0</span></button>
@@ -219,6 +321,10 @@
     <div class="sett-row"><span>完成动画</span><label class="sw"><input type="checkbox" id="opt-celebration" checked/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>中断确认</span><label class="sw"><input type="checkbox" id="opt-interrupt-confirm" checked/><span class="sw-track"></span></label></div>
     <div class="sett-row"><span>专注锁屏</span><label class="sw"><input type="checkbox" id="opt-lockdown"/><span class="sw-track"></span></label></div>
+    <div class="sett-row"><span>就寝提醒</span><label class="sw"><input type="checkbox" id="opt-sleep-enforce" checked/><span class="sw-track"></span></label></div>
+    <div class="sett-row"><label for="opt-bedtime">就寝时间</label><div class="bedtime-input-wrap"><input type="time" id="opt-bedtime" class="sett-num" value="23:00"/><span class="bedtime-note">到了此时间将提醒你睡觉</span></div></div>
+    <div class="sett-row"><label for="opt-winddown">提前提醒</label><select id="opt-winddown" class="sett-select-sm"><option value="15">15分钟</option><option value="30" selected>30分钟</option><option value="45">45分钟</option><option value="60">60分钟</option></select><span class="bedtime-note">分钟</span></div>
+    <div class="sett-row"><label for="opt-waketime">起床时间</label><input type="time" id="opt-waketime" class="sett-num" value="07:00"/></div>
   </section>
   <section class="sett-group"><h3>声音 & 通知</h3>
     <div class="sett-row"><span>提示音</span><label class="sw"><input type="checkbox" id="opt-sound" checked/><span class="sw-track"></span></label></div>
@@ -350,10 +456,72 @@
 </div>
 <div class="welcome-back" id="welcome-back" hidden>👋 欢迎回来，继续专注！</div>
 <div class="streak-crisis-banner" id="streak-crisis-banner" hidden>⚠️ 你的连续专注记录面临中断风险！今天至少完成1个番茄来保持 🔥<strong id="streak-crisis-num">0</strong> 天连续</div>
+<!-- LOCKDOWN OVERLAY -->
+<div class="lockdown-overlay" id="lockdown-overlay" hidden>
+  <div class="lockdown-container">
+    <canvas class="lockdown-particles" id="lockdown-particles"></canvas>
+    <div class="lockdown-timer-wrap">
+      <svg class="lockdown-ring" viewBox="0 0 200 200"><defs><linearGradient id="ldGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e74c3c"/><stop offset="100%" style="stop-color:#c0392b"/></linearGradient></defs><circle class="ld-ring-track" cx="100" cy="100" r="88"/><circle class="ld-ring-fill" cx="100" cy="100" r="88"/></svg>
+      <div class="lockdown-center"><span class="lockdown-digits" id="lockdown-digits">25:00</span><span class="lockdown-label">专注中</span></div>
+    </div>
+    <div class="lockdown-task" id="lockdown-task"></div>
+    <div class="lockdown-message" id="lockdown-message">远离手机，保持专注</div>
+    <div class="lockdown-warning">⚠️ 放弃专注将损失本次番茄的10分</div>
+    <div class="lockdown-progress-text" id="lockdown-progress-text"></div>
+  </div>
+</div>
+<!-- SLEEP ENFORCEMENT SYSTEM -->
+<div class="sleep-overlay" id="sleep-overlay" hidden>
+  <div class="sleep-card">
+    <div class="sleep-icon">🌙</div>
+    <h3 class="sleep-title">该睡觉了</h3>
+    <p class="sleep-subtitle" id="sleep-subtitle">高考倒计时中，睡眠是最好的复习</p>
+    <div class="sleep-reason" id="sleep-reason">
+      <p>充足的睡眠能提升 <strong>40%</strong> 的记忆巩固效率</p>
+      <p>熬夜学习的效果 <strong>远不如</strong> 好好睡觉</p>
+    </div>
+    <div class="sleep-timer" id="sleep-timer">
+      <span class="sleep-timer-label">距离建议起床还有</span>
+      <span class="sleep-timer-value" id="sleep-timer-value">--:--</span>
+    </div>
+    <div class="sleep-idea-capture">
+      <p class="sleep-idea-hint">💡 脑子里有新想法？记下来明天再说</p>
+      <div class="sleep-idea-input-wrap">
+        <input type="text" id="sleep-idea-input" class="sleep-idea-input" placeholder="快速记录想法..." maxlength="200"/>
+        <button class="sleep-idea-btn" id="sleep-idea-btn">📝 记下</button>
+      </div>
+      <div class="sleep-idea-list" id="sleep-idea-list"></div>
+    </div>
+    <div class="sleep-actions">
+      <button class="sleep-dismiss-btn" id="sleep-dismiss">我知道了，再给我5分钟</button>
+      <button class="sleep-accept-btn" id="sleep-accept">好的，去睡觉 💤</button>
+    </div>
+  </div>
+</div>
+<!-- WIND-DOWN NOTIFICATION -->
+<div class="winddown-banner" id="winddown-banner" hidden>
+  <span class="winddown-icon">🌅</span>
+  <span class="winddown-text" id="winddown-text">还有30分钟该准备睡觉了，收尾当前任务吧</span>
+  <button class="winddown-close" id="winddown-close">✕</button>
+</div>
+<!-- MORNING SLEEP CHECK -->
+<div class="morning-check-overlay" id="morning-check-overlay" hidden>
+  <div class="morning-check-card">
+    <h3>☀️ 早上好！</h3>
+    <p class="morning-check-sub">昨晚睡得好吗？</p>
+    <div class="morning-sleep-options">
+      <button class="morning-opt-btn" data-sleep="good">😴 睡得很好 (7h+)</button>
+      <button class="morning-opt-btn" data-sleep="ok">😐 还行 (5-7h)</button>
+      <button class="morning-opt-btn" data-sleep="bad">😵 睡不够 (&lt;5h)</button>
+      <button class="morning-opt-btn" data-sleep="late">🤦 熬夜了 (&lt;3h)</button>
+    </div>
+    <p class="morning-motivation" id="morning-motivation">今天也是充满希望的一天！</p>
+    <button class="morning-done-btn" id="morning-done">开始今天 →</button>
+  </div>
+</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
-<!-- bottom nav removed: keep original top header nav -->
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=16"></script>
+<script src="./app.js?v=20"></script>
 </body>
 </html>
