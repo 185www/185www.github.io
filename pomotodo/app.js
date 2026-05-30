@@ -1,4 +1,4 @@
-/* Pomotodo V6 — app.js — MDA Gamification */
+/* Pomotodo V10 — app.js — MDA Gamification */
 (function(){
 'use strict';
 
@@ -25,7 +25,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5)) return d;
+      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5 || d.version === 6)) return d;
     }
   }catch(e){}
   return freshState();
@@ -33,7 +33,7 @@ function loadState(){
 
 function freshState(){
   return {
-    version:5,
+    version:6,
     settings:{...defaultSettings},
     tasks:[],
     projects:[],
@@ -104,23 +104,51 @@ function toast(msg, dur=2500){
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 
-function playSound(callback){
+function playSound(type, callback){
   if(!S.settings.sound) { if(callback) callback(); return; }
   try{
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
     const o = ctx.createOscillator();
     const g = ctx.createGain();
-    o.type='sine';
-    o.frequency.setValueAtTime(880, ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime+0.5);
-    g.gain.setValueAtTime(S.settings.volume, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.8);
+    let freq = 880, dur = 0.8, waveType = 'sine';
+    
+    switch(type || 'complete'){
+      case 'complete':
+        freq = 880; dur = 0.8; waveType = 'sine';
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + dur);
+        break;
+      case 'break':
+        freq = 660; dur = 0.6; waveType = 'triangle';
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(330, ctx.currentTime + dur);
+        break;
+      case 'milestone':
+        freq = 523; dur = 1.2; waveType = 'sine';
+        o.frequency.setValueAtTime(523, ctx.currentTime);
+        o.frequency.setValueAtTime(659, ctx.currentTime + 0.3);
+        o.frequency.setValueAtTime(784, ctx.currentTime + 0.6);
+        o.frequency.exponentialRampToValueAtTime(523, ctx.currentTime + dur);
+        break;
+      case 'warning':
+        freq = 440; dur = 0.4; waveType = 'square';
+        g.gain.setValueAtTime(S.settings.volume * 0.3, ctx.currentTime);
+        break;
+      default:
+        freq = 880; dur = 0.8; waveType = 'sine';
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + dur);
+    }
+    
+    o.type = waveType;
+    if(type !== 'warning') g.gain.setValueAtTime(S.settings.volume, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     o.connect(g); g.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime+0.8);
+    o.start(); o.stop(ctx.currentTime + dur);
     setTimeout(()=>{
       ctx.close();
       if(callback) callback();
-    },900);
+    }, dur * 1000 + 100);
   }catch(e){ if(callback) callback(); }
 }
 
@@ -198,6 +226,7 @@ function checkMilestones(streak){
         addMilestone(MILESTONE_MSGS[s]);
         toast(MILESTONE_MSGS[s], 5000);
         const conf = MILESTONE_CONFETTI[s]||{count:100,colors:['#e74c3c','#3498db','#2ecc71','#f1c40f']};
+        playSound('milestone');
         showCelebrationCustom(conf.count, conf.colors);
       }
     }
@@ -393,6 +422,38 @@ function generateSmartSuggestion(){
     el.textContent = '🎯 下一步：'+escHtml(t.title)+'（今天还差'+pomosLeft+'个番茄）';
   }
 }
+
+/* ============= V10: MOTIVATIONAL ENGINE ============= */
+const MOTIVATIONAL_QUOTES = [
+  '准备好了吗？开始你的第一个番茄！',
+  '每一次专注，都是在为未来投资',
+  '番茄钟的每一秒，都在缩短你和目标的距离',
+  '不怕慢，只怕停。现在就开始！',
+  '今天的坚持，是明天的骄傲',
+  '高考倒计时中...每一分钟都珍贵',
+  '专注25分钟，你比昨天更强',
+  '打败拖延，从这一个番茄开始',
+  '你不是在浪费时间，你是在创造未来',
+  '现在不拼，更待何时？',
+  '把手机放下，把梦想拿起',
+  '番茄+1 = 离梦想更近一步',
+];
+
+let quoteIndex = 0;
+function rotateMotivationalQuote(){
+  const el = $('mq-text');
+  if(!el) return;
+  quoteIndex = (quoteIndex + 1) % MOTIVATIONAL_QUOTES.length;
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(8px)';
+  setTimeout(()=>{
+    el.textContent = MOTIVATIONAL_QUOTES[quoteIndex];
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }, 300);
+}
+// Rotate quote every 30 seconds
+setInterval(rotateMotivationalQuote, 30000);
 
 /* Daily Performance Grade System */
 function calculateDailyGrade(){
@@ -598,33 +659,143 @@ $('ip-action-btn').onclick = ()=>{
   toast('请逐个厘清收件箱中的任务');
 };
 
-/* Focus Lockdown Mode */
+/* Focus Lockdown Mode - COMPLETE */
 let focusLockdown = false;
-$('btn-focus-toggle').onclick = ()=>{
-  if(S.timer.phase !== 'running' && S.timer.mode !== 'work'){
-    // regular focus toggle (old behavior)
-    focusModeFull = !focusModeFull;
-    $('btn-focus-toggle').classList.toggle('active', focusModeFull);
-    const wrap = qs('.work-view');
-    if(wrap){
-      wrap.classList.toggle('focus-mode-full', focusModeFull);
-      wrap.classList.remove('focus-lockdown');
+let lockdownSyncInterval = null;
+
+function initLockdownParticles(){
+  const canvas = $('lockdown-particles');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const particles = [];
+  for(let i=0;i<30;i++){
+    particles.push({
+      x:Math.random()*canvas.width,
+      y:Math.random()*canvas.height,
+      vx:(Math.random()-0.5)*0.5,
+      vy:(Math.random()-0.5)*0.5,
+      r:Math.random()*3+1,
+      a:Math.random()*0.5+0.1,
+    });
+  }
+  function animate(){
+    if(!focusLockdown) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>canvas.width) p.vx*=-1;
+      if(p.y<0||p.y>canvas.height) p.vy*=-1;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(231,76,60,'+p.a+')';
+      ctx.fill();
+    });
+    // Draw connections
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const dx=particles[i].x-particles[j].x;
+        const dy=particles[i].y-particles[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<150){
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle='rgba(231,76,60,'+(0.15*(1-dist/150))+')';
+          ctx.stroke();
+        }
+      }
     }
-    toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function enterLockdown(){
+  focusLockdown = true;
+  $('lockdown-overlay').hidden = false;
+  updateLockdownDisplay();
+  lockdownSyncInterval = setInterval(updateLockdownDisplay, 200);
+  document.body.style.overflow = 'hidden';
+  // Particle effect for lockdown
+  initLockdownParticles();
+}
+
+function exitLockdown(){
+  focusLockdown = false;
+  $('lockdown-overlay').hidden = true;
+  if(lockdownSyncInterval){ clearInterval(lockdownSyncInterval); lockdownSyncInterval = null; }
+  document.body.style.overflow = '';
+  const wrap = qs('.work-view');
+  if(wrap) wrap.classList.remove('focus-lockdown');
+  $('btn-focus-toggle').classList.remove('active');
+}
+
+function updateLockdownDisplay(){
+  const digits = $('lockdown-digits');
+  const taskEl = $('lockdown-task');
+  const msgEl = $('lockdown-message');
+  if(!digits) return;
+  
+  // sync timer digits
+  digits.textContent = fmtTime(S.timer.remaining);
+  
+  // sync ring
+  const pct = S.timer.total > 0 ? S.timer.remaining/S.timer.total : 0;
+  const offset = 553.1 * (1-pct);
+  const fill = qs('.ld-ring-fill');
+  if(fill) fill.style.strokeDashoffset = offset;
+  
+  // show task name
+  if(S.timer.currentTaskId){
+    const t = findTask(S.timer.currentTaskId);
+    if(t && taskEl) taskEl.textContent = t.title;
+  }else if(taskEl){
+    taskEl.textContent = '自由专注';
+  }
+  
+  // motivational messages that rotate
+  const msgs = ['远离手机，保持专注','你正在变得更好','每一秒都在积累','坚持住，你比大多数人强','专注是通往卓越的桥梁','现在的努力，未来的你会感谢'];
+  if(msgEl) msgEl.textContent = msgs[Math.floor(Date.now()/10000) % msgs.length];
+}
+
+$('btn-focus-toggle').onclick = ()=>{
+  if(focusLockdown){
+    // confirm exit
+    if(S.timer.phase === 'running' && S.settings.interruptConfirm && S.timer.mode==='work'){
+      const elapsed = S.timer.total - S.timer.remaining;
+      $('abandon-minutes').textContent = Math.round(elapsed/60);
+      $('modal-abandon-confirm').hidden = false;
+      // modify abandon confirm to also exit lockdown
+      const origHandler = $('abandon-confirm').onclick;
+      $('abandon-confirm').onclick = ()=>{
+        $('abandon-confirm').onclick = origHandler;
+        exitLockdown();
+        abandonPomo();
+      };
+      $('abandon-continue').onclick = ()=>{
+        $('abandon-continue').onclick = ()=>{ $('modal-abandon-confirm').hidden = true; };
+        $('modal-abandon-confirm').hidden = true;
+      };
+      return;
+    }
+    exitLockdown();
+    toast('🔓 已解锁');
     return;
   }
-  // If timer is running and lockdown setting is on, use lockdown
+  
   if(S.settings.lockdown && S.timer.mode==='work'){
-    focusLockdown = !focusLockdown;
-    const wrap = qs('.work-view');
-    if(wrap){
-      wrap.classList.toggle('focus-lockdown', focusLockdown);
-      wrap.classList.remove('focus-mode-full');
+    if(S.timer.phase === 'running'){
+      enterLockdown();
+      toast('🔒 锁屏模式已开启');
+    }else{
+      // turn on lockdown mode for next timer
       focusModeFull = false;
-      $('btn-focus-toggle').classList.toggle('active', focusLockdown);
+      $('btn-focus-toggle').classList.add('active');
+      toast('🔒 锁屏已就绪，开始专注时自动激活');
     }
-    toast(focusLockdown ? '🔒 锁屏模式！所有干扰已屏蔽' : '🔓 已解锁');
-  } else {
+  }else{
     focusModeFull = !focusModeFull;
     $('btn-focus-toggle').classList.toggle('active', focusModeFull);
     const wrap = qs('.work-view');
@@ -666,6 +837,12 @@ function startTimer(){
     S.timer.total = S.settings[S.timer.mode]*60;
   }
   S.timer.phase = 'running';
+  // Battle mode indicator
+  const bi = $('battle-indicator');
+  if(bi && S.timer.mode === 'work'){
+    bi.hidden = false;
+    $('battle-text').textContent = '专注中 #'+S.timer.currentCycle;
+  }
   updateTimerModeClass();
   updateTimerDisplay();
   updateTimerBtn();
@@ -686,6 +863,10 @@ function startTimer(){
   }
   requestWakeLock();
   saveState();
+  // auto-enter lockdown if setting is on and work mode
+  if(S.settings.lockdown && S.timer.mode==='work' && $('btn-focus-toggle').classList.contains('active')){
+    enterLockdown();
+  }
 }
 
 function pauseTimer(){
@@ -727,6 +908,8 @@ function stopTimer(){
     currentTimerId = null;
   }
   releaseWakeLock();
+  const bi = $('battle-indicator');
+  if(bi) bi.hidden = true;
 }
 
 function setTimerMode(mode){
@@ -758,6 +941,7 @@ function updateTimerModeClass(){
   const wrap = $('timer-ring-wrap');
   if(!wrap) return;
   wrap.classList.toggle('timer-mode-break', S.timer.mode !== 'work');
+  wrap.classList.toggle('timer-active', S.timer.phase === 'running' && S.timer.mode === 'work');
 }
 
 function updateModeBtns(){
@@ -779,7 +963,7 @@ function updateTimerBtn(){
     btn.textContent = '▶ 下一个番茄';
     btn.className = 'btn-timer primary';
   }else{
-    const label = S.timer.mode==='work' ? '开始专注' : S.timer.mode==='shortBreak' ? '开始短休息' : '开始长休息';
+    const label = S.timer.mode==='work' ? '▶ 就现在，开始！' : S.timer.mode==='shortBreak' ? '开始短休息' : '开始长休息';
     btn.textContent = '▶ '+label;
     btn.className = 'btn-timer primary';
   }
@@ -873,17 +1057,18 @@ function calcStreak(){
 function onTimerComplete(){
   S.timer.phase='finished';
   stopTimer();
+  if(focusLockdown) exitLockdown();
   updateTimerBtn();
 
   if(S.timer.mode==='work'){
     recordPomodoro();
-    playSound(()=>{
+    playSound('complete', ()=>{
       if(S.settings.celebration) showCelebration();
       showCompletionModal();
       requestNotify('🍅 番茄完成！','专注完成，休息一下吧');
     });
   }else{
-    playSound(()=>{
+    playSound('break', ()=>{
       requestNotify('☕ 休息结束','该回来继续工作了');
     });
     if(S.settings.autoWork){
@@ -1091,6 +1276,8 @@ $('btn-skip').onclick = ()=>{
       }
     }
     $('modal-abandon-confirm').hidden = false;
+    $('btn-start').classList.add('shake');
+    setTimeout(()=>$('btn-start').classList.remove('shake'), 600);
   }else{
     abandonPomo();
   }
@@ -1208,6 +1395,12 @@ function toggleTaskComplete(id){
   t.completed = !t.completed;
   t.completedAt = t.completed ? isoNow() : null;
   if(t.completed && t.area!=='done') t.area='done';
+  // Animate the task item
+  const taskEl = qs('.task-item[data-id="'+id+'"]');
+  if(taskEl){
+    taskEl.classList.add('task-completing');
+    setTimeout(()=>taskEl.classList.remove('task-completing'), 500);
+  }
   saveState();
   renderTasks();
   updateDoneToday();
@@ -1322,6 +1515,7 @@ function renderTasks(){
     const item = document.createElement('li');
     item.className = 'task-item' + (t.completed ? ' completed' : '');
     item.dataset.id = t.id;
+    item.dataset.prio = t.priority || 4;
 
     const hasChildren = t.subtasks && t.subtasks.length > 0;
 
@@ -2038,6 +2232,16 @@ $('modal-task-select').onclick = e=>{
 $('btn-start').onclick = ()=>{
   if(S.timer.phase==='idle'){
     if(S.timer.mode==='work'){
+      // Anti-procrastination: check if user is hesitating
+      const today = todayStr();
+      const todayData = S.pomodoroHistory[today] || {count:0};
+      const hour = new Date().getHours();
+      
+      // If it's late and goal not reached, show urgency
+      if(todayData.count === 0 && hour >= 16){
+        toast('⏰ 今天还没开始！每拖延一分钟就少一分钟！', 4000);
+      }
+      
       // always show task selector when starting a new work session
       const hasTasks = S.tasks.some(t=>t.area==='next' && !t.completed);
       if(hasTasks){
@@ -2157,24 +2361,30 @@ $('rest-guide-overlay').onclick = e=>{
 function showCelebration(){
   if(!S.settings.celebration) return;
   const overlay = $('celebration-overlay');
+  if(!overlay) return;
   overlay.hidden = false;
   const container = qs('.confetti-container');
+  if(!container) return;
   container.innerHTML = '';
-  const colors = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#e91e63'];
-  for(let i=0;i<80;i++){
+  const colors = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6','#e91e63','#ff6b6b'];
+  const shapes = ['','star','circle','diamond'];
+  for(let i=0;i<60;i++){
     const c = document.createElement('div');
-    c.className='confetti';
+    c.className='confetti ' + shapes[Math.floor(Math.random()*shapes.length)];
     c.style.left=Math.random()*100+'%';
     c.style.background=colors[Math.floor(Math.random()*colors.length)];
-    c.style.width=(6+Math.random()*8)+'px';
-    c.style.height=(6+Math.random()*8)+'px';
+    c.style.width=(6+Math.random()*10)+'px';
+    c.style.height=(6+Math.random()*10)+'px';
     c.style.animationDuration=(2+Math.random()*3)+'s';
     c.style.animationDelay=Math.random()*1.5+'s';
     container.appendChild(c);
   }
-  setTimeout(()=>{
-    overlay.hidden = true;
-  }, 4000);
+  // Screen flash effect
+  const flash = document.createElement('div');
+  flash.className = 'celebration-flash';
+  overlay.appendChild(flash);
+  setTimeout(()=>{ flash.remove(); }, 600);
+  setTimeout(()=>{ overlay.hidden=true; }, 4000);
 }
 
 /* ============= DAILY LAUNCH ============= */
@@ -2917,7 +3127,7 @@ function applyTheme(theme){
   if(meta) meta.content = theme==='dark' ? '#1a1a2e' : '#e74c3c';
 }
 
-$('btn-test-sound').onclick = ()=>{ playSound(); };
+$('btn-test-sound').onclick = ()=>{ playSound('complete'); };
 
 /* ============= PROJECTS ============= */
 function renderProjects(){
@@ -3146,6 +3356,7 @@ document.addEventListener('keydown', e=>{
       }
       break;
     case 'Escape':
+      if(focusLockdown){ exitLockdown(); }
       closeDetail();
       $('modal-complete').hidden = true;
       $('modal-abandon-confirm').hidden = true;
@@ -3200,6 +3411,12 @@ function migrateData(){
     S._todayExceededYesterday = S._todayExceededYesterday||false;
     S._prevLevel = S._prevLevel||1;
     S.version=5;
+    saveState();
+  }
+  // v5 → v6 migration
+  if(S.version===5){
+    // No data structure changes, just version bump
+    S.version=6;
     saveState();
   }
 }
@@ -3271,6 +3488,11 @@ function initApp(){
   updateModeBtns();
   updateActiveTaskDisplay();
   updateDailyGoal();
+  // Hide micro-pomo if user already has pomos today
+  const todayForMicro = S.pomodoroHistory[todayStr()];
+  if(todayForMicro && todayForMicro.count > 0){
+    $('micro-pomo-bar').style.display = 'none';
+  }
   // V7: inbox pressure
   updateInboxPressure();
 
@@ -3312,6 +3534,9 @@ function initApp(){
     lockdownEl.checked = !!S.settings.lockdown;
     lockdownEl.onchange = function(){ S.settings.lockdown = this.checked; saveState(); };
   }
+  // Auto-trigger smart suggestion on load
+  setTimeout(generateSmartSuggestion, 1500);
+
   // navigation default
   navigateTo('work');
 }

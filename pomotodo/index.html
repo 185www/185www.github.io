@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
-<meta name="theme-color" content="#e74c3c"/>
+<meta name="theme-color" content="#ff4757"/>
 <meta name="description" content="Pomotodo — 番茄钟 + GTD 时间管理工具"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
@@ -15,6 +15,24 @@
 <link rel="manifest" href="./manifest.json"/>
 <link rel="stylesheet" href="./style.css"/>
 <title>Pomotodo</title>
+<style>
+.motivational-quote{text-align:center;padding:8px 0;min-height:40px}
+.mq-text{font-size:14px;color:var(--text2);font-style:italic;transition:opacity 0.3s,transform 0.3s;display:inline-block}
+.battle-indicator{position:fixed;top:var(--nav-h);left:50%;transform:translateX(-50%);z-index:99;background:linear-gradient(90deg,var(--primary),var(--orange));color:#fff;padding:4px 16px;border-radius:0 0 12px 12px;font-size:12px;font-weight:600;animation:slideDown 0.3s ease;display:flex;align-items:center;gap:4px}
+@keyframes slideDown{from{transform:translateX(-50%) translateY(-100%);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.battle-fire{animation:fireGlow 1s ease-in-out infinite alternate}
+@keyframes fireGlow{from{transform:scale(1)}to{transform:scale(1.2)}}
+.lockdown-particles{position:absolute;inset:0;z-index:0}
+.lockdown-container{position:relative}
+.lockdown-progress-text{color:var(--text2);font-size:12px;margin-top:8px;text-align:center}
+.task-completing{animation:checkPop 0.4s ease}
+@keyframes checkPop{0%{transform:scale(1)}30%{transform:scale(1.08)}60%{transform:scale(0.97)}100%{transform:scale(1)}}
+.celebration-flash{position:fixed;inset:0;background:white;opacity:0.6;animation:flashFade 0.6s ease forwards;z-index:1000;pointer-events:none}
+@keyframes flashFade{from{opacity:0.6}to{opacity:0}}
+.confetti.star{border-radius:0;clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.confetti.circle{border-radius:50%}
+.confetti.diamond{border-radius:2px;transform:rotate(45deg)}
+</style>
 </head>
 <body data-theme="light">
 <header class="app-header">
@@ -25,6 +43,10 @@
     <button class="nav-btn" data-view="stats">统计</button>
     <button class="nav-btn" data-view="settings">设置</button>
   </nav>
+  <div class="battle-indicator" id="battle-indicator" hidden>
+    <span class="battle-fire">⚔️</span>
+    <span class="battle-text" id="battle-text">专注模式</span>
+  </div>
 </header>
 <!-- ==================== WORK VIEW ==================== -->
 <main class="view work-view active" id="view-work">
@@ -35,12 +57,12 @@
       <button class="mode-btn" data-mode="longBreak">🌿 长休息</button>
     </div>
     <div class="timer-ring-wrap" id="timer-ring-wrap">
-      <svg class="timer-ring" viewBox="0 0 200 200"><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88"/></svg>
+      <svg class="timer-ring" viewBox="0 0 200 200"><defs><linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e74c3c"/><stop offset="100%" style="stop-color:#c0392b"/></linearGradient><linearGradient id="timerGradientBreak" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#2ecc71"/><stop offset="100%" style="stop-color:#27ae60"/></linearGradient></defs><circle class="ring-track" cx="100" cy="100" r="88"/><circle class="ring-fill" cx="100" cy="100" r="88"/></svg>
       <div class="timer-center"><span class="timer-digits" id="timer-digits">25:00</span><span class="timer-cycle" id="timer-cycle">#1</span></div>
     </div>
     <div class="timer-actions">
       <button class="btn-timer secondary" id="btn-reset" title="重置">↺</button>
-      <button class="btn-timer primary" id="btn-start">▶ 开始专注</button>
+      <button class="btn-timer primary" id="btn-start">🔥 就现在，开始！</button>
       <button class="btn-timer secondary" id="btn-focus-toggle" title="专注模式">🔍</button>
       <button class="btn-timer secondary" id="btn-skip" title="跳过">⏭</button>
     </div>
@@ -50,6 +72,9 @@
       <button class="micro-pomo-btn" id="btn-micro-pomo">5分钟快速开始</button>
       <span class="micro-pomo-hint" id="micro-pomo-hint">降低门槛，先动起来</span>
     </div>
+    <div class="motivational-quote" id="motivational-quote">
+      <span class="mq-text" id="mq-text">准备好了吗？开始你的第一个番茄！</span>
+    </div>
     <div class="score-display" id="score-display"><span class="score-num">0</span><span class="score-label">分</span><span class="level-badge">Lv.1 入门学徒</span></div>
     <div class="daily-goal-bar-wrap" id="daily-goal-bar-wrap">
       <div class="daily-goal-header"><span>🍅 今日目标</span><span class="daily-goal-text" id="daily-goal-text">0 / 6</span></div>
@@ -58,14 +83,14 @@
       <div class="daily-goal-celebration" id="daily-goal-celebration" hidden>🎉 今日目标达成！</div>
       <div class="streak-mini" id="streak-mini" hidden>🔥 连续专注 <strong id="streak-mini-num">0</strong> 天</div>
     </div>
-    <div class="momentum-feed-wrap"><h4 class="feed-heading">📰 成就动态</h4><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div>
-    <div class="done-today"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3><ul class="done-list" id="done-list"></ul></div>
-  </section>
-  <div class="smart-suggest-bar" id="smart-suggest-bar">
+    <div class="momentum-feed-wrap collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h4 class="feed-heading">📰 成就动态</h4></div><div class="collapsible-body collapsed"><div class="momentum-feed" id="momentum-feed"><div class="feed-item feed-empty">开始你的第一个番茄吧！</div></div></div></div>
+    <div class="done-today collapsible-section"><div class="collapsible-header collapsed" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')"><h3 class="done-heading">今日已完成 <span class="done-count" id="done-count">0</span></h3></div><div class="collapsible-body collapsed"><ul class="done-list" id="done-list"></ul></div></div>
+    <div class="smart-suggest-bar" id="smart-suggest-bar">
       <span class="smart-suggest-icon">💡</span>
       <span class="smart-suggest-text" id="smart-suggest-text">点击获取智能建议</span>
       <button class="smart-suggest-btn" id="btn-smart-suggest">该做什么？</button>
     </div>
+  </section>
   <section class="panel panel-tasks">
     <div class="gtd-tabs" id="gtd-tabs">
       <button class="gtd-tab active" data-area="inbox">📥 收件箱 <span class="gtd-cnt" id="cnt-inbox">0</span></button>
@@ -346,9 +371,23 @@
 </div>
 <div class="welcome-back" id="welcome-back" hidden>👋 欢迎回来，继续专注！</div>
 <div class="streak-crisis-banner" id="streak-crisis-banner" hidden>⚠️ 你的连续专注记录面临中断风险！今天至少完成1个番茄来保持 🔥<strong id="streak-crisis-num">0</strong> 天连续</div>
+<!-- LOCKDOWN OVERLAY -->
+<div class="lockdown-overlay" id="lockdown-overlay" hidden>
+  <div class="lockdown-container">
+    <canvas class="lockdown-particles" id="lockdown-particles"></canvas>
+    <div class="lockdown-timer-wrap">
+      <svg class="lockdown-ring" viewBox="0 0 200 200"><defs><linearGradient id="ldGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e74c3c"/><stop offset="100%" style="stop-color:#c0392b"/></linearGradient></defs><circle class="ld-ring-track" cx="100" cy="100" r="88"/><circle class="ld-ring-fill" cx="100" cy="100" r="88"/></svg>
+      <div class="lockdown-center"><span class="lockdown-digits" id="lockdown-digits">25:00</span><span class="lockdown-label">专注中</span></div>
+    </div>
+    <div class="lockdown-task" id="lockdown-task"></div>
+    <div class="lockdown-message" id="lockdown-message">远离手机，保持专注</div>
+    <div class="lockdown-warning">⚠️ 放弃专注将损失本次番茄的10分</div>
+    <div class="lockdown-progress-text" id="lockdown-progress-text"></div>
+  </div>
+</div>
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=7"></script>
+<script src="./app.js?v=10"></script>
 </body>
 </html>
