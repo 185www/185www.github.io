@@ -514,85 +514,124 @@ ul{list-style:none}
 /* Stats: distraction count card */
 .stat-card-distraction .stat-val{color:var(--orange)}
 
-/* ===== MDA V2 ENHANCEMENT STYLES ===== */
-/* Calendar heatmap levels */
-.cal-day.cal-level-0{background:var(--surface)}
-.cal-day.cal-level-1{background:#d4edda}
-.cal-day.cal-level-2{background:#a3e4b2}
-.cal-day.cal-level-3{background:#5cc97a}
-.cal-day.cal-level-4{background:#27ae60;color:#fff}
-[data-theme=dark] .cal-day.cal-level-1{background:#1a3a1a}
-[data-theme=dark] .cal-day.cal-level-2{background:#2a5a2a}
-[data-theme=dark] .cal-day.cal-level-3{background:#3a7a3a}
-[data-theme=dark] .cal-day.cal-level-4{background:#4a9a4a;color:#fff}
-.cal-day .cal-pomo-count{font-size:9px;color:var(--text2);font-weight:600;line-height:1}
-.cal-day.cal-level-4 .cal-pomo-count{color:rgba(255,255,255,0.9)}
-.cal-day.cal-streak{box-shadow:inset 0 0 0 2px var(--orange)}
-.cal-day.cal-goal::after{content:'✓';position:absolute;top:2px;right:2px;font-size:8px;color:var(--green);font-weight:700}
-.cal-monthly-summary{display:flex;gap:12px;flex-wrap:wrap;padding:10px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow)}
-.cal-summary-item{text-align:center;flex:1;min-width:70px}
-.cal-summary-val{font-size:20px;font-weight:700;color:var(--primary)}
-.cal-summary-lbl{font-size:11px;color:var(--text2)}
+/* ===== V7 ANTI-PROCRASTINATION & ANTI-DISTRACTION ===== */
 
-/* Stats Level Section */
-.stats-level-section{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
-.level-card{text-align:center}
-.level-current{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;font-size:16px;font-weight:600}
-.level-icon{font-size:32px}
-.level-xp-bar{height:12px;background:var(--surface2);border-radius:6px;overflow:hidden;position:relative;margin:8px 0 4px}
-.level-xp-fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--red));border-radius:6px;transition:width 0.8s ease}
-.level-xp-text{font-size:11px;color:var(--text2)}
+/* A) Micro Pomodoro Bar */
+.micro-pomo-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(135deg,#fff3cd,#ffeaa7);border-radius:var(--radius-sm);margin:8px 0;font-size:13px;border:1px solid #f39c12}
+[data-theme=dark] .micro-pomo-bar{background:linear-gradient(135deg,#3d3520,#2d2815);border-color:#f39c12}
+.micro-pomo-label{font-weight:600;color:#e67e22;white-space:nowrap}
+.micro-pomo-btn{padding:6px 16px;background:linear-gradient(135deg,#f39c12,#e67e22);color:#fff;border-radius:20px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all var(--transition);animation:microPulse 2s ease-in-out infinite}
+.micro-pomo-btn:hover{transform:scale(1.05);box-shadow:0 2px 12px rgba(243,156,18,0.4)}
+.micro-pomo-btn.running{background:linear-gradient(135deg,#e74c3c,#c0392b);animation:none}
+@keyframes microPulse{0%,100%{box-shadow:0 0 0 0 rgba(243,156,18,0.3)}50%{box-shadow:0 0 0 6px rgba(243,156,18,0)}}
+.micro-pomo-hint{font-size:11px;color:var(--text2);flex:1}
+.work-view.focus-mode-full .micro-pomo-bar{display:none}
 
-/* Stats Records */
-.stats-records{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
-.stats-records h3{font-size:15px;margin-bottom:8px}
-.records-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
-.record-card{text-align:center;padding:12px 8px;background:var(--surface2);border-radius:var(--radius-sm)}
-.record-val{font-size:22px;font-weight:700;color:var(--primary)}
-.record-lbl{font-size:11px;color:var(--text2);margin-top:2px}
-.record-date{font-size:10px;color:var(--text3);margin-top:2px}
-.chart-toggle-btn{padding:3px 10px;font-size:11px;border-radius:10px;background:var(--surface2);margin-left:6px}
-.chart-toggle-btn.active{background:var(--primary);color:#fff}
+/* B) Smart Suggest Bar */
+.smart-suggest-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(135deg,#e8f4fd,#d5e8f7);border-radius:var(--radius-sm);margin-bottom:8px;font-size:13px;border:1px solid var(--blue)}
+[data-theme=dark] .smart-suggest-bar{background:linear-gradient(135deg,#1a2a3a,#152235);border-color:var(--blue)}
+.smart-suggest-icon{font-size:18px}
+.smart-suggest-text{flex:1;color:var(--text);line-height:1.4}
+.smart-suggest-btn{padding:6px 14px;background:var(--blue);color:#fff;border-radius:20px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all var(--transition);white-space:nowrap}
+.smart-suggest-btn:hover{transform:scale(1.05);opacity:0.9}
 
-/* Stats Achievements */
-.stats-achievements{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
-.stats-achievements h3{font-size:15px;margin-bottom:8px}
-.achievements-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
-.achievement-badge{display:flex;align-items:center;gap:6px;padding:8px;border-radius:var(--radius-sm);font-size:12px;background:var(--surface2);transition:all 0.3s}
-.achievement-badge.earned{background:linear-gradient(135deg,#fff3cd,#ffeeba);border:1px solid #ffc107}
-[data-theme=dark] .achievement-badge.earned{background:linear-gradient(135deg,#3a2a0a,#4a3a1a);border-color:#b8860b}
-.achievement-badge.locked{opacity:0.4;filter:grayscale(1)}
-.achievement-badge .ach-icon{font-size:20px}
-.achievement-badge .ach-name{font-weight:600}
+/* C) Calendar Monthly Summary */
+.cal-monthly-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px}
+.cal-ms-item{text-align:center;padding:8px;background:var(--surface2);border-radius:var(--radius-sm)}
+.cal-ms-val{font-size:22px;font-weight:700;color:var(--primary);display:block}
+.cal-ms-lbl{font-size:11px;color:var(--text2);margin-top:2px;display:block}
+.cal-ms-val.grade-s{color:#f39c12}.cal-ms-val.grade-a{color:#2ecc71}.cal-ms-val.grade-b{color:#3498db}.cal-ms-val.grade-c{color:#e67e22}.cal-ms-val.grade-d{color:#e74c3c}.cal-ms-val.grade-f{color:#95a5a6}
 
-/* Stats Insights */
-.stats-insights{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
-.stats-insights h3{font-size:15px;margin-bottom:8px}
-.insights-list{display:flex;flex-direction:column;gap:6px}
-.insight-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);font-size:13px}
-.insight-item .insight-icon{font-size:18px;flex-shrink:0}
-.insight-item .insight-text{flex:1}
-.insight-item .insight-val{font-weight:700;color:var(--primary)}
+/* D) Calendar Heatmap Cells Enhancement */
+.cal-day .cal-heatmap-indicator{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:var(--surface2)}
+.cal-day .cal-heatmap-indicator[data-intensity="1"]{background:#d4edda}.cal-day .cal-heatmap-indicator[data-intensity="2"]{background:#82e09a}.cal-day .cal-heatmap-indicator[data-intensity="3"]{background:#2ecc71}.cal-day .cal-heatmap-indicator[data-intensity="4"]{background:#f39c12}.cal-day .cal-heatmap-indicator[data-intensity="5"]{background:#e74c3c}
+.cal-day .cal-pomo-count{font-size:8px;color:var(--text2);position:absolute;top:2px;right:2px;line-height:1}
+.cal-day.cal-intensity-1{background:rgba(46,204,113,0.08)}.cal-day.cal-intensity-2{background:rgba(46,204,113,0.15)}.cal-day.cal-intensity-3{background:rgba(46,204,113,0.25)}.cal-day.cal-intensity-4{background:rgba(243,156,18,0.2)}.cal-day.cal-intensity-5{background:rgba(231,76,60,0.15)}
+[data-theme=dark] .cal-day.cal-intensity-1{background:rgba(46,204,113,0.1)}.cal-day.cal-intensity-2{background:rgba(46,204,113,0.2)}.cal-day.cal-intensity-3{background:rgba(46,204,113,0.3)}.cal-day.cal-intensity-4{background:rgba(243,156,18,0.25)}.cal-day.cal-intensity-5{background:rgba(231,76,60,0.2)}
 
-/* Settings record */
-.sett-record{font-size:15px;color:var(--primary);font-weight:700;font-variant-numeric:tabular-nums}
+/* E) Daily Grade Banner */
+.daily-grade-banner{display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px}
+.dg-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:3px solid var(--text3);background:var(--surface2)}
+.dg-circle.grade-s{border-color:#f39c12;background:linear-gradient(135deg,#fff3cd,#ffeaa7);box-shadow:0 0 20px rgba(243,156,18,0.3)}
+.dg-circle.grade-a{border-color:#2ecc71;background:linear-gradient(135deg,#d4edda,#a3e4b2);box-shadow:0 0 20px rgba(46,204,113,0.3)}
+.dg-circle.grade-b{border-color:#3498db;background:linear-gradient(135deg,#cce5ff,#a3d1ff);box-shadow:0 0 20px rgba(52,152,219,0.3)}
+.dg-circle.grade-c{border-color:#e67e22;background:linear-gradient(135deg,#fde8d0,#fdd0a3);box-shadow:0 0 12px rgba(230,126,34,0.2)}
+.dg-circle.grade-d{border-color:#e74c3c;background:linear-gradient(135deg,#fce4e4,#f8c4c4)}
+.dg-circle.grade-f{border-color:#95a5a6;background:var(--surface2)}
+.dg-letter{font-size:28px;font-weight:700;color:var(--text)}
+.dg-info{flex:1}
+.dg-title{font-size:16px;font-weight:600;display:block;margin-bottom:2px}
+.dg-desc{font-size:13px;color:var(--text2);line-height:1.4;display:block}
 
-/* GTD Workflow Enhancement */
-.task-aging{font-size:9px;padding:1px 5px;border-radius:8px;font-weight:600;flex-shrink:0}
-.task-aging.warn{background:var(--orange);color:#fff}
-.task-aging.urgent{background:var(--red);color:#fff}
-.task-quick-focus{font-size:12px;padding:2px 6px;background:var(--primary);color:#fff;border-radius:10px;cursor:pointer;flex-shrink:0;opacity:0;transition:opacity 0.2s}
-.task-item:hover .task-quick-focus{opacity:1}
-.task-focus-star{font-size:11px;flex-shrink:0}
+/* F) Personal Records */
+.stats-records-box{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.stats-records-box h3{font-size:15px;margin-bottom:8px}
+.records-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.record-item{text-align:center;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)}
+.record-val{font-size:24px;font-weight:700;color:var(--primary);display:block}
+.record-lbl{font-size:11px;color:var(--text2);margin-top:2px;display:block}
+.record-item.record-best{background:linear-gradient(135deg,var(--primary-light),#fff3cd)}
+.record-item.record-best .record-val{color:var(--orange)}
 
-/* Score display toggle */
-.score-display.hidden-score{visibility:hidden;height:0;margin:0;overflow:hidden}
+/* G) Smart Insights */
+.stats-insight-box{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.stats-insight-box h3{font-size:15px;margin-bottom:8px}
+.insight-list{display:flex;flex-direction:column;gap:6px}
+.insight-item{padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:13px;line-height:1.5;display:flex;align-items:flex-start;gap:8px}
+.insight-icon{flex-shrink:0;font-size:16px}
+.insight-text{flex:1;color:var(--text)}
+.insight-empty{color:var(--text3);font-style:italic;justify-content:center}
+.insight-item.insight-warning{background:linear-gradient(135deg,#fff3cd,#ffeaa7);border-left:3px solid #f39c12}
+.insight-item.insight-success{background:linear-gradient(135deg,#d4edda,#a3e4b2);border-left:3px solid #2ecc71}
+.insight-item.insight-info{background:linear-gradient(135deg,#e8f4fd,#d5e8f7);border-left:3px solid #3498db}
 
-/* Chart toggle responsive */
+/* H) Inbox Pressure Bar */
+.inbox-pressure-bar{padding:10px 12px;background:linear-gradient(135deg,#fff3cd,#ffeaa7);border-radius:var(--radius-sm);margin-bottom:8px;border:1px solid #f39c12;animation:pressurePulse 3s ease-in-out infinite}
+[data-theme=dark] .inbox-pressure-bar{background:linear-gradient(135deg,#3d3520,#2d2815);border-color:#f39c12}
+@keyframes pressurePulse{0%,100%{opacity:1}50%{opacity:0.85}}
+.ip-header{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.ip-icon{font-size:16px}
+.ip-text{flex:1;font-size:13px;font-weight:600;color:#e67e22}
+.ip-action-btn{padding:4px 12px;background:#e67e22;color:#fff;border-radius:12px;font-size:11px;font-weight:600;border:none;cursor:pointer}
+.ip-action-btn:hover{background:#d35400}
+.ip-track{height:4px;background:rgba(0,0,0,0.1);border-radius:2px;overflow:hidden}
+.ip-fill{height:100%;background:linear-gradient(90deg,#f39c12,#e74c3c);border-radius:2px;transition:width 0.5s ease}
+
+/* I) Focus Lockdown */
+.work-view.focus-lockdown .header-nav{display:none}
+.work-view.focus-lockdown .app-footer{display:none}
+.work-view.focus-lockdown .panel-tasks{display:none}
+.work-view.focus-lockdown .done-today{display:none}
+.work-view.focus-lockdown .momentum-feed-wrap{display:none}
+.work-view.focus-lockdown{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:0}
+.work-view.focus-lockdown .panel-timer{max-width:500px;border:none;box-shadow:none;background:transparent}
+.work-view.focus-lockdown .timer-ring-wrap{width:300px;height:300px}
+.work-view.focus-lockdown .timer-digits{font-size:64px}
+.work-view.focus-lockdown .timer-modes{display:none}
+.work-view.focus-lockdown .timer-actions{display:flex;gap:8px;justify-content:center}
+.work-view.focus-lockdown #btn-focus-toggle{display:inline-flex;background:var(--red);color:#fff;border-radius:50%;width:48px;height:48px;font-size:22px;align-items:center;justify-content:center;position:fixed;top:16px;right:16px;z-index:999;box-shadow:0 2px 12px rgba(0,0,0,0.2)}
+.work-view.focus-lockdown #btn-reset,.work-view.focus-lockdown #btn-start,.work-view.focus-lockdown #btn-skip{display:none}
+.work-view.focus-lockdown .micro-pomo-bar{display:none}
+.work-view.focus-lockdown .daily-goal-bar-wrap{display:block;text-align:center}
+.work-view.focus-lockdown .score-display{display:none}
+
+/* J) Expanded Level System */
+.level-badge.level-premium{background:linear-gradient(135deg,#FFD700,#FFA500,#FF6347);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.3)}
+
+/* K) Task Aging */
+.task-item.task-aged{background:linear-gradient(135deg,var(--surface),rgba(231,76,60,0.05))}
+.task-item.task-aged .task-text::after{content:'⏰';margin-left:4px;font-size:11px}
+
+/* L) Batch Clarify Mode */
+.batch-clarify-active .gtd-tabs,.batch-clarify-active .task-input-wrap,.batch-clarify-active .task-filters{display:none}
+.batch-clarify-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(135deg,#e8f4fd,#d5e8f7);border-radius:var(--radius-sm);margin-bottom:8px;font-size:13px;border:1px solid var(--blue)}
+.batch-clarify-bar .bc-progress{font-weight:600;color:var(--blue)}
+
+/* M) Responsive additions */
 @media(max-width:640px){
-  .achievements-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+  .cal-monthly-summary{grid-template-columns:repeat(2,1fr)}
   .records-grid{grid-template-columns:repeat(2,1fr)}
-  .cal-monthly-summary{gap:8px}
-  .cal-summary-item{min-width:60px}
-  .cal-summary-val{font-size:16px}
+  .daily-grade-banner{flex-direction:column;text-align:center}
+  .micro-pomo-bar{flex-wrap:wrap}
+  .smart-suggest-bar{flex-wrap:wrap}
 }
