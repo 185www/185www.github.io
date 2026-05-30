@@ -553,17 +553,16 @@ ul{list-style:none}
 [data-theme=dark] .cal-day.cal-intensity-1{background:rgba(46,204,113,0.1)}.cal-day.cal-intensity-2{background:rgba(46,204,113,0.2)}.cal-day.cal-intensity-3{background:rgba(46,204,113,0.3)}.cal-day.cal-intensity-4{background:rgba(243,156,18,0.25)}.cal-day.cal-intensity-5{background:rgba(231,76,60,0.2)}
 
 /* Enhanced Daily Grade */
-.daily-grade-banner{background:linear-gradient(135deg,var(--surface),var(--surface2));border-radius:var(--radius);padding:24px;margin-bottom:12px;box-shadow:var(--shadow);display:flex;align-items:center;gap:20px}
-.dg-circle{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;flex-shrink:0;border:3px solid var(--border);transition:all 0.3s}
-.dg-circle.grade-s{background:linear-gradient(135deg,#FFD700,#FFA500);color:#fff;border-color:#FFD700;box-shadow:0 0 20px rgba(255,215,0,0.3)}
-.dg-circle.grade-a{background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border-color:#2ecc71;box-shadow:0 0 20px rgba(46,204,113,0.3)}
-.dg-circle.grade-b{background:linear-gradient(135deg,#3498db,#2980b9);color:#fff;border-color:#3498db}
-.dg-circle.grade-c{background:linear-gradient(135deg,#f39c12,#e67e22);color:#fff;border-color:#f39c12}
-.dg-circle.grade-d{background:linear-gradient(135deg,#e67e22,#d35400);color:#fff;border-color:#e67e22}
-.dg-circle.grade-f{background:var(--surface2);color:var(--text2);border-color:var(--border)}
-.dg-letter{font-size:36px;font-weight:700;color:inherit}
+.daily-grade-banner{background:var(--surface);border-radius:var(--radius);padding:24px;margin-bottom:12px;box-shadow:var(--shadow);display:flex;align-items:center;gap:20px}
+.dg-circle{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;font-size:32px;color:#fff;box-shadow:0 4px 15px rgba(0,0,0,0.15)}
+.dg-circle.grade-s{background:linear-gradient(135deg,#f39c12,#e74c3c);box-shadow:0 4px 20px rgba(243,156,18,0.4)}
+.dg-circle.grade-a{background:linear-gradient(135deg,#2ecc71,#27ae60);box-shadow:0 4px 20px rgba(46,204,113,0.4)}
+.dg-circle.grade-b{background:linear-gradient(135deg,#3498db,#2980b9);box-shadow:0 4px 20px rgba(52,152,219,0.4)}
+.dg-circle.grade-c{background:linear-gradient(135deg,#e67e22,#d35400);box-shadow:0 4px 20px rgba(230,126,34,0.4)}
+.dg-circle.grade-d{background:linear-gradient(135deg,#95a5a6,#7f8c8d);box-shadow:0 4px 15px rgba(149,165,166,0.3)}
+.dg-circle.grade-f{background:linear-gradient(135deg,#bdc3c7,#95a5a6);box-shadow:0 4px 15px rgba(189,195,199,0.3)}
 .dg-info{flex:1}
-.dg-title{font-size:16px;font-weight:600;display:block;margin-bottom:2px}
+.dg-title{font-size:16px;font-weight:700;color:var(--text);display:block;margin-bottom:4px}
 .dg-desc{font-size:13px;color:var(--text2);line-height:1.4;display:block}
 
 /* F) Personal Records */
@@ -603,17 +602,18 @@ ul{list-style:none}
 /* LOCKDOWN MODE OVERLAY */
 .lockdown-overlay{position:fixed;inset:0;z-index:9000;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);display:flex;align-items:center;justify-content:center;animation:lockdownIn 0.5s ease}
 @keyframes lockdownIn{from{opacity:0}to{opacity:1}}
-.lockdown-container{text-align:center;max-width:400px;padding:24px}
-.lockdown-timer-wrap{position:relative;width:220px;height:220px;margin:0 auto 20px}
+.lockdown-container{display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px}
+.lockdown-timer-wrap{position:relative;width:200px;height:200px;margin:0 auto}
 .lockdown-ring{transform:rotate(-90deg);width:100%;height:100%}
-.ld-ring-track{fill:none;stroke:rgba(255,255,255,0.1);stroke-width:8}
-.ld-ring-fill{fill:none;stroke:#2ecc71;stroke-width:8;stroke-linecap:round;stroke-dasharray:553.1;stroke-dashoffset:0;transition:stroke-dashoffset 0.5s ease}
+.ld-ring-track{fill:none;stroke:rgba(255,255,255,0.15);stroke-width:8}
+.ld-ring-fill{fill:none;stroke:url(#ldGradient);stroke-width:8;stroke-linecap:round;stroke-dasharray:553.1;stroke-dashoffset:0;transition:stroke-dashoffset 0.5s ease}
+.lockdown-digits{font-size:48px;font-weight:700;color:#fff;letter-spacing:2px;font-variant-numeric:tabular-nums;text-shadow:0 0 20px rgba(231,76,60,0.5)}
+.lockdown-label{font-size:14px;color:rgba(255,255,255,0.7);display:block;margin-top:4px}
+.lockdown-task{font-size:18px;color:#fff;font-weight:600;text-align:center;margin:16px 0 8px;max-width:80vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lockdown-message{font-size:15px;color:rgba(255,255,255,0.8);text-align:center;animation:lockdownMsgPulse 3s ease-in-out infinite}
+@keyframes lockdownMsgPulse{0%,100%{opacity:0.8}50%{opacity:1}}
+.lockdown-warning{font-size:12px;color:rgba(255,255,255,0.5);text-align:center;margin-top:12px}
 .lockdown-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
-.lockdown-digits{font-size:48px;font-weight:700;color:#fff;display:block;font-variant-numeric:tabular-nums}
-.lockdown-label{font-size:14px;color:rgba(255,255,255,0.6);display:block;margin-top:4px}
-.lockdown-task{font-size:18px;color:#fff;margin-bottom:16px;font-weight:600}
-.lockdown-message{font-size:15px;color:rgba(255,255,255,0.5);margin-bottom:24px}
-.lockdown-warning{font-size:13px;color:#e74c3c;opacity:0.8}
 
 /* Collapsible Sections */
 .collapsible-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 0;user-select:none}
@@ -661,4 +661,16 @@ ul{list-style:none}
   .smart-suggest-bar{flex-wrap:wrap}
   .momentum-feed-wrap,.done-today{display:none}
   .score-display .score-label,.score-display .level-badge{display:none}
+  .score-label,.level-badge{display:none}
+  .score-num{font-size:18px}
 }
+
+/* Page entrance animation */
+.view.active{animation:viewFadeIn 0.4s ease}
+@keyframes viewFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.panel{animation:panelSlideIn 0.3s ease}
+@keyframes panelSlideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* Abandon shake animation */
+@keyframes abandonShake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-4px)}20%,40%,60%,80%{transform:translateX(4px)}}
+.btn-timer.primary.shake{animation:abandonShake 0.5s ease}

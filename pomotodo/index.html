@@ -40,7 +40,7 @@
     </div>
     <div class="timer-actions">
       <button class="btn-timer secondary" id="btn-reset" title="重置">↺</button>
-      <button class="btn-timer primary" id="btn-start">▶ 开始专注</button>
+      <button class="btn-timer primary" id="btn-start">▶ 就现在，开始！</button>
       <button class="btn-timer secondary" id="btn-focus-toggle" title="专注模式">🔍</button>
       <button class="btn-timer secondary" id="btn-skip" title="跳过">⏭</button>
     </div>
@@ -350,7 +350,7 @@
 <div class="lockdown-overlay" id="lockdown-overlay" hidden>
   <div class="lockdown-container">
     <div class="lockdown-timer-wrap">
-      <svg class="lockdown-ring" viewBox="0 0 200 200"><circle class="ld-ring-track" cx="100" cy="100" r="88"/><circle class="ld-ring-fill" cx="100" cy="100" r="88"/></svg>
+      <svg class="lockdown-ring" viewBox="0 0 200 200"><defs><linearGradient id="ldGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e74c3c"/><stop offset="100%" style="stop-color:#c0392b"/></linearGradient></defs><circle class="ld-ring-track" cx="100" cy="100" r="88"/><circle class="ld-ring-fill" cx="100" cy="100" r="88"/></svg>
       <div class="lockdown-center"><span class="lockdown-digits" id="lockdown-digits">25:00</span><span class="lockdown-label">专注中</span></div>
     </div>
     <div class="lockdown-task" id="lockdown-task"></div>
@@ -361,6 +361,6 @@
 <div class="toast-wrap" id="toast-wrap"></div>
 <footer class="app-footer">© 2026 童 · 保留所有权利 Hosted with ❤️ on GitHub Pages</footer>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="./app.js?v=8"></script>
+<script src="./app.js?v=9"></script>
 </body>
 </html>

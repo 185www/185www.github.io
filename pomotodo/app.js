@@ -1,4 +1,4 @@
-/* Pomotodo V6 — app.js — MDA Gamification */
+/* Pomotodo V9 — app.js — MDA Gamification */
 (function(){
 'use strict';
 
@@ -104,23 +104,51 @@ function toast(msg, dur=2500){
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 
-function playSound(callback){
+function playSound(type, callback){
   if(!S.settings.sound) { if(callback) callback(); return; }
   try{
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
     const o = ctx.createOscillator();
     const g = ctx.createGain();
-    o.type='sine';
-    o.frequency.setValueAtTime(880, ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime+0.5);
-    g.gain.setValueAtTime(S.settings.volume, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.8);
+    let freq = 880, dur = 0.8, waveType = 'sine';
+    
+    switch(type || 'complete'){
+      case 'complete':
+        freq = 880; dur = 0.8; waveType = 'sine';
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + dur);
+        break;
+      case 'break':
+        freq = 660; dur = 0.6; waveType = 'triangle';
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(330, ctx.currentTime + dur);
+        break;
+      case 'milestone':
+        freq = 523; dur = 1.2; waveType = 'sine';
+        o.frequency.setValueAtTime(523, ctx.currentTime);
+        o.frequency.setValueAtTime(659, ctx.currentTime + 0.3);
+        o.frequency.setValueAtTime(784, ctx.currentTime + 0.6);
+        o.frequency.exponentialRampToValueAtTime(523, ctx.currentTime + dur);
+        break;
+      case 'warning':
+        freq = 440; dur = 0.4; waveType = 'square';
+        g.gain.setValueAtTime(S.settings.volume * 0.3, ctx.currentTime);
+        break;
+      default:
+        freq = 880; dur = 0.8; waveType = 'sine';
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + dur);
+    }
+    
+    o.type = waveType;
+    if(type !== 'warning') g.gain.setValueAtTime(S.settings.volume, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     o.connect(g); g.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime+0.8);
+    o.start(); o.stop(ctx.currentTime + dur);
     setTimeout(()=>{
       ctx.close();
       if(callback) callback();
-    },900);
+    }, dur * 1000 + 100);
   }catch(e){ if(callback) callback(); }
 }
 
@@ -198,6 +226,7 @@ function checkMilestones(streak){
         addMilestone(MILESTONE_MSGS[s]);
         toast(MILESTONE_MSGS[s], 5000);
         const conf = MILESTONE_CONFETTI[s]||{count:100,colors:['#e74c3c','#3498db','#2ecc71','#f1c40f']};
+        playSound('milestone');
         showCelebrationCustom(conf.count, conf.colors);
       }
     }
@@ -942,13 +971,13 @@ function onTimerComplete(){
 
   if(S.timer.mode==='work'){
     recordPomodoro();
-    playSound(()=>{
+    playSound('complete', ()=>{
       if(S.settings.celebration) showCelebration();
       showCompletionModal();
       requestNotify('🍅 番茄完成！','专注完成，休息一下吧');
     });
   }else{
-    playSound(()=>{
+    playSound('break', ()=>{
       requestNotify('☕ 休息结束','该回来继续工作了');
     });
     if(S.settings.autoWork){
@@ -1156,6 +1185,8 @@ $('btn-skip').onclick = ()=>{
       }
     }
     $('modal-abandon-confirm').hidden = false;
+    $('btn-start').classList.add('shake');
+    setTimeout(()=>$('btn-start').classList.remove('shake'), 600);
   }else{
     abandonPomo();
   }
@@ -2992,7 +3023,7 @@ function applyTheme(theme){
   if(meta) meta.content = theme==='dark' ? '#1a1a2e' : '#e74c3c';
 }
 
-$('btn-test-sound').onclick = ()=>{ playSound(); };
+$('btn-test-sound').onclick = ()=>{ playSound('complete'); };
 
 /* ============= PROJECTS ============= */
 function renderProjects(){
@@ -3399,6 +3430,9 @@ function initApp(){
     lockdownEl.checked = !!S.settings.lockdown;
     lockdownEl.onchange = function(){ S.settings.lockdown = this.checked; saveState(); };
   }
+  // Auto-trigger smart suggestion on load
+  setTimeout(generateSmartSuggestion, 1500);
+
   // navigation default
   navigateTo('work');
 }
