@@ -3054,13 +3054,10 @@ function finishOnboarding(){
 function navigateTo(view){
   qsa('.view').forEach(v=>v.classList.remove('active'));
   qsa('.nav-btn').forEach(b=>b.classList.remove('active'));
-  qsa('.bnav-item').forEach(b=>b.classList.remove('active'));
   const target = $('view-'+view);
   if(target) target.classList.add('active');
   const navBtn = qs(`.nav-btn[data-view="${view}"]`);
   if(navBtn) navBtn.classList.add('active');
-  const bnavBtn = qs(`.bnav-item[data-view="${view}"]`);
-  if(bnavBtn) bnavBtn.classList.add('active');
 
   if(view==='stats') renderStats();
   if(view==='calendar') renderCalendar();
@@ -3071,14 +3068,6 @@ function navigateTo(view){
 }
 
 qsa('.nav-btn').forEach(b=>{
-  b.onclick = ()=>{
-    navigateTo(b.dataset.view);
-    closeDetail();
-  };
-});
-
-/* Bottom nav sync (mobile) */
-qsa('.bnav-item').forEach(b=>{
   b.onclick = ()=>{
     navigateTo(b.dataset.view);
     closeDetail();

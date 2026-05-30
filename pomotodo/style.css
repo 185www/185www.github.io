@@ -51,39 +51,18 @@ ul{list-style:none}
 .app-header{display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);padding:0 16px;padding-top:var(--safe-top);background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
 .app-logo{font-size:18px;font-weight:700;margin:0}
 
-/* Header nav: hidden on phone, visible on tablet+ */
-.header-nav{display:none;gap:4px}
-.nav-btn{padding:6px 14px;font-size:13px;border-radius:20px;background:transparent;transition:background var(--transition),color var(--transition);color:var(--text2)}
+.header-nav{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.header-nav::-webkit-scrollbar{display:none}
+.nav-btn{padding:6px 12px;font-size:12px;border-radius:20px;background:transparent;transition:background var(--transition),color var(--transition);color:var(--text2);white-space:nowrap;flex-shrink:0}
 .nav-btn.active,.nav-btn:hover{background:var(--primary);color:#fff}
 
-/* ========== 4. BOTTOM NAVIGATION (Mobile) ========== */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-h);padding-bottom:var(--safe-bottom);background:rgba(255,255,255,0.72);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;z-index:200}
-[data-theme=dark] .bottom-nav{background:rgba(22,33,62,0.80);border-top-color:var(--border)}
-.bnav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 0;flex:1;color:var(--text3);transition:color var(--transition);min-height:44px;-webkit-tap-highlight-color:transparent}
-.bnav-item.active{color:var(--primary)}
-.bnav-item:active{opacity:0.7}
-.bnav-icon{width:22px;height:22px}
-.bnav-label{font-size:10px;line-height:1}
-.bnav-item.active .bnav-icon svg{stroke:var(--primary)}
-.bnav-item.active .bnav-label{font-weight:600}
-
-/* Active dot indicator on bottom nav */
-.bnav-item.active::before{content:'';position:absolute;top:0;width:20px;height:3px;border-radius:0 0 3px 3px;background:var(--primary)}
-.bnav-item{position:relative}
-
-/* Hide bottom nav on tablet/desktop */
-@media(min-width:641px){.bottom-nav{display:none}}
-
-/* Show header nav on tablet+ */
-@media(min-width:641px){.header-nav{display:flex}}
+/* Bottom nav removed in V16.1 — header nav used on all screen sizes */
 
 /* ========== 5. FOOTER ========== */
 .app-footer{text-align:center;padding:8px 12px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);height:var(--footer-h);display:flex;align-items:center;justify-content:center}
-/* Hide footer on mobile (bottom nav replaces it) */
-@media(max-width:640px){.app-footer{display:none}}
 
 /* ========== 6. MAIN LAYOUT / VIEWS ========== */
-.view{display:none;flex-direction:column;gap:8px;padding:8px 12px;padding-bottom:calc(var(--footer-h) + 12px);max-width:1200px;margin:0 auto;width:100%;min-height:calc(100vh - var(--nav-h) - var(--footer-h))}
+.view{display:none;flex-direction:column;gap:8px;padding:8px 12px;padding-bottom:calc(var(--footer-h) + 12px);max-width:1200px;margin:0 auto;width:100%;min-height:calc(100vh - var(--nav-h) - var(--footer-h));overflow-x:hidden}
 .view.active{display:flex}
 .work-view{flex-direction:row;flex-wrap:wrap;gap:16px}
 
@@ -96,7 +75,7 @@ ul{list-style:none}
 .timer-modes{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
 .mode-btn{padding:6px 16px;border-radius:20px;font-size:13px;background:var(--surface2);transition:all var(--transition);min-height:44px;display:flex;align-items:center}
 .mode-btn.active{background:var(--primary);color:#fff}
-.timer-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 12px}
+.timer-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 12px;max-width:100%;aspect-ratio:1}
 .timer-ring{transform:rotate(-90deg);width:100%;height:100%}
 .ring-track{fill:none;stroke:var(--surface2);stroke-width:8}
 .ring-fill{fill:none;stroke:var(--primary);stroke-width:8;stroke-linecap:round;stroke-dasharray:553.1;stroke-dashoffset:0;transition:stroke-dashoffset 0.5s ease,stroke 0.3s}
@@ -694,12 +673,13 @@ ul{list-style:none}
 
 /* ----- PHONE: <= 640px ----- */
 @media(max-width:640px){
-  /* Header: compact, hide nav */
-  .app-header{padding:0 12px}
-  .app-logo{font-size:16px}
+  /* Header: compact */
+  .app-header{padding:0 10px}
+  .app-logo{font-size:15px}
+  .nav-btn{padding:5px 10px;font-size:11px}
 
-  /* Views: padding-bottom for bottom nav */
-  .view{padding:8px 10px;padding-bottom:calc(var(--bottom-nav-h) + var(--safe-bottom) + 12px);min-height:calc(100vh - var(--nav-h))}
+  /* Views: footer-based padding */
+  .view{padding:8px 10px;padding-bottom:calc(var(--footer-h) + 10px);min-height:calc(100vh - var(--nav-h) - var(--footer-h));overflow-x:hidden}
 
   /* Work view: single column */
   .work-view{flex-direction:column;gap:12px}
@@ -772,11 +752,11 @@ ul{list-style:none}
   /* Rest options: single column */
   .rest-options{grid-template-columns:1fr}
 
-  /* Toast: above bottom nav */
-  .toast-wrap{bottom:calc(var(--bottom-nav-h) + var(--safe-bottom) + 16px)}
+  /* Toast: above footer */
+  .toast-wrap{bottom:56px}
 
-  /* Resumption bar: above bottom nav */
-  .resumption-bar{bottom:var(--bottom-nav-h)}
+  /* Resumption bar: above footer */
+  .resumption-bar{bottom:0}
 
   /* Settings: allow wrapping for long labels */
   .sett-row{min-height:44px}
@@ -789,14 +769,12 @@ ul{list-style:none}
   .work-view.focus-mode .timer-ring-wrap{width:220px;height:220px}
   .work-view.focus-mode .timer-digits{font-size:48px}
 
-  /* Focus mode full: hide bottom nav */
-  .work-view.focus-mode-full .bottom-nav{display:none!important}
+  /* Focus mode full */
   .work-view.focus-mode-full .timer-ring-wrap{width:220px;height:220px}
   .work-view.focus-mode-full .timer-digits{font-size:48px}
   .work-view.focus-mode-full #btn-focus-toggle{top:calc(var(--safe-top) + 16px);right:16px}
 
-  /* Focus lockdown: hide bottom nav */
-  .work-view.focus-lockdown .bottom-nav{display:none!important}
+  /* Focus lockdown */
   .work-view.focus-lockdown .timer-ring-wrap{width:220px;height:220px}
   .work-view.focus-lockdown .timer-digits{font-size:48px}
 
@@ -816,8 +794,7 @@ ul{list-style:none}
 
 /* ----- TABLET: 641px - 1024px ----- */
 @media(min-width:641px) and (max-width:1024px){
-  /* Header nav visible */
-  .header-nav{display:flex}
+  /* Nav btn: slightly larger */
 
   /* Views: normal footer padding */
   .view{padding:12px 16px;padding-bottom:calc(var(--footer-h) + 16px);min-height:calc(100vh - var(--nav-h) - var(--footer-h))}
@@ -858,10 +835,7 @@ ul{list-style:none}
 
 /* ----- DESKTOP: > 1024px ----- */
 @media(min-width:1025px){
-  /* Header nav visible */
-  .header-nav{display:flex}
-
-  /* Views: generous spacing, max-width */
+  /* Nav btn: comfortable size */
   .view{padding:16px 20px;padding-bottom:calc(var(--footer-h) + 20px);max-width:1200px;min-height:calc(100vh - var(--nav-h) - var(--footer-h))}
 
   /* Work view: two columns with generous gap */
