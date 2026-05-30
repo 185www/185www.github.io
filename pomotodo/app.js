@@ -59,6 +59,10 @@ function freshState(){
     _prevLevel:1,
     sleepIdeas:[],
     _sleepDismissCount:0,
+    _sleepDismissHistory:[],
+    _sleepLog:[],
+    _breathingChallengeActive:false,
+    _sleepLockdownActive:false,
     _lastSleepDate:null,
     _lastSleepQuality:null,
     _sleepEnforceActive:false,
@@ -418,10 +422,15 @@ function generateSmartSuggestion(){
     return;
   }
   
-  // Rule 6: Morning suggestion
+  // Rule 6: Morning suggestion - ADHD-enhanced
   if(hour < 10 && todayData.count === 0){
     const t = activeTasks.sort((a,b)=>a.priority-b.priority)[0];
-    el.textContent = '🌅 早上好！建议从"'+escHtml(t.title)+'"开始新的一天';
+    // ADHD-specific: address morning startup difficulty
+    if(hour >= 8){
+      el.textContent = '🧠 你的注意力模式显示上午启动最困难（注意力得分 ' + ADHD_PROFILE.inattention + '/3）。先从"' + escHtml(t.title) + '"开始，用5分钟微番茄降低门槛';
+      return;
+    }
+    el.textContent = '🌅 早上好！建议从"' + escHtml(t.title) + '"开始新的一天';
     return;
   }
   
@@ -498,6 +507,9 @@ qsa('.subject-btn').forEach(btn=>{
 /* ============= V20: SLEEP ENFORCEMENT SYSTEM ============= */
 let sleepCheckInterval = null;
 let winddownShown = false;
+let winddownProgressTimer = null;
+let sleepDismissTimer = null;
+let breathingTimer = null;
 
 function initSleepSystem(){
   if(sleepCheckInterval) clearInterval(sleepCheckInterval);
@@ -505,6 +517,24 @@ function initSleepSystem(){
   checkSleepTime();
   // check morning
   checkMorningSleep();
+  // ADHD: Check for 10am quick-start trigger
+  checkADHDQuickStart();
+}
+
+/* ADHD 10am Quick-Start Trigger */
+function checkADHDQuickStart(){
+  const hour = new Date().getHours();
+  const today = todayStr();
+  const todayData = S.pomodoroHistory[today] || {count:0};
+  if(hour >= 10 && hour < 11 && todayData.count === 0 && !S._adhdQuickStartShown){
+    S._adhdQuickStartShown = today;
+    saveState();
+    setTimeout(()=>{
+      const el = $('smart-suggest-text');
+      if(el) el.textContent = '🧠 你的注意力模式显示上午启动最困难。用5分钟微番茄打破僵局？';
+      toast('🧠 ADHD提示：上午启动最困难，试试5分钟微番茄！', 5000);
+    }, 3000);
+  }
 }
 
 function checkSleepTime(){
@@ -549,10 +579,49 @@ function checkSleepTime(){
 }
 
 function showWinddown(){
-  const remaining = (S.settings.winddownMinutes);
-  $('winddown-text').textContent = '还有' + remaining + '分钟该准备睡觉了，收尾当前任务吧';
+  updateWinddownProgress();
   $('winddown-banner').hidden = false;
-  playSound('warning');
+   playSound('warning');
+  // Start progressive wind-down timer (update every 30 seconds)
+  if(winddownProgressTimer) clearInterval(winddownProgressTimer);
+  winddownProgressTimer = setInterval(updateWinddownProgress, 30000);
+}
+
+function updateWinddownProgress(){
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const [bedH, bedM] = S.settings.bedtime.split(':').map(Number);
+  const bedtimeMinutes = bedH * 60 + bedM;
+  const currentMinutes = hour * 60 + minute;
+  let remaining = bedtimeMinutes - currentMinutes;
+  if(remaining < 0) remaining += 1440; // next day wrap
+  remaining = Math.max(0, remaining);
+  
+  const msgs = {
+    30: '还有30分钟该睡了，收尾当前任务',
+    25: '距离睡觉还有25分钟，开始收尾吧',
+    20: '只剩20分钟了！停止开始新任务',
+    15: '最后15分钟，关闭所有标签页，开始放松',
+    10: '最后10分钟，做3次深呼吸',
+    5: '5分钟！放下一切，准备入睡',
+    3: '3分钟了！真的该停下来了',
+    1: '1分钟！最后的机会去睡觉',
+  };
+  
+  // Find the closest message threshold
+  let msg = '还有'+remaining+'分钟该睡觉了，收尾当前任务吧';
+  const thresholds = [30,25,20,15,10,5,3,1];
+  for(const t of thresholds){
+    if(remaining <= t && remaining > t - 3){ msg = msgs[t]; break; }
+  }
+  $('winddown-text').textContent = msg;
+  
+  // Auto-dismiss banner when it's bedtime (sleep mode will take over)
+  if(currentMinutes >= bedtimeMinutes){
+    $('winddown-banner').hidden = true;
+    if(winddownProgressTimer){ clearInterval(winddownProgressTimer); winddownProgressTimer = null; }
+  }
 }
 
 $('winddown-close').onclick = ()=>{ $('winddown-banner').hidden = true; };
@@ -565,15 +634,180 @@ function activateSleepMode(){
   }
   // Render sleep ideas
   renderSleepIdeas();
-  // Set subtitle based on ADHD profile
+  // ADHD-personalized sleep messages
+  const now = new Date();
+  const dismissCount = getTodayDismissCount();
+  const sleepDebt = getSleepDebt();
+  
+  // Choose subtitle based on dismiss count and ADHD profile
   const subtitles = [
-    '你的注意力得分较高，睡眠充足才能发挥最佳水平',
-    '今晚好好休息，明天效率翻倍',
-    '每少睡1小时，明天注意力下降约15%',
-    '高考倒计时中，今晚的睡眠就是明天的弹药',
+    '你的注意力容易被新鲜事物吸引（注意力得分 ' + ADHD_PROFILE.inattention + '/3），现在就是在保护它',
+    '多动性特质让你"停不下来"（得分 ' + ADHD_PROFILE.hyperactivity + '/3），但睡眠能让明天更高效',
+    '每多看1分钟手机，明天注意力下降约2分钟。已经' + dismissCount + '次推迟了，真的值得吗？',
+    '研究显示：睡眠不足+注意力缺陷 = 双重困难。今晚的选择决定明天的效率',
+    '高考倒计时中，今晚的睡眠就是明天的弹药。你值得休息。',
   ];
-  $('sleep-subtitle').textContent = subtitles[Math.floor(Date.now()/60000) % subtitles.length];
+  $('sleep-subtitle').textContent = subtitles[dismissCount % subtitles.length];
+  
+  // Update sleep-reason with ADHD-specific content
+  const reasonEl = $('sleep-reason');
+  if(reasonEl){
+    let reasonHtml = '<p>你今天已推迟入睡 <strong>' + dismissCount + '</strong> 次</p>';
+    
+    // Last night comparison
+    const lastNight = getLastNightBedtime();
+    if(lastNight){
+      reasonHtml += '<p>昨晚你到 <strong>' + lastNight + '</strong> 才睡，今天效率可能已降低</p>';
+    }
+    
+    // Sleep debt
+    if(sleepDebt > 0){
+      reasonHtml += '<p>你的睡眠负债: <strong>' + sleepDebt.toFixed(1) + '小时</strong>（7天累计）</p>';
+    }
+    
+    // Loss framing
+    const minsAwake = Math.floor((now.getHours() * 60 + now.getMinutes()) - (23 * 60)) || 0;
+    if(minsAwake > 0){
+      reasonHtml += '<p>已经超过就寝时间 <strong>' + minsAwake + '</strong> 分钟，明天注意力可能下降约 <strong>' + Math.round(minsAwake * 2) + '</strong> 分钟</p>';
+    }
+    
+    reasonEl.innerHTML = reasonHtml;
+  }
+  
+  // Update dismiss button text based on escalation level
+  updateSleepDismissButton(dismissCount);
+  
+  // Reset breathing challenge state
+  $('sleep-breathing-area') && ($('sleep-breathing-area').hidden = true);
+  
   requestNotify('🌙 该睡觉了', '放下手机，好好休息。睡眠是高考最好的准备。');
+}
+
+function getTodayDismissCount(){
+  const today = todayStr();
+  if(!S._sleepDismissHistory) return 0;
+  return S._sleepDismissHistory.filter(e => e.date === today).length;
+}
+
+function getWeeklyDismissCount(){
+  const today = new Date();
+  let count = 0;
+  for(let i=0; i<7; i++){
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const ds = dateStr(d);
+    if(S._sleepDismissHistory){
+      count += S._sleepDismissHistory.filter(e => e.date === ds).length;
+    }
+  }
+  return count;
+}
+
+function getLastNightBedtime(){
+  // Try to infer from sleep log or dismiss history
+  if(S._sleepLog && S._sleepLog.length > 0){
+    const last = S._sleepLog[S._sleepLog.length - 1];
+    if(last.bedtime) return last.bedtime;
+  }
+  return null;
+}
+
+function getSleepDebt(){
+  // Calculate 7-day sleep debt (hours below 8h target)
+  const now = new Date();
+  let totalSleep = 0;
+  let daysWithData = 0;
+  const targetHours = 8;
+  
+  for(let i=0; i<7; i++){
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const ds = dateStr(d);
+    if(S._sleepLog){
+      const entry = S._sleepLog.find(e => e.date === ds);
+      if(entry && entry.actualSleepHours > 0){
+        totalSleep += entry.actualSleepHours;
+        daysWithData++;
+      }
+    }
+  }
+  
+  if(daysWithData === 0) return 0;
+  const avgSleep = totalSleep / daysWithData;
+  return Math.max(0, (targetHours - avgSleep) * daysWithData);
+}
+
+function getWeeklyAvgSleep(){
+  const now = new Date();
+  let totalSleep = 0;
+  let daysWithData = 0;
+  for(let i=0; i<7; i++){
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const ds = dateStr(d);
+    if(S._sleepLog){
+      const entry = S._sleepLog.find(e => e.date === ds);
+      if(entry && entry.actualSleepHours > 0){
+        totalSleep += entry.actualSleepHours;
+        daysWithData++;
+      }
+    }
+  }
+  return daysWithData > 0 ? totalSleep / daysWithData : 0;
+}
+
+function logSleepToHistory(quality){
+  if(!S._sleepLog) S._sleepLog = [];
+  const now = new Date();
+  const today = todayStr();
+  
+  // Estimate sleep hours from quality
+  const sleepHoursMap = {good: 7.5, ok: 6, bad: 4, late: 2};
+  const hours = sleepHoursMap[quality] || 6;
+  
+  // Estimate bedtime from dismiss history
+  const bedtime = S.settings.bedtime;
+  
+  // Remove existing entry for today
+  S._sleepLog = S._sleepLog.filter(e => e.date !== today);
+  S._sleepLog.push({
+    date: today,
+    bedtime: bedtime,
+    quality: quality,
+    actualSleepHours: hours,
+    timestamp: now.toISOString()
+  });
+  
+  // Keep only last 30 days
+  if(S._sleepLog.length > 30) S._sleepLog = S._sleepLog.slice(-30);
+  
+  saveState();
+}
+
+function updateSleepDismissButton(dismissCount){
+  const btn = $('sleep-dismiss');
+  if(!btn) return;
+  const weeklyCount = getWeeklyDismissCount();
+  
+  if(dismissCount === 0){
+    btn.textContent = '我知道了，再给我5分钟';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+  }else if(dismissCount === 1){
+    btn.textContent = '再给我3分钟...';
+    btn.style.opacity = '0.8';
+    btn.disabled = false;
+  }else if(dismissCount === 2){
+    btn.textContent = '本周已推迟' + weeklyCount + '次入睡';
+    btn.style.opacity = '0.6';
+    btn.disabled = false;
+  }else{
+    // 3rd+ dismiss: lock down - need breathing challenge
+    btn.textContent = '必须完成60秒呼吸挑战才能继续';
+    btn.style.opacity = '0.4';
+    btn.disabled = true;
+    btn.dataset.locked = 'true';
+  }
 }
 
 function dismissSleepMode(){
@@ -598,19 +832,136 @@ function updateSleepTimer(){
 }
 
 $('sleep-dismiss').onclick = ()=>{
-  S._sleepDismissCount = (S._sleepDismissCount || 0) + 1;
-  if(S._sleepDismissCount >= 3){
-    $('sleep-dismiss').textContent = '你已推迟3次了，真的该睡了！';
-    $('sleep-dismiss').style.opacity = '0.5';
+  const btn = $('sleep-dismiss');
+  const dismissCount = getTodayDismissCount();
+  
+  // 3rd+ dismiss: must complete breathing challenge first
+  if(dismissCount >= 3 && btn && btn.dataset.locked === 'true'){
+    toast('⚠️ 请先完成60秒呼吸挑战');
+    return;
   }
+  
+  // Record dismiss in history
+  if(!S._sleepDismissHistory) S._sleepDismissHistory = [];
+  S._sleepDismissHistory.push({date: todayStr(), timestamp: Date.now()});
+  S._sleepDismissCount = (S._sleepDismissCount || 0) + 1;
   saveState();
-  // Dismiss for 5 minutes (re-check will trigger again)
-  S._sleepEnforceActive = false;
-  $('sleep-overlay').hidden = true;
-  toast('⏰ 5分钟后会再次提醒');
+  
+  const newCount = getTodayDismissCount();
+  
+  if(newCount === 1){
+    // 1st dismiss: gentle, reappear in 3 minutes
+    S._sleepEnforceActive = false;
+    $('sleep-overlay').hidden = true;
+    toast('😴 温馨提醒：你的注意力容易被新鲜事物吸引，别让好奇心害了你');
+    if(sleepDismissTimer) clearTimeout(sleepDismissTimer);
+    sleepDismissTimer = setTimeout(()=>{
+      if(!S._sleepEnforceActive) checkSleepTime();
+    }, 3 * 60 * 1000); // 3 minutes
+  }else if(newCount === 2){
+    // 2nd dismiss: consequence message, reappear in 2 minutes
+    const weeklyCount = getWeeklyDismissCount();
+    S._sleepEnforceActive = false;
+    $('sleep-overlay').hidden = true;
+    toast('⚠️ 你本周已有' + weeklyCount + '次推迟入睡，2分钟后再次提醒');
+    if(sleepDismissTimer) clearTimeout(sleepDismissTimer);
+    sleepDismissTimer = setTimeout(()=>{
+      if(!S._sleepEnforceActive) checkSleepTime();
+    }, 2 * 60 * 1000); // 2 minutes
+  }else{
+    // 3rd+ dismiss: progressive lockdown - start breathing challenge
+    enterSleepLockdown();
+    startBreathingChallenge();
+  }
 };
 
+function enterSleepLockdown(){
+  S._sleepLockdownActive = true;
+  saveState();
+  // Progressively darken screen - increase overlay opacity
+  const overlay = $('sleep-overlay');
+  if(overlay){
+    overlay.style.background = 'rgba(5,5,20,0.98)';
+  }
+  // Show breathing challenge area
+  const breathingArea = $('sleep-breathing-area');
+  if(breathingArea) breathingArea.hidden = false;
+  // Disable most UI except idea capture and sleep accept
+  disableNonEssentialUI(true);
+  // Update dismiss button to locked state
+  updateSleepDismissButton(getTodayDismissCount());
+}
+
+function exitSleepLockdown(){
+  S._sleepLockdownActive = false;
+  saveState();
+  const overlay = $('sleep-overlay');
+  if(overlay){
+    overlay.style.background = '';
+  }
+  const breathingArea = $('sleep-breathing-area');
+  if(breathingArea) breathingArea.hidden = true;
+  disableNonEssentialUI(false);
+  if(breathingTimer){ clearInterval(breathingTimer); breathingTimer = null; }
+}
+
+function disableNonEssentialUI(disabled){
+  // Grey out everything except sleep idea capture, breathing challenge, and accept button
+  const card = qs('.sleep-card');
+  if(!card) return;
+  const protectedIds = ['sleep-idea-input','sleep-idea-btn','sleep-idea-list','sleep-accept','sleep-breathing-area','sleep-breathing-text'];
+  qsa('.sleep-card > *', card).forEach(el=>{
+    if(!protectedIds.includes(el.id) && !el.classList.contains('sleep-idea-capture')){
+      el.style.opacity = disabled ? '0.2' : '';
+      el.style.pointerEvents = disabled ? 'none' : '';
+    }
+  });
+}
+
+function startBreathingChallenge(){
+  const breathingArea = $('sleep-breathing-area');
+  const breathingText = $('sleep-breathing-text');
+  if(!breathingArea || !breathingText) return;
+  
+  breathingArea.hidden = false;
+  let remaining = 60; // 60 seconds total
+  const phases = ['吸气...', '屏住...', '呼气...']; // 4s each = 12s per cycle, 5 cycles = 60s
+  const phaseDuration = 4;
+  let cycleCount = 0;
+  let phaseIdx = 0;
+  
+  breathingText.textContent = '准备...深呼吸开始！';
+  breathingText.style.color = '#7c7cff';
+  
+  breathingTimer = setInterval(()=>{
+    remaining -= 0.5;
+    const phaseInCycle = (60 - remaining) % (phaseDuration * 3);
+    phaseIdx = Math.floor(phaseInCycle / phaseDuration) % 3;
+    
+    if(remaining <= 0){
+      clearInterval(breathingTimer);
+      breathingTimer = null;
+      breathingText.textContent = '✅ 呼吸挑战完成！现在可以继续了';
+      breathingText.style.color = '#2ecc71';
+      // Unlock dismiss button
+      const btn = $('sleep-dismiss');
+      if(btn){
+        btn.disabled = false;
+        btn.dataset.locked = 'false';
+        btn.textContent = '我已冷静下来，继续';
+        btn.style.opacity = '0.6';
+      }
+      return;
+    }
+    
+    const colorMap = ['#7c7cff', '#ffd700', '#2ecc71'];
+    breathingText.textContent = phases[phaseIdx] + ' (' + Math.ceil(remaining) + '秒)';
+    breathingText.style.color = colorMap[phaseIdx];
+  }, 500);
+}
+
 $('sleep-accept').onclick = ()=>{
+  exitSleepLockdown();
   dismissSleepMode();
   toast('晚安 💤 好好休息，明天加油！');
 };
@@ -662,6 +1013,24 @@ function checkMorningSleep(){
   // Only show if user slept (has lastSleepDate from yesterday or before)
   if(!S._lastSleepDate) return;
   
+  // Show sleep debt info in morning check
+  const debtEl = $('morning-sleep-debt');
+  if(debtEl){
+    const sleepDebt = getSleepDebt();
+    const weeklyAvg = getWeeklyAvgSleep();
+    const weeklyDismiss = getWeeklyDismissCount();
+    if(sleepDebt > 0 || weeklyDismiss > 0){
+      let debtHtml = '';
+      if(sleepDebt > 0) debtHtml += '睡眠负债: <strong>' + sleepDebt.toFixed(1) + '小时</strong> ';
+      if(weeklyAvg > 0) debtHtml += '7天均睡: <strong>' + weeklyAvg.toFixed(1) + 'h</strong> ';
+      if(weeklyDismiss > 0) debtHtml += '本周推迟入睡: <strong>' + weeklyDismiss + '次</strong>';
+      debtEl.innerHTML = debtHtml;
+      debtEl.hidden = false;
+    }else{
+      debtEl.hidden = true;
+    }
+  }
+  
   setTimeout(()=>{
     $('morning-check-overlay').hidden = false;
   }, 1000);
@@ -673,18 +1042,34 @@ qsa('.morning-opt-btn').forEach(btn=>{
     S._lastSleepQuality = quality;
     S._morningCheckDone = todayStr();
     
+    // Log sleep to history for debt tracking
+    logSleepToHistory(quality);
+    
+    const sleepDebt = getSleepDebt();
+    const weeklyAvg = getWeeklyAvgSleep();
+    const weeklyDismiss = getWeeklyDismissCount();
+    
     const motivations = {
-      good: '昨晚休息得很好！今天精神充沛，冲吧！适当调低今日目标到正常水平即可。',
-      ok: '还行，但高考冲刺期建议保证7小时以上。今天尽量保持专注。',
-      bad: '睡眠不足会影响注意力和记忆力。今天适当降低目标，把最重要的2件事做好。',
-      late: '熬夜对高考复习效率是负面的。今天以恢复为主，只做最核心的任务。今晚必须早睡！',
+      good: '昨晚睡得好！利用高注意力时段(建议上午)攻克最难的科目。你的注意力得分 ' + ADHD_PROFILE.inattention + '/3，充足的睡眠是发挥它的前提。',
+      ok: '注意：你的注意力得分较高(' + ADHD_PROFILE.inattention + '/3)，睡眠不足会严重影响。建议今天用5分钟微番茄启动，让大脑慢慢进入状态。' + (weeklyAvg > 0 ? '本周平均睡眠' + weeklyAvg.toFixed(1) + '小时。' : ''),
+      bad: '睡眠不足+注意力缺陷=双重困难。今天只做最重要的3个微番茄(5分钟each)。不要贪多——质量比数量重要。' + (sleepDebt > 0 ? ' 当前睡眠负债: ' + sleepDebt.toFixed(1) + '小时。' : ''),
+      late: '严重警告：连续熬夜会显著降低注意力分数(你已有' + weeklyDismiss + '次推迟入睡记录)。今天只做1个核心任务，然后补觉。' + (sleepDebt > 3 ? ' 睡眠负债超过3小时，已自动大幅降低今日目标。' : ''),
     };
     $('morning-motivation').textContent = motivations[quality] || motivations.ok;
     
-    // Auto-adjust daily goal based on sleep
-    if(quality === 'bad' || quality === 'late'){
-      S.settings.dailyGoal = Math.max(4, Math.floor((S.settings.dailyGoal || 8) * 0.6));
-      addMilestone('😴 睡眠不足，今日目标已自动调整为 ' + S.settings.dailyGoal + ' 个番茄');
+    // Auto-adjust daily goal based on sleep quality + sleep debt
+    if(quality === 'late'){
+      S.settings.dailyGoal = Math.max(2, Math.floor((S.settings.dailyGoal || 8) * 0.4));
+      addMilestone('😴 严重熬夜，今日目标已大幅降低为 ' + S.settings.dailyGoal + ' 个番茄');
+    }else if(quality === 'bad'){
+      S.settings.dailyGoal = Math.max(3, Math.floor((S.settings.dailyGoal || 8) * 0.5));
+      addMilestone('😴 睡眠不足，今日目标已调整为 ' + S.settings.dailyGoal + ' 个番茄');
+    }
+    
+    // Extra aggressive reduction if sleep debt > 3 hours
+    if(sleepDebt > 3){
+      S.settings.dailyGoal = Math.max(2, Math.floor(S.settings.dailyGoal * 0.5));
+      addMilestone('⚠️ 睡眠负债过高(' + sleepDebt.toFixed(1) + 'h)，目标再次降低至 ' + S.settings.dailyGoal + ' 个番茄');
     }
     
     saveState();

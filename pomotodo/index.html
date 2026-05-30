@@ -96,6 +96,15 @@
 .bedtime-input-wrap{display:flex;align-items:center;gap:8px}
 .bedtime-note{font-size:11px;color:var(--text3)}
 .bedtime-input-wrap input{width:80px}
+/* Sleep Breathing Challenge */
+.sleep-breathing-area{margin-bottom:16px;padding:16px;border-radius:var(--radius-sm);background:rgba(100,100,255,0.08);border:1px solid rgba(100,100,255,0.15);text-align:center}
+.sleep-breathing-text{font-size:18px;font-weight:600;color:#7c7cff;transition:color 0.5s ease;min-height:28px}
+.sleep-breathing-hint{font-size:11px;color:#8080b0;margin-top:4px}
+/* Sleep Lockdown */
+.sleep-overlay.lockdown-mode{background:rgba(5,5,20,0.98) !important}
+/* Morning Sleep Debt */
+.morning-sleep-debt{font-size:12px;color:var(--text3);margin-bottom:8px;padding:8px;border-radius:var(--radius-xs);background:var(--surface2)}
+.morning-sleep-debt strong{color:var(--primary)}
 </style>
 </head>
 <body data-theme="light">
@@ -496,6 +505,10 @@
       <button class="sleep-dismiss-btn" id="sleep-dismiss">我知道了，再给我5分钟</button>
       <button class="sleep-accept-btn" id="sleep-accept">好的，去睡觉 💤</button>
     </div>
+    <div class="sleep-breathing-area" id="sleep-breathing-area" hidden>
+      <p class="sleep-breathing-text" id="sleep-breathing-text">准备...深呼吸开始！</p>
+      <p class="sleep-breathing-hint">完成60秒呼吸挑战后才能继续使用</p>
+    </div>
   </div>
 </div>
 <!-- WIND-DOWN NOTIFICATION -->
@@ -516,6 +529,7 @@
       <button class="morning-opt-btn" data-sleep="late">🤦 熬夜了 (&lt;3h)</button>
     </div>
     <p class="morning-motivation" id="morning-motivation">今天也是充满希望的一天！</p>
+    <p class="morning-sleep-debt" id="morning-sleep-debt"></p>
     <button class="morning-done-btn" id="morning-done">开始今天 →</button>
   </div>
 </div>
