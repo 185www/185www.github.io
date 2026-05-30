@@ -1,4 +1,4 @@
-/* Pomotodo V10 — app.js — MDA Gamification */
+/* Pomotodo V15 — app.js — MDA Gamification */
 (function(){
 'use strict';
 
@@ -25,7 +25,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5 || d.version === 6)) return d;
+      if(d && typeof d === 'object' && d.version >= 3) return d;
     }
   }catch(e){}
   return freshState();
@@ -220,9 +220,8 @@ function checkMilestones(streak){
   if(!S.milestones) S.milestones=[];
   MILESTONE_STREAKS.forEach(s=>{
     if(streak===s){
-      const key = 'streak_'+s;
       if(!S.milestones.find(m=>m.msg===MILESTONE_MSGS[s])){
-        S.score = (S.score||0) + 200;
+        addScore(200);
         addMilestone(MILESTONE_MSGS[s]);
         toast(MILESTONE_MSGS[s], 5000);
         const conf = MILESTONE_CONFETTI[s]||{count:100,colors:['#e74c3c','#3498db','#2ecc71','#f1c40f']};
@@ -542,7 +541,7 @@ function generateInsights(){
   // 1. Streak insight
   const streak = calcStreak();
   if(streak > 0){
-    var streakMsg = streak>=7 ? '习惯已经形成！' : streak>=3 ? '保持住，3天是小里程碑' : '继续积累';
+    const streakMsg = streak>=7 ? '习惯已经形成！' : streak>=3 ? '保持住，3天是小里程碑' : '继续积累';
     insights.push({icon:'🔥', type:'success', text:'连续专注 '+streak+' 天！'+streakMsg});
   }
   
@@ -662,6 +661,7 @@ $('ip-action-btn').onclick = ()=>{
 /* Focus Lockdown Mode - COMPLETE */
 let focusLockdown = false;
 let lockdownSyncInterval = null;
+let lockdownResizeHandler = null;
 
 function initLockdownParticles(){
   const canvas = $('lockdown-particles');
@@ -710,6 +710,8 @@ function initLockdownParticles(){
     requestAnimationFrame(animate);
   }
   animate();
+  lockdownResizeHandler = ()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; };
+  window.addEventListener('resize', lockdownResizeHandler);
 }
 
 function enterLockdown(){
@@ -726,6 +728,7 @@ function exitLockdown(){
   focusLockdown = false;
   $('lockdown-overlay').hidden = true;
   if(lockdownSyncInterval){ clearInterval(lockdownSyncInterval); lockdownSyncInterval = null; }
+  if(lockdownResizeHandler){ window.removeEventListener('resize', lockdownResizeHandler); lockdownResizeHandler = null; }
   document.body.style.overflow = '';
   const wrap = qs('.work-view');
   if(wrap) wrap.classList.remove('focus-lockdown');
@@ -743,7 +746,7 @@ function updateLockdownDisplay(){
   
   // sync ring
   const pct = S.timer.total > 0 ? S.timer.remaining/S.timer.total : 0;
-  const offset = 553.1 * (1-pct);
+  const offset = CIRCUMFERENCE * (1-pct);
   const fill = qs('.ld-ring-fill');
   if(fill) fill.style.strokeDashoffset = offset;
   
@@ -897,6 +900,7 @@ function resetTimer(){
   updateTimerDisplay();
   updateTimerBtn();
   updateTimerModeClass();
+  updateActiveTaskDisplay();
   saveState();
 }
 
@@ -963,8 +967,8 @@ function updateTimerBtn(){
     btn.textContent = '▶ 下一个番茄';
     btn.className = 'btn-timer primary';
   }else{
-    const label = S.timer.mode==='work' ? '▶ 就现在，开始！' : S.timer.mode==='shortBreak' ? '开始短休息' : '开始长休息';
-    btn.textContent = '▶ '+label;
+    const label = S.timer.mode==='work' ? '🔥 就现在，开始！' : S.timer.mode==='shortBreak' ? '☕ 开始短休息' : '🌿 开始长休息';
+    btn.textContent = label;
     btn.className = 'btn-timer primary';
   }
 }
@@ -2839,35 +2843,41 @@ function renderStats(){
 function renderStreak(){
   let current = 0;
   let longest = 0;
-  let temp = 0;
   const d = new Date();
   const today = todayStr();
 
-  // current streak: consecutive days ending today with data
+  // current streak: consecutive days ending today
   if(S.pomodoroHistory[today] && S.pomodoroHistory[today].count>0){
     current = 1;
-    temp = 1;
+    for(let i=1;i<366;i++){
+      const p = new Date(d);
+      p.setDate(p.getDate()-i);
+      const ds = dateStr(p);
+      const data = S.pomodoroHistory[ds];
+      if(data && data.count>0){
+        current++;
+      }else{
+        break;
+      }
+    }
   }
 
-  // go backwards counting consecutive days
-  for(let i=1;i<366;i++){
+  // longest streak: scan all history
+  let temp = 0;
+  for(let i=0;i<366;i++){
     const p = new Date(d);
     p.setDate(p.getDate()-i);
     const ds = dateStr(p);
     const data = S.pomodoroHistory[ds];
     if(data && data.count>0){
       temp++;
-      // current only counts if today has data AND chain is unbroken
-      if(current>0) current++;
     }else{
       if(temp>longest) longest=temp;
-      if(current>0) current=0;
       temp=0;
     }
   }
   if(temp>longest) longest=temp;
-  // if today has no data, current streak is 0
-  if(!S.pomodoroHistory[today] || S.pomodoroHistory[today].count===0) current=0;
+  if(current>longest) longest=current;
 
   $('h-current').textContent = current;
   $('h-longest').textContent = longest;
@@ -3540,6 +3550,19 @@ function initApp(){
   // Auto-trigger smart suggestion on load
   setTimeout(generateSmartSuggestion, 1500);
 
+  // V11: Initialize boss & achievements
+  initBoss();
+  initSubjectBar();
+  // Hide subject bar by default
+  const subjectBar = $('subject-bar');
+  if(subjectBar) subjectBar.hidden = true;
+  renderAchievements();
+  checkAchievements();
+  renderSubjectStats();
+
+  // V15: Initialize gaokao countdown
+  updateGaokaoCountdown();
+
   // navigation default
   navigateTo('work');
 }
@@ -3606,13 +3629,7 @@ document.addEventListener('visibilitychange', ()=>{
         addScore(-2);
         S.distractionCount = (S.distractionCount||0) + 1;
         saveState();
-        toast('⚠️ 专注中断 -2分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
-        const notice = document.createElement('div');
-        notice.className = 'distraction-notice';
-        notice.textContent = '👋 欢迎回来，继续专注！切走超过2分钟了哦';
-        document.body.appendChild(notice);
-        setTimeout(()=>{ if(notice.parentNode) notice.remove(); }, 4000);
-        toast('⚠️ 你离开了 '+Math.floor(elapsed/60)+' 分钟');
+        toast('⚠️ 专注中断 '+Math.floor(elapsed/60)+'分钟 -2分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
       }else{
         const wb = $('welcome-back');
         wb.hidden = false;
@@ -3654,10 +3671,8 @@ function updateGaokaoCountdown(){
   const now = Date.now();
   const diff = GAOKAO_DATE.getTime() - now;
   if(diff <= 0){
-    $('gaokao-days').textContent = '0';
-    $('gaokao-hours').textContent = '0';
-    $('gaokao-mins').textContent = '0';
-    $('gaokao-motto').textContent = '高考加油！你准备好了！';
+    const banner = $('gaokao-banner');
+    if(banner) banner.hidden = true;
     return;
   }
   const days = Math.floor(diff / 86400000);
@@ -3670,8 +3685,7 @@ function updateGaokaoCountdown(){
   const dayOfYear = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
   $('gaokao-motto').textContent = GAOKAO_MOTTOS[dayOfYear % GAOKAO_MOTTOS.length];
 }
-updateGaokaoCountdown();
-setInterval(updateGaokaoCountdown, 60000);
+// Gaokao countdown initialized in initApp() to avoid DOM access issues
 
 /* ============= V11: EXTENDED MOTIVATIONAL QUOTES (50+) ============= */
 const V11_QUOTES = [
@@ -3730,7 +3744,7 @@ const V11_QUOTES = [
 
 // Replace the old MOTIVATIONAL_QUOTES reference
 // Override rotateMotivationalQuote to use expanded list
-const _origRotate = typeof rotateMotivationalQuote === 'function' ? rotateMotivationalQuote : null;
+// Random quote on load
 (function(){
   if($('mq-text')){
     const idx = Math.floor(Math.random() * V11_QUOTES.length);
@@ -3775,8 +3789,9 @@ function renderBoss(){
   fill.style.width = pct + '%';
   $('boss-hp-text').textContent = Math.ceil(bossCurrentHP) + '/' + currentBoss.hp;
   fill.className = 'boss-hp-fill ' + (pct > 50 ? 'safe' : pct > 20 ? 'warning' : 'danger');
-  if(S.streak > 0){
-    $('battle-streak-badge').textContent = '🔥 连续' + S.streak + '天';
+  const streak = calcStreak();
+  if(streak > 0){
+    $('battle-streak-badge').textContent = '🔥 连续' + streak + '天';
   }
 }
 
@@ -3847,9 +3862,9 @@ const ACHIEVEMENTS = [
   {id:'pomo_10',name:'番茄新手',icon:'🌱',desc:'累计10个番茄',check:()=>getTotalPomos()>=10},
   {id:'pomo_50',name:'专注达人',icon:'⭐',desc:'累计50个番茄',check:()=>getTotalPomos()>=50},
   {id:'pomo_100',name:'百番斩',icon:'💯',desc:'累计100个番茄',check:()=>getTotalPomos()>=100},
-  {id:'streak_3',name:'三天小成',icon:'🔥',desc:'连续专注3天',check:()=>(S.streak||0)>=3},
-  {id:'streak_7',name:'一周习惯',icon:'🏅',desc:'连续专注7天',check:()=>(S.streak||0)>=7},
-  {id:'streak_30',name:'月度铁人',icon:'👑',desc:'连续专注30天',check:()=>(S.streak||0)>=30},
+  {id:'streak_3',name:'三天小成',icon:'🔥',desc:'连续专注3天',check:()=>calcStreak()>=3},
+  {id:'streak_7',name:'一周习惯',icon:'🏅',desc:'连续专注7天',check:()=>calcStreak()>=7},
+  {id:'streak_30',name:'月度铁人',icon:'👑',desc:'连续专注30天',check:()=>calcStreak()>=30},
   {id:'boss_1',name:'初战告捷',icon:'⚔️',desc:'击败第一个Boss',check:()=>bossDefeatedCount>=1},
   {id:'boss_3',name:'猎魔高手',icon:'🗡️',desc:'击败3个Boss',check:()=>bossDefeatedCount>=3},
   {id:'boss_5',name:'终焉之刃',icon:'💫',desc:'击败所有Boss',check:()=>bossDefeatedCount>=5},
@@ -3963,7 +3978,7 @@ function renderSubjectStats(){
     if(!task.completedAt) return;
     const sub = getTaskSubject(task);
     if(!sub) return;
-    const mins = (task.pomoCount || 0) * (S.settings.workMins || 25);
+    const mins = (task.completedPomodoros || 0) * (S.settings.work || 25);
     subjectMins[sub] = (subjectMins[sub] || 0) + mins;
   });
   Object.entries(SUBJECTS).forEach(([key, info])=>{
@@ -3979,25 +3994,6 @@ function renderSubjectStats(){
 }
 
 /* ============= V11: INTEGRATION HOOKS ============= */
-// Hook: attack boss when pomodoro completes
-const _origOnPomoComplete = typeof onPomoComplete === 'function' ? onPomoComplete : null;
-// We hook into the existing flow by overriding
-(function(){
-  const origStart = typeof startTimer === 'function' ? startTimer : null;
-
-  // Hook save to persist boss data
-  const origSave = typeof save === 'function' ? save : null;
-
-  // Initialize everything on load
-  setTimeout(()=>{
-    initBoss();
-    initSubjectBar();
-    renderAchievements();
-    checkAchievements();
-    renderSubjectStats();
-  }, 500);
-})();
-
 // Make attackBoss available globally for timer completion hook
 window._v11_attackBoss = attackBoss;
 window._v11_checkAchievements = checkAchievements;
