@@ -541,7 +541,7 @@ function updateGaokaoCountdown(){
     const icon = qs('.gk-countdown-icon');
     if(label) label.textContent = '距高考还有';
     if(icon) icon.textContent = '🔥';
-    el.textContent = days + '天 ' + totalHours + '小时';
+    el.textContent = days + '天 ' + hours + '时 ' + mins + '分 ' + Math.floor((diff % 60000) / 1000) + '秒';
     // Make countdown bar more urgent
     const bar = $('gk-countdown');
     if(bar && days <= 3){
@@ -555,7 +555,12 @@ function updateGaokaoCountdown(){
   // Update sprint plan display
   updateSprintPlan();
 }
-setInterval(updateGaokaoCountdown, 60000);
+// Update countdown every second for a live ticking effect
+setInterval(updateGaokaoCountdown, 1000);
+// Also update immediately when tab becomes visible (fixes background-throttle issue)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) updateGaokaoCountdown();
+});
 
 /* ============= V21: GAOKAO SPRINT PLAN ============= */
 function updateSprintPlan(){
