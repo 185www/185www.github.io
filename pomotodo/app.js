@@ -1,4 +1,4 @@
-/* Pomotodo V15 — app.js — MDA Gamification */
+/* Pomotodo V6 — app.js — MDA Gamification */
 (function(){
 'use strict';
 
@@ -25,7 +25,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(d && typeof d === 'object' && d.version >= 3) return d;
+      if(d && typeof d === 'object' && (d.version === 3 || d.version === 4 || d.version === 5)) return d;
     }
   }catch(e){}
   return freshState();
@@ -33,7 +33,7 @@ function loadState(){
 
 function freshState(){
   return {
-    version:6,
+    version:5,
     settings:{...defaultSettings},
     tasks:[],
     projects:[],
@@ -104,51 +104,23 @@ function toast(msg, dur=2500){
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 
-function playSound(type, callback){
+function playSound(callback){
   if(!S.settings.sound) { if(callback) callback(); return; }
   try{
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
     const o = ctx.createOscillator();
     const g = ctx.createGain();
-    let freq = 880, dur = 0.8, waveType = 'sine';
-    
-    switch(type || 'complete'){
-      case 'complete':
-        freq = 880; dur = 0.8; waveType = 'sine';
-        o.frequency.setValueAtTime(freq, ctx.currentTime);
-        o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + dur);
-        break;
-      case 'break':
-        freq = 660; dur = 0.6; waveType = 'triangle';
-        o.frequency.setValueAtTime(freq, ctx.currentTime);
-        o.frequency.exponentialRampToValueAtTime(330, ctx.currentTime + dur);
-        break;
-      case 'milestone':
-        freq = 523; dur = 1.2; waveType = 'sine';
-        o.frequency.setValueAtTime(523, ctx.currentTime);
-        o.frequency.setValueAtTime(659, ctx.currentTime + 0.3);
-        o.frequency.setValueAtTime(784, ctx.currentTime + 0.6);
-        o.frequency.exponentialRampToValueAtTime(523, ctx.currentTime + dur);
-        break;
-      case 'warning':
-        freq = 440; dur = 0.4; waveType = 'square';
-        g.gain.setValueAtTime(S.settings.volume * 0.3, ctx.currentTime);
-        break;
-      default:
-        freq = 880; dur = 0.8; waveType = 'sine';
-        o.frequency.setValueAtTime(freq, ctx.currentTime);
-        o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + dur);
-    }
-    
-    o.type = waveType;
-    if(type !== 'warning') g.gain.setValueAtTime(S.settings.volume, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.type='sine';
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime+0.5);
+    g.gain.setValueAtTime(S.settings.volume, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.8);
     o.connect(g); g.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime + dur);
+    o.start(); o.stop(ctx.currentTime+0.8);
     setTimeout(()=>{
       ctx.close();
       if(callback) callback();
-    }, dur * 1000 + 100);
+    },900);
   }catch(e){ if(callback) callback(); }
 }
 
@@ -220,12 +192,12 @@ function checkMilestones(streak){
   if(!S.milestones) S.milestones=[];
   MILESTONE_STREAKS.forEach(s=>{
     if(streak===s){
+      const key = 'streak_'+s;
       if(!S.milestones.find(m=>m.msg===MILESTONE_MSGS[s])){
-        addScore(200);
+        S.score = (S.score||0) + 200;
         addMilestone(MILESTONE_MSGS[s]);
         toast(MILESTONE_MSGS[s], 5000);
         const conf = MILESTONE_CONFETTI[s]||{count:100,colors:['#e74c3c','#3498db','#2ecc71','#f1c40f']};
-        playSound('milestone');
         showCelebrationCustom(conf.count, conf.colors);
       }
     }
@@ -422,38 +394,6 @@ function generateSmartSuggestion(){
   }
 }
 
-/* ============= V10: MOTIVATIONAL ENGINE ============= */
-const MOTIVATIONAL_QUOTES = [
-  '准备好了吗？开始你的第一个番茄！',
-  '每一次专注，都是在为未来投资',
-  '番茄钟的每一秒，都在缩短你和目标的距离',
-  '不怕慢，只怕停。现在就开始！',
-  '今天的坚持，是明天的骄傲',
-  '高考倒计时中...每一分钟都珍贵',
-  '专注25分钟，你比昨天更强',
-  '打败拖延，从这一个番茄开始',
-  '你不是在浪费时间，你是在创造未来',
-  '现在不拼，更待何时？',
-  '把手机放下，把梦想拿起',
-  '番茄+1 = 离梦想更近一步',
-];
-
-let quoteIndex = 0;
-function rotateMotivationalQuote(){
-  const el = $('mq-text');
-  if(!el) return;
-  quoteIndex = (quoteIndex + 1) % MOTIVATIONAL_QUOTES.length;
-  el.style.opacity = '0';
-  el.style.transform = 'translateY(8px)';
-  setTimeout(()=>{
-    el.textContent = MOTIVATIONAL_QUOTES[quoteIndex];
-    el.style.opacity = '1';
-    el.style.transform = 'translateY(0)';
-  }, 300);
-}
-// Rotate quote every 30 seconds
-setInterval(rotateMotivationalQuote, 30000);
-
 /* Daily Performance Grade System */
 function calculateDailyGrade(){
   const today = todayStr();
@@ -541,7 +481,7 @@ function generateInsights(){
   // 1. Streak insight
   const streak = calcStreak();
   if(streak > 0){
-    const streakMsg = streak>=7 ? '习惯已经形成！' : streak>=3 ? '保持住，3天是小里程碑' : '继续积累';
+    var streakMsg = streak>=7 ? '习惯已经形成！' : streak>=3 ? '保持住，3天是小里程碑' : '继续积累';
     insights.push({icon:'🔥', type:'success', text:'连续专注 '+streak+' 天！'+streakMsg});
   }
   
@@ -658,147 +598,33 @@ $('ip-action-btn').onclick = ()=>{
   toast('请逐个厘清收件箱中的任务');
 };
 
-/* Focus Lockdown Mode - COMPLETE */
+/* Focus Lockdown Mode */
 let focusLockdown = false;
-let lockdownSyncInterval = null;
-let lockdownResizeHandler = null;
-
-function initLockdownParticles(){
-  const canvas = $('lockdown-particles');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const particles = [];
-  for(let i=0;i<30;i++){
-    particles.push({
-      x:Math.random()*canvas.width,
-      y:Math.random()*canvas.height,
-      vx:(Math.random()-0.5)*0.5,
-      vy:(Math.random()-0.5)*0.5,
-      r:Math.random()*3+1,
-      a:Math.random()*0.5+0.1,
-    });
-  }
-  function animate(){
-    if(!focusLockdown) return;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p=>{
-      p.x+=p.vx; p.y+=p.vy;
-      if(p.x<0||p.x>canvas.width) p.vx*=-1;
-      if(p.y<0||p.y>canvas.height) p.vy*=-1;
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-      ctx.fillStyle='rgba(231,76,60,'+p.a+')';
-      ctx.fill();
-    });
-    // Draw connections
-    for(let i=0;i<particles.length;i++){
-      for(let j=i+1;j<particles.length;j++){
-        const dx=particles[i].x-particles[j].x;
-        const dy=particles[i].y-particles[j].y;
-        const dist=Math.sqrt(dx*dx+dy*dy);
-        if(dist<150){
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x,particles[i].y);
-          ctx.lineTo(particles[j].x,particles[j].y);
-          ctx.strokeStyle='rgba(231,76,60,'+(0.15*(1-dist/150))+')';
-          ctx.stroke();
-        }
-      }
-    }
-    requestAnimationFrame(animate);
-  }
-  animate();
-  lockdownResizeHandler = ()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; };
-  window.addEventListener('resize', lockdownResizeHandler);
-}
-
-function enterLockdown(){
-  focusLockdown = true;
-  $('lockdown-overlay').hidden = false;
-  updateLockdownDisplay();
-  lockdownSyncInterval = setInterval(updateLockdownDisplay, 200);
-  document.body.style.overflow = 'hidden';
-  // Particle effect for lockdown
-  initLockdownParticles();
-}
-
-function exitLockdown(){
-  focusLockdown = false;
-  $('lockdown-overlay').hidden = true;
-  if(lockdownSyncInterval){ clearInterval(lockdownSyncInterval); lockdownSyncInterval = null; }
-  if(lockdownResizeHandler){ window.removeEventListener('resize', lockdownResizeHandler); lockdownResizeHandler = null; }
-  document.body.style.overflow = '';
-  const wrap = qs('.work-view');
-  if(wrap) wrap.classList.remove('focus-lockdown');
-  $('btn-focus-toggle').classList.remove('active');
-}
-
-function updateLockdownDisplay(){
-  const digits = $('lockdown-digits');
-  const taskEl = $('lockdown-task');
-  const msgEl = $('lockdown-message');
-  if(!digits) return;
-  
-  // sync timer digits
-  digits.textContent = fmtTime(S.timer.remaining);
-  
-  // sync ring
-  const pct = S.timer.total > 0 ? S.timer.remaining/S.timer.total : 0;
-  const offset = CIRCUMFERENCE * (1-pct);
-  const fill = qs('.ld-ring-fill');
-  if(fill) fill.style.strokeDashoffset = offset;
-  
-  // show task name
-  if(S.timer.currentTaskId){
-    const t = findTask(S.timer.currentTaskId);
-    if(t && taskEl) taskEl.textContent = t.title;
-  }else if(taskEl){
-    taskEl.textContent = '自由专注';
-  }
-  
-  // motivational messages that rotate
-  const msgs = ['远离手机，保持专注','你正在变得更好','每一秒都在积累','坚持住，你比大多数人强','专注是通往卓越的桥梁','现在的努力，未来的你会感谢'];
-  if(msgEl) msgEl.textContent = msgs[Math.floor(Date.now()/10000) % msgs.length];
-}
-
 $('btn-focus-toggle').onclick = ()=>{
-  if(focusLockdown){
-    // confirm exit
-    if(S.timer.phase === 'running' && S.settings.interruptConfirm && S.timer.mode==='work'){
-      const elapsed = S.timer.total - S.timer.remaining;
-      $('abandon-minutes').textContent = Math.round(elapsed/60);
-      $('modal-abandon-confirm').hidden = false;
-      // modify abandon confirm to also exit lockdown
-      const origHandler = $('abandon-confirm').onclick;
-      $('abandon-confirm').onclick = ()=>{
-        $('abandon-confirm').onclick = origHandler;
-        exitLockdown();
-        abandonPomo();
-      };
-      $('abandon-continue').onclick = ()=>{
-        $('abandon-continue').onclick = ()=>{ $('modal-abandon-confirm').hidden = true; };
-        $('modal-abandon-confirm').hidden = true;
-      };
-      return;
+  if(S.timer.phase !== 'running' && S.timer.mode !== 'work'){
+    // regular focus toggle (old behavior)
+    focusModeFull = !focusModeFull;
+    $('btn-focus-toggle').classList.toggle('active', focusModeFull);
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-mode-full', focusModeFull);
+      wrap.classList.remove('focus-lockdown');
     }
-    exitLockdown();
-    toast('🔓 已解锁');
+    toast(focusModeFull ? '🔍 已进入专注模式' : '🔍 已退出专注模式');
     return;
   }
-  
+  // If timer is running and lockdown setting is on, use lockdown
   if(S.settings.lockdown && S.timer.mode==='work'){
-    if(S.timer.phase === 'running'){
-      enterLockdown();
-      toast('🔒 锁屏模式已开启');
-    }else{
-      // turn on lockdown mode for next timer
+    focusLockdown = !focusLockdown;
+    const wrap = qs('.work-view');
+    if(wrap){
+      wrap.classList.toggle('focus-lockdown', focusLockdown);
+      wrap.classList.remove('focus-mode-full');
       focusModeFull = false;
-      $('btn-focus-toggle').classList.add('active');
-      toast('🔒 锁屏已就绪，开始专注时自动激活');
+      $('btn-focus-toggle').classList.toggle('active', focusLockdown);
     }
-  }else{
+    toast(focusLockdown ? '🔒 锁屏模式！所有干扰已屏蔽' : '🔓 已解锁');
+  } else {
     focusModeFull = !focusModeFull;
     $('btn-focus-toggle').classList.toggle('active', focusModeFull);
     const wrap = qs('.work-view');
@@ -840,12 +666,6 @@ function startTimer(){
     S.timer.total = S.settings[S.timer.mode]*60;
   }
   S.timer.phase = 'running';
-  // Battle mode indicator
-  const bi = $('battle-indicator');
-  if(bi && S.timer.mode === 'work'){
-    bi.hidden = false;
-    $('battle-text').textContent = '专注中 #'+S.timer.currentCycle;
-  }
   updateTimerModeClass();
   updateTimerDisplay();
   updateTimerBtn();
@@ -866,10 +686,6 @@ function startTimer(){
   }
   requestWakeLock();
   saveState();
-  // auto-enter lockdown if setting is on and work mode
-  if(S.settings.lockdown && S.timer.mode==='work' && $('btn-focus-toggle').classList.contains('active')){
-    enterLockdown();
-  }
 }
 
 function pauseTimer(){
@@ -900,7 +716,6 @@ function resetTimer(){
   updateTimerDisplay();
   updateTimerBtn();
   updateTimerModeClass();
-  updateActiveTaskDisplay();
   saveState();
 }
 
@@ -912,8 +727,6 @@ function stopTimer(){
     currentTimerId = null;
   }
   releaseWakeLock();
-  const bi = $('battle-indicator');
-  if(bi) bi.hidden = true;
 }
 
 function setTimerMode(mode){
@@ -945,7 +758,6 @@ function updateTimerModeClass(){
   const wrap = $('timer-ring-wrap');
   if(!wrap) return;
   wrap.classList.toggle('timer-mode-break', S.timer.mode !== 'work');
-  wrap.classList.toggle('timer-active', S.timer.phase === 'running' && S.timer.mode === 'work');
 }
 
 function updateModeBtns(){
@@ -967,8 +779,8 @@ function updateTimerBtn(){
     btn.textContent = '▶ 下一个番茄';
     btn.className = 'btn-timer primary';
   }else{
-    const label = S.timer.mode==='work' ? '🔥 就现在，开始！' : S.timer.mode==='shortBreak' ? '☕ 开始短休息' : '🌿 开始长休息';
-    btn.textContent = label;
+    const label = S.timer.mode==='work' ? '开始专注' : S.timer.mode==='shortBreak' ? '开始短休息' : '开始长休息';
+    btn.textContent = '▶ '+label;
     btn.className = 'btn-timer primary';
   }
 }
@@ -1061,21 +873,17 @@ function calcStreak(){
 function onTimerComplete(){
   S.timer.phase='finished';
   stopTimer();
-  if(focusLockdown) exitLockdown();
   updateTimerBtn();
 
   if(S.timer.mode==='work'){
     recordPomodoro();
-    playSound('complete', ()=>{
+    playSound(()=>{
       if(S.settings.celebration) showCelebration();
-    if(window._v11_attackBoss) window._v11_attackBoss();
-    if(window._v11_checkAchievements) window._v11_checkAchievements();
-    if(window._v11_renderSubjectStats) window._v11_renderSubjectStats();
       showCompletionModal();
       requestNotify('🍅 番茄完成！','专注完成，休息一下吧');
     });
   }else{
-    playSound('break', ()=>{
+    playSound(()=>{
       requestNotify('☕ 休息结束','该回来继续工作了');
     });
     if(S.settings.autoWork){
@@ -1283,8 +1091,6 @@ $('btn-skip').onclick = ()=>{
       }
     }
     $('modal-abandon-confirm').hidden = false;
-    $('btn-start').classList.add('shake');
-    setTimeout(()=>$('btn-start').classList.remove('shake'), 600);
   }else{
     abandonPomo();
   }
@@ -1402,12 +1208,6 @@ function toggleTaskComplete(id){
   t.completed = !t.completed;
   t.completedAt = t.completed ? isoNow() : null;
   if(t.completed && t.area!=='done') t.area='done';
-  // Animate the task item
-  const taskEl = qs('.task-item[data-id="'+id+'"]');
-  if(taskEl){
-    taskEl.classList.add('task-completing');
-    setTimeout(()=>taskEl.classList.remove('task-completing'), 500);
-  }
   saveState();
   renderTasks();
   updateDoneToday();
@@ -1522,7 +1322,6 @@ function renderTasks(){
     const item = document.createElement('li');
     item.className = 'task-item' + (t.completed ? ' completed' : '');
     item.dataset.id = t.id;
-    item.dataset.prio = t.priority || 4;
 
     const hasChildren = t.subtasks && t.subtasks.length > 0;
 
@@ -2239,16 +2038,6 @@ $('modal-task-select').onclick = e=>{
 $('btn-start').onclick = ()=>{
   if(S.timer.phase==='idle'){
     if(S.timer.mode==='work'){
-      // Anti-procrastination: check if user is hesitating
-      const today = todayStr();
-      const todayData = S.pomodoroHistory[today] || {count:0};
-      const hour = new Date().getHours();
-      
-      // If it's late and goal not reached, show urgency
-      if(todayData.count === 0 && hour >= 16){
-        toast('⏰ 今天还没开始！每拖延一分钟就少一分钟！', 4000);
-      }
-      
       // always show task selector when starting a new work session
       const hasTasks = S.tasks.some(t=>t.area==='next' && !t.completed);
       if(hasTasks){
@@ -2368,30 +2157,24 @@ $('rest-guide-overlay').onclick = e=>{
 function showCelebration(){
   if(!S.settings.celebration) return;
   const overlay = $('celebration-overlay');
-  if(!overlay) return;
   overlay.hidden = false;
   const container = qs('.confetti-container');
-  if(!container) return;
   container.innerHTML = '';
-  const colors = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6','#e91e63','#ff6b6b'];
-  const shapes = ['','star','circle','diamond'];
-  for(let i=0;i<60;i++){
+  const colors = ['#e74c3c','#3498db','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c','#e91e63'];
+  for(let i=0;i<80;i++){
     const c = document.createElement('div');
-    c.className='confetti ' + shapes[Math.floor(Math.random()*shapes.length)];
+    c.className='confetti';
     c.style.left=Math.random()*100+'%';
     c.style.background=colors[Math.floor(Math.random()*colors.length)];
-    c.style.width=(6+Math.random()*10)+'px';
-    c.style.height=(6+Math.random()*10)+'px';
+    c.style.width=(6+Math.random()*8)+'px';
+    c.style.height=(6+Math.random()*8)+'px';
     c.style.animationDuration=(2+Math.random()*3)+'s';
     c.style.animationDelay=Math.random()*1.5+'s';
     container.appendChild(c);
   }
-  // Screen flash effect
-  const flash = document.createElement('div');
-  flash.className = 'celebration-flash';
-  overlay.appendChild(flash);
-  setTimeout(()=>{ flash.remove(); }, 600);
-  setTimeout(()=>{ overlay.hidden=true; }, 4000);
+  setTimeout(()=>{
+    overlay.hidden = true;
+  }, 4000);
 }
 
 /* ============= DAILY LAUNCH ============= */
@@ -2843,41 +2626,35 @@ function renderStats(){
 function renderStreak(){
   let current = 0;
   let longest = 0;
+  let temp = 0;
   const d = new Date();
   const today = todayStr();
 
-  // current streak: consecutive days ending today
+  // current streak: consecutive days ending today with data
   if(S.pomodoroHistory[today] && S.pomodoroHistory[today].count>0){
     current = 1;
-    for(let i=1;i<366;i++){
-      const p = new Date(d);
-      p.setDate(p.getDate()-i);
-      const ds = dateStr(p);
-      const data = S.pomodoroHistory[ds];
-      if(data && data.count>0){
-        current++;
-      }else{
-        break;
-      }
-    }
+    temp = 1;
   }
 
-  // longest streak: scan all history
-  let temp = 0;
-  for(let i=0;i<366;i++){
+  // go backwards counting consecutive days
+  for(let i=1;i<366;i++){
     const p = new Date(d);
     p.setDate(p.getDate()-i);
     const ds = dateStr(p);
     const data = S.pomodoroHistory[ds];
     if(data && data.count>0){
       temp++;
+      // current only counts if today has data AND chain is unbroken
+      if(current>0) current++;
     }else{
       if(temp>longest) longest=temp;
+      if(current>0) current=0;
       temp=0;
     }
   }
   if(temp>longest) longest=temp;
-  if(current>longest) longest=current;
+  // if today has no data, current streak is 0
+  if(!S.pomodoroHistory[today] || S.pomodoroHistory[today].count===0) current=0;
 
   $('h-current').textContent = current;
   $('h-longest').textContent = longest;
@@ -3140,7 +2917,7 @@ function applyTheme(theme){
   if(meta) meta.content = theme==='dark' ? '#1a1a2e' : '#e74c3c';
 }
 
-$('btn-test-sound').onclick = ()=>{ playSound('complete'); };
+$('btn-test-sound').onclick = ()=>{ playSound(); };
 
 /* ============= PROJECTS ============= */
 function renderProjects(){
@@ -3277,10 +3054,13 @@ function finishOnboarding(){
 function navigateTo(view){
   qsa('.view').forEach(v=>v.classList.remove('active'));
   qsa('.nav-btn').forEach(b=>b.classList.remove('active'));
+  qsa('.bnav-item').forEach(b=>b.classList.remove('active'));
   const target = $('view-'+view);
   if(target) target.classList.add('active');
   const navBtn = qs(`.nav-btn[data-view="${view}"]`);
   if(navBtn) navBtn.classList.add('active');
+  const bnavBtn = qs(`.bnav-item[data-view="${view}"]`);
+  if(bnavBtn) bnavBtn.classList.add('active');
 
   if(view==='stats') renderStats();
   if(view==='calendar') renderCalendar();
@@ -3291,6 +3071,14 @@ function navigateTo(view){
 }
 
 qsa('.nav-btn').forEach(b=>{
+  b.onclick = ()=>{
+    navigateTo(b.dataset.view);
+    closeDetail();
+  };
+});
+
+/* Bottom nav sync (mobile) */
+qsa('.bnav-item').forEach(b=>{
   b.onclick = ()=>{
     navigateTo(b.dataset.view);
     closeDetail();
@@ -3369,7 +3157,6 @@ document.addEventListener('keydown', e=>{
       }
       break;
     case 'Escape':
-      if(focusLockdown){ exitLockdown(); }
       closeDetail();
       $('modal-complete').hidden = true;
       $('modal-abandon-confirm').hidden = true;
@@ -3424,12 +3211,6 @@ function migrateData(){
     S._todayExceededYesterday = S._todayExceededYesterday||false;
     S._prevLevel = S._prevLevel||1;
     S.version=5;
-    saveState();
-  }
-  // v5 → v6 migration
-  if(S.version===5){
-    // No data structure changes, just version bump
-    S.version=6;
     saveState();
   }
 }
@@ -3501,11 +3282,6 @@ function initApp(){
   updateModeBtns();
   updateActiveTaskDisplay();
   updateDailyGoal();
-  // Hide micro-pomo if user already has pomos today
-  const todayForMicro = S.pomodoroHistory[todayStr()];
-  if(todayForMicro && todayForMicro.count > 0){
-    $('micro-pomo-bar').style.display = 'none';
-  }
   // V7: inbox pressure
   updateInboxPressure();
 
@@ -3547,22 +3323,6 @@ function initApp(){
     lockdownEl.checked = !!S.settings.lockdown;
     lockdownEl.onchange = function(){ S.settings.lockdown = this.checked; saveState(); };
   }
-  // Auto-trigger smart suggestion on load
-  setTimeout(generateSmartSuggestion, 1500);
-
-  // V11: Initialize boss & achievements
-  initBoss();
-  initSubjectBar();
-  // Hide subject bar by default
-  const subjectBar = $('subject-bar');
-  if(subjectBar) subjectBar.hidden = true;
-  renderAchievements();
-  checkAchievements();
-  renderSubjectStats();
-
-  // V15: Initialize gaokao countdown
-  updateGaokaoCountdown();
-
   // navigation default
   navigateTo('work');
 }
@@ -3629,7 +3389,13 @@ document.addEventListener('visibilitychange', ()=>{
         addScore(-2);
         S.distractionCount = (S.distractionCount||0) + 1;
         saveState();
-        toast('⚠️ 专注中断 '+Math.floor(elapsed/60)+'分钟 -2分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
+        toast('⚠️ 专注中断 -2分（当前 '+Math.max(0,S.score||0)+'分）', 4000);
+        const notice = document.createElement('div');
+        notice.className = 'distraction-notice';
+        notice.textContent = '👋 欢迎回来，继续专注！切走超过2分钟了哦';
+        document.body.appendChild(notice);
+        setTimeout(()=>{ if(notice.parentNode) notice.remove(); }, 4000);
+        toast('⚠️ 你离开了 '+Math.floor(elapsed/60)+' 分钟');
       }else{
         const wb = $('welcome-back');
         wb.hidden = false;
@@ -3651,354 +3417,5 @@ document.addEventListener('visibilitychange', ()=>{
 });
 // also save on unload
 window.addEventListener('pagehide', ()=>{ saveState(); });
-
-/* ============= V11: GAOKAO COUNTDOWN ============= */
-const GAOKAO_DATE = new Date('2026-06-07T09:00:00+08:00'); // 2026高考时间
-const GAOKAO_MOTTOS = [
-  '乾坤未定，你我皆是黑马',
-  '不苦不累，高三无味；不拼不搏，高三白活',
-  '今天多一份拼搏，明天多几份欢笑',
-  '拼一个春夏秋冬，换一生无怨无悔',
-  '一分耕耘，一分收获，未必；九分耕耘，会有收获，一定',
-  '静下来，铸我实力；拼上去，亮我风采',
-  '人生没有彩排，每一天都是现场直播',
-  '不为失败找理由，只为成功找方法',
-  '眼泪不是答案，拼搏才是选择',
-  '每一次努力都是最优的亲近，每一滴汗水都是成长的滋润',
-];
-
-function updateGaokaoCountdown(){
-  const now = Date.now();
-  const diff = GAOKAO_DATE.getTime() - now;
-  if(diff <= 0){
-    const banner = $('gaokao-banner');
-    if(banner) banner.hidden = true;
-    return;
-  }
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-  $('gaokao-days').textContent = days;
-  $('gaokao-hours').textContent = String(hours).padStart(2,'0');
-  $('gaokao-mins').textContent = String(mins).padStart(2,'0');
-  // Rotate motto daily
-  const dayOfYear = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
-  $('gaokao-motto').textContent = GAOKAO_MOTTOS[dayOfYear % GAOKAO_MOTTOS.length];
-}
-// Gaokao countdown initialized in initApp() to avoid DOM access issues
-
-/* ============= V11: EXTENDED MOTIVATIONAL QUOTES (50+) ============= */
-const V11_QUOTES = [
-  '准备好了吗？开始你的第一个番茄！',
-  '每一次专注，都是在为未来投资',
-  '番茄钟的每一秒，都在缩短你和目标的距离',
-  '不怕慢，只怕停。现在就开始！',
-  '今天的坚持，是明天的骄傲',
-  '高考倒计时中...每一分钟都珍贵',
-  '专注25分钟，你比昨天更强',
-  '打败拖延，从这一个番茄开始',
-  '你不是在浪费时间，你是在创造未来',
-  '现在不拼，更待何时？',
-  '把手机放下，把梦想拿起',
-  '番茄+1 = 离梦想更近一步',
-  '星光不问赶路人，时光不负有心人',
-  '你现在的努力，是未来的你回头看时的感动',
-  '与其羡慕别人，不如加快脚步',
-  '成功的秘诀在于坚持到底',
-  '每一个不曾起舞的日子，都是对生命的辜负',
-  '哪怕只有1%的希望，也要付出100%的努力',
-  '现在流的汗，是以后笑的泪',
-  '高考不过是一次考试，人生才是真正的战场',
-  '你比你想象的更强大',
-  '行动是治愈恐惧的良药',
-  '别让明天的你，后悔今天的自己',
-  '每一次想放弃的时候，想想为什么开始',
-  '坚持的意义，不在于结果，而在于过程',
-  '你的努力，终将成就无可替代的自己',
-  '没有什么不可能，只要你足够想',
-  '与其担心未来，不如现在努力',
-  '把每一天当作最后一天来过',
-  '优秀不是一种行为，而是一种习惯',
-  '天道酬勤，力耕不欺',
-  '越努力，越幸运',
-  '知识改变命运，努力改变人生',
-  '今天的辛苦，是明天的财富',
-  '没有等出来的辉煌，只有拼出来的精彩',
-  '你的竞争对手正在学习，你还在犹豫？',
-  '高考是人生一次洗礼，经历过才懂得珍惜',
-  '把每一道题当作通往梦想的台阶',
-  '不积跬步，无以至千里；不积小流，无以成江海',
-  '让最好的自己，在最好的时间，做最好的事',
-  '成功没有捷径，唯有脚踏实地',
-  '你只管努力，剩下的交给时间',
-  '梦想不会逃跑，会逃跑的永远是自己',
-  '给自己一个微笑，今天是全新的一天',
-  '专注当下，未来可期',
-  '每完成一个番茄，你就领先了一步',
-  '累的时候告诉自己：再坚持一下',
-  '你在做的事情，比你想象的更重要',
-  '咬定青山不放松，立根原在破岩中',
-  '千磨万击还坚劲，任尔东西南北风',
-  '少年不惧岁月长，彼方尚有荣光在',
-];
-
-// Replace the old MOTIVATIONAL_QUOTES reference
-// Override rotateMotivationalQuote to use expanded list
-// Random quote on load
-(function(){
-  if($('mq-text')){
-    const idx = Math.floor(Math.random() * V11_QUOTES.length);
-    $('mq-text').textContent = V11_QUOTES[idx];
-  }
-})();
-
-/* ============= V11: REAL BATTLE SYSTEM ============= */
-const BOSSES = [
-  {name:'拖延怪兽',level:1,emoji:'👹',hp:3,atk:1,reward:30,desc:'入门级BOSS，3个番茄即可击败'},
-  {name:'分心恶魔',level:2,emoji:'😈',hp:5,atk:1,reward:60,desc:'5个番茄才能打败它'},
-  {name:'焦虑巨人',level:3,emoji:'👹',hp:8,atk:2,reward:100,desc:'8个番茄的挑战'},
-  {name:'懒惰魔王',level:4,emoji:'👿',hp:12,atk:2,reward:160,desc:'12个番茄，你敢来吗？'},
-  {name:'放弃之神',level:5,emoji:'💀',hp:16,atk:3,reward:250,desc:'终极BOSS！16个番茄！'},
-];
-
-let currentBoss = null;
-let bossCurrentHP = 0;
-let bossDefeatedCount = 0;
-
-function initBoss(){
-  const saved = S.bossData;
-  if(saved && saved.bossIdx < BOSSES.length){
-    currentBoss = BOSSES[saved.bossIdx];
-    bossCurrentHP = saved.hp;
-    bossDefeatedCount = saved.defeated || 0;
-  } else {
-    currentBoss = BOSSES[0];
-    bossCurrentHP = currentBoss.hp;
-    bossDefeatedCount = 0;
-  }
-  renderBoss();
-}
-
-function renderBoss(){
-  if(!currentBoss || !$('boss-avatar')) return;
-  $('boss-avatar').textContent = currentBoss.emoji;
-  $('boss-name').textContent = currentBoss.name + ' Lv.' + currentBoss.level;
-  $('boss-level').textContent = currentBoss.desc;
-  const pct = Math.max(0, (bossCurrentHP / currentBoss.hp) * 100);
-  const fill = $('boss-hp-fill');
-  fill.style.width = pct + '%';
-  $('boss-hp-text').textContent = Math.ceil(bossCurrentHP) + '/' + currentBoss.hp;
-  fill.className = 'boss-hp-fill ' + (pct > 50 ? 'safe' : pct > 20 ? 'warning' : 'danger');
-  const streak = calcStreak();
-  if(streak > 0){
-    $('battle-streak-badge').textContent = '🔥 连续' + streak + '天';
-  }
-}
-
-function attackBoss(){
-  if(!currentBoss || bossCurrentHP <= 0) return;
-  const dmg = currentBoss.atk + Math.floor(Math.random() * 2);
-  bossCurrentHP = Math.max(0, bossCurrentHP - dmg);
-  // Add log entry
-  const log = $('battle-log');
-  const entry = document.createElement('div');
-  entry.className = 'battle-log-entry';
-  entry.textContent = '⚔️ 造成 ' + dmg + ' 点伤害！剩余HP: ' + Math.ceil(bossCurrentHP);
-  log.insertBefore(entry, log.firstChild);
-  // Animate
-  const avatar = $('boss-avatar');
-  avatar.classList.add('shaking');
-  setTimeout(()=> avatar.classList.remove('shaking'), 400);
-  // Float damage
-  const dmgEl = document.createElement('div');
-  dmgEl.className = 'boss-dmg-float';
-  dmgEl.textContent = '-' + dmg;
-  const bossSection = document.querySelector('.boss-section');
-  bossSection.style.position = 'relative';
-  dmgEl.style.left = '50%';
-  dmgEl.style.top = '20px';
-  bossSection.appendChild(dmgEl);
-  setTimeout(()=> dmgEl.remove(), 1000);
-
-  renderBoss();
-
-  if(bossCurrentHP <= 0){
-    bossDefeatedCount++;
-    addScore(currentBoss.reward);
-    $('battle-reward').textContent = '🏆 ' + currentBoss.name + '被击败！+' + currentBoss.reward + '分';
-    $('battle-reward').classList.remove('hidden');
-    avatar.classList.add('boss-defeated');
-    showCelebration();
-    // Add momentum feed
-    addMilestone('🏆 击败 ' + currentBoss.name + ' Lv.' + currentBoss.level + '！获得 ' + currentBoss.reward + ' 分');
-    // Advance to next boss after delay
-    setTimeout(()=>{
-      const nextIdx = BOSSES.indexOf(currentBoss) + 1;
-      if(nextIdx < BOSSES.length){
-        currentBoss = BOSSES[nextIdx];
-        bossCurrentHP = currentBoss.hp;
-        avatar.classList.remove('boss-defeated');
-        $('battle-reward').classList.add('hidden');
-        renderBoss();
-      }
-      saveBossData();
-    }, 3000);
-  }
-  saveBossData();
-}
-
-function saveBossData(){
-  S.bossData = {
-    bossIdx: BOSSES.indexOf(currentBoss),
-    hp: bossCurrentHP,
-    defeated: bossDefeatedCount,
-  };
-  saveState();
-}
-
-/* ============= V11: ACHIEVEMENT SYSTEM ============= */
-const ACHIEVEMENTS = [
-  {id:'first_pomo',name:'初次专注',icon:'🍅',desc:'完成第一个番茄',check:()=>getTotalPomos()>=1},
-  {id:'pomo_10',name:'番茄新手',icon:'🌱',desc:'累计10个番茄',check:()=>getTotalPomos()>=10},
-  {id:'pomo_50',name:'专注达人',icon:'⭐',desc:'累计50个番茄',check:()=>getTotalPomos()>=50},
-  {id:'pomo_100',name:'百番斩',icon:'💯',desc:'累计100个番茄',check:()=>getTotalPomos()>=100},
-  {id:'streak_3',name:'三天小成',icon:'🔥',desc:'连续专注3天',check:()=>calcStreak()>=3},
-  {id:'streak_7',name:'一周习惯',icon:'🏅',desc:'连续专注7天',check:()=>calcStreak()>=7},
-  {id:'streak_30',name:'月度铁人',icon:'👑',desc:'连续专注30天',check:()=>calcStreak()>=30},
-  {id:'boss_1',name:'初战告捷',icon:'⚔️',desc:'击败第一个Boss',check:()=>bossDefeatedCount>=1},
-  {id:'boss_3',name:'猎魔高手',icon:'🗡️',desc:'击败3个Boss',check:()=>bossDefeatedCount>=3},
-  {id:'boss_5',name:'终焉之刃',icon:'💫',desc:'击败所有Boss',check:()=>bossDefeatedCount>=5},
-  {id:'grade_s',name:'超凡日',icon:'🌟',desc:'单日获得S评级',check:()=>hasGradeS()},
-  {id:'score_1000',name:'千分俱乐部',icon:'🎯',desc:'累计1000分',check:()=>(S.score||0)>=1000},
-];
-
-function getTotalPomos(){
-  let total = 0;
-  Object.values(S.pomodoroHistory||{}).forEach(d=>{ total += (d.count||0); });
-  return total;
-}
-
-function hasGradeS(){
-  return Object.values(S.pomodoroHistory||{}).some(d=>(d.count||0) >= (S.settings.dailyGoal||6) * 1.5);
-}
-
-function checkAchievements(){
-  if(!S.achievements) S.achievements = [];
-  let newUnlock = false;
-  ACHIEVEMENTS.forEach(a=>{
-    if(!S.achievements.includes(a.id) && a.check()){
-      S.achievements.push(a.id);
-      addMilestone('🏆 解锁成就：' + a.icon + ' ' + a.name);
-      toast('🏆 解锁成就：' + a.icon + ' ' + a.name);
-      newUnlock = true;
-    }
-  });
-  if(newUnlock){ saveState(); renderAchievements(); }
-}
-
-function renderAchievements(){
-  if(!$('achievement-grid')) return;
-  const grid = $('achievement-grid');
-  grid.innerHTML = '';
-  let unlocked = 0;
-  ACHIEVEMENTS.forEach(a=>{
-    const isUnlocked = (S.achievements||[]).includes(a.id);
-    if(isUnlocked) unlocked++;
-    const badge = document.createElement('div');
-    badge.className = 'achievement-badge ' + (isUnlocked ? 'unlocked' : 'locked');
-    badge.innerHTML = '<span class="achievement-icon">' + a.icon + '</span>' +
-      '<span class="achievement-name">' + a.name + '</span>' +
-      '<span class="achievement-tooltip">' + a.desc + '</span>';
-    grid.appendChild(badge);
-  });
-  $('achievement-count').textContent = unlocked + '/' + ACHIEVEMENTS.length;
-}
-
-/* ============= V11: SUBJECT CATEGORY SYSTEM ============= */
-const SUBJECTS = {
-  math:{name:'数学',icon:'📐',color:'#e74c3c'},
-  chinese:{name:'语文',icon:'📝',color:'#e67e22'},
-  english:{name:'英语',icon:'🔤',color:'#3498db'},
-  physics:{name:'物理',icon:'⚛️',color:'#9b59b6'},
-  chemistry:{name:'化学',icon:'🧪',color:'#2ecc71'},
-  biology:{name:'生物',icon:'🧬',color:'#1abc9c'},
-  history:{name:'历史',icon:'📜',color:'#f39c12'},
-  geography:{name:'地理',icon:'🌏',color:'#e91e63'},
-  politics:{name:'政治',icon:'⚖️',color:'#795548'},
-  other:{name:'其他',icon:'📌',color:'#607d8b'},
-};
-
-let currentSubject = null;
-
-function initSubjectBar(){
-  document.querySelectorAll('.subject-tag').forEach(tag=>{
-    tag.addEventListener('click',()=>{
-      const sub = tag.dataset.subject;
-      if(currentSubject === sub){
-        currentSubject = null;
-        tag.classList.remove('active');
-      } else {
-        document.querySelectorAll('.subject-tag').forEach(t=>t.classList.remove('active'));
-        currentSubject = sub;
-        tag.classList.add('active');
-      }
-      // Update placeholder
-      const input = $('task-input');
-      if(input){
-        input.placeholder = currentSubject
-          ? '添加' + SUBJECTS[currentSubject].name + '任务…'
-          : '添加任务… #标签 !1紧急 @today';
-      }
-    });
-  });
-}
-
-function getTaskSubject(task){
-  if(task.subject) return task.subject;
-  // Auto-detect from tags
-  const tagKeys = Object.keys(SUBJECTS);
-  if(task.tags){
-    for(const tag of task.tags){
-      if(tagKeys.includes(tag)) return tag;
-    }
-  }
-  return null;
-}
-
-function renderSubjectStats(){
-  const grid = $('subject-stats-grid');
-  if(!grid) return;
-  grid.innerHTML = '';
-  const subjectMins = {};
-  // Count pomodoro time per subject from today's completed tasks
-  const today = todayStr();
-  const todayData = S.pomodoroHistory[today] || {};
-  // Use task data to count
-  Object.values(S.tasks||{}).forEach(task=>{
-    if(!task.completedAt) return;
-    const sub = getTaskSubject(task);
-    if(!sub) return;
-    const mins = (task.completedPomodoros || 0) * (S.settings.work || 25);
-    subjectMins[sub] = (subjectMins[sub] || 0) + mins;
-  });
-  Object.entries(SUBJECTS).forEach(([key, info])=>{
-    const mins = subjectMins[key] || 0;
-    const card = document.createElement('div');
-    card.className = 'subject-stat-card';
-    card.innerHTML = '<div class="subject-stat-icon">' + info.icon + '</div>' +
-      '<div class="subject-stat-name">' + info.name + '</div>' +
-      '<div class="subject-stat-val">' + mins + 'm</div>';
-    card.style.borderColor = info.color + '30';
-    grid.appendChild(card);
-  });
-}
-
-/* ============= V11: INTEGRATION HOOKS ============= */
-// Make attackBoss available globally for timer completion hook
-window._v11_attackBoss = attackBoss;
-window._v11_checkAchievements = checkAchievements;
-window._v11_renderAchievements = renderAchievements;
-window._v11_renderSubjectStats = renderSubjectStats;
-window._v11_getTaskSubject = getTaskSubject;
 
 })();
