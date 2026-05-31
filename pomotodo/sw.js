@@ -1,4 +1,4 @@
-const CACHE = 'pomotodo-v8-gaokao';
+const CACHE = 'pomotodo-v9-fix';
 const ASSETS = ['./','./index.html','./style.css','./app.js','./timer-worker.js','./favicon.svg','./manifest.json','./icons/icon-192.png','./icons/icon-512.png'];
 
 self.addEventListener('install',e=>{
