@@ -33,11 +33,12 @@
 .confetti.circle{border-radius:50%}
 .confetti.diamond{border-radius:2px;transform:rotate(45deg)}
 .gk-badge{font-size:11px;background:linear-gradient(135deg,#ff6b35,#f7971e);color:#fff;padding:1px 6px;border-radius:8px;vertical-align:middle;margin-left:4px;font-weight:600;letter-spacing:0.5px}
-.gk-countdown{position:absolute;top:var(--nav-h);left:0;right:0;background:linear-gradient(90deg,#ff6b35,#e74c3c);color:#fff;padding:3px 16px;font-size:12px;text-align:center;z-index:99;box-shadow:0 2px 8px rgba(231,76,60,0.3)}
+.gk-banners{position:sticky;top:var(--nav-h);z-index:99;display:flex;flex-direction:column;align-items:stretch;transition:height 0.3s ease}
+.gk-countdown{background:linear-gradient(90deg,#ff6b35,#e74c3c);color:#fff;padding:3px 16px;font-size:12px;text-align:center;box-shadow:0 2px 8px rgba(231,76,60,0.3)}
 .gk-countdown-icon{margin-right:4px}
 .gk-countdown-label{opacity:0.9;margin-right:8px}
 .gk-countdown-value{font-weight:700;font-size:14px;letter-spacing:1px}
-.gk-schedule{position:absolute;top:calc(var(--nav-h) + 26px);left:0;right:0;background:linear-gradient(90deg,#2c3e50,#34495e);color:#fff;padding:4px 16px;font-size:12px;text-align:center;z-index:99}
+.gk-schedule{background:linear-gradient(90deg,#2c3e50,#34495e);color:#fff;padding:4px 16px;font-size:12px;text-align:center}
 .gk-schedule strong{color:#f39c12}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
 .subject-quick-add{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}
@@ -119,6 +120,12 @@
     <button class="nav-btn" data-view="stats">统计</button>
     <button class="nav-btn" data-view="settings">设置</button>
   </nav>
+  <div class="battle-indicator" id="battle-indicator" hidden>
+    <span class="battle-fire">⚔️</span>
+    <span class="battle-text" id="battle-text">专注模式</span>
+  </div>
+</header>
+<div class="gk-banners" id="gk-banners">
   <div class="gk-countdown" id="gk-countdown">
     <span class="gk-countdown-icon">🎯</span>
     <span class="gk-countdown-label">高考倒计时</span>
@@ -127,11 +134,7 @@
   <div class="gk-schedule" id="gk-schedule" hidden>
     <span class="gk-schedule-text" id="gk-schedule-text"></span>
   </div>
-  <div class="battle-indicator" id="battle-indicator" hidden>
-    <span class="battle-fire">⚔️</span>
-    <span class="battle-text" id="battle-text">专注模式</span>
-  </div>
-</header>
+</div>
 <!-- ==================== WORK VIEW ==================== -->
 <main class="view work-view active" id="view-work">
   <section class="panel panel-timer">
