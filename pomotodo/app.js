@@ -569,9 +569,11 @@ function updateSprintPlan(){
   const daysLeft = gaokaoDaysRemaining();
   if(daysLeft > 7){
     container.hidden = true;
+    document.documentElement.style.setProperty('--gk-banner-h', '28px');
     return;
   }
   container.hidden = false;
+  document.documentElement.style.setProperty('--gk-banner-h', '56px');
 
   // Show today's recommended subject focus
   const subjectAdvice = getTodaySubjectAdvice(daysLeft);
